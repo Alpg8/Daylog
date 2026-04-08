@@ -177,7 +177,7 @@ function ColumnVisibilityToggle<TData>({ table }: { table: TanstackTable<TData> 
                   <input
                     type="checkbox"
                     checked={col.getIsVisible()}
-                    onChange={col.toggleVisibility}
+                    onChange={(e) => col.toggleVisibility(e.target.checked)}
                     className="accent-primary"
                   />
                   {label}
