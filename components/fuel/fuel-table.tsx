@@ -143,7 +143,7 @@ export function FuelTable() {
       <PageHeader title="Yakıt Kayıtları" onAdd={() => { setEditing(null); setFormOpen(true); }}
         actions={<ExcelExport data={exportData} fileName="yakit-kayitlari" label="Excel İndir" />}
       />
-      {loading ? <p className="text-white/40">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchKey="fuelStation" searchPlaceholder="İstasyon ara..." filters={fuelFilters} />}
+      {loading ? <p className="text-white/40">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchPlaceholder="İstasyon ara..." filters={fuelFilters} />}
       <FuelForm open={formOpen} onOpenChange={setFormOpen} onSuccess={fetchData} initialData={editing} />
       <ConfirmDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)} onConfirm={handleDelete} description="Bu yakıt kaydını silmek istediğinize emin misiniz?" />
     </div>

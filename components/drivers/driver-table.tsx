@@ -99,7 +99,7 @@ export function DriverTable() {
       <PageHeader title="Sürücüler" onAdd={() => { setEditing(null); setFormOpen(true); }}
         actions={<ExcelExport data={exportData} fileName="suruculer" label="Excel İndir" />}
       />
-      {loading ? <p className="text-muted-foreground/60">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchKey="fullName" searchPlaceholder="İsim ara..." filters={driverFilters} onCellEdit={async (rowIndex, columnId, value) => {
+      {loading ? <p className="text-muted-foreground/60">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchPlaceholder="İsim ara..." filters={driverFilters} onCellEdit={async (rowIndex, columnId, value) => {
         const d = data[rowIndex];
         if (!d) return;
         const res = await fetch(`/api/drivers/${d.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [columnId]: value }) });

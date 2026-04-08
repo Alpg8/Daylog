@@ -85,7 +85,7 @@ export function TrailerTable() {
       <PageHeader title="Dorseler" onAdd={() => { setEditing(null); setFormOpen(true); }}
         actions={<ExcelExport data={exportData} fileName="dorseler" label="Excel İndir" />}
       />
-      {loading ? <p className="text-white/40">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchKey="plateNumber" searchPlaceholder="Plaka ara..." filters={trailerFilters} />}
+      {loading ? <p className="text-white/40">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchPlaceholder="Plaka ara..." filters={trailerFilters} />}
       <TrailerForm open={formOpen} onOpenChange={setFormOpen} onSuccess={fetchData} initialData={editing} />
       <ConfirmDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)} onConfirm={handleDelete} description="Bu dorseyi silmek istediğinize emin misiniz?" />
     </div>

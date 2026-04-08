@@ -82,7 +82,7 @@ export function UserTable() {
   return (
     <div className="space-y-4">
       <PageHeader title="Kullanıcılar" onAdd={() => { setEditing(null); setFormOpen(true); }} />
-      {loading ? <p className="text-muted-foreground">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchKey="email" searchPlaceholder="E-posta ara..." filters={userFilters} />}
+      {loading ? <p className="text-muted-foreground">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchPlaceholder="E-posta ara..." filters={userFilters} />}
       <UserForm open={formOpen} onOpenChange={setFormOpen} onSuccess={fetchData} initialData={editing} />
       <ConfirmDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)} onConfirm={handleDelete} description="Bu kullanıcıyı silmek istediğinize emin misiniz?" />
     </div>
