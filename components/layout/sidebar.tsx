@@ -16,6 +16,8 @@ import {
   ArrowUpFromLine,
   MapPin,
   UserCog,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -51,6 +53,7 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<string[]>(["Siparişler"]);
+  const [collapsed, setCollapsed] = useState(false);
 
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) =>
@@ -61,29 +64,71 @@ export function Sidebar() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
   return (
-    <aside className="relative flex h-full w-64 flex-col border-r border-white/[0.06] bg-white/[0.03] backdrop-blur-2xl">
+    <aside
+      className={cn(
+        "relative flex h-full flex-col border-r border-border bg-background/60 backdrop-blur-2xl dark:bg-white/[0.03] dark:border-white/[0.06] transition-all duration-300 overflow-hidden shrink-0",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
       {/* Subtle inner glow at top */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/20 to-transparent" />
 
-      {/* Logo */}
-      <div className="flex h-16 items-center border-b border-white/[0.06] px-5">
-        <Image
-          src="/logo.png"
-          alt="Daylog"
-          width={130}
-          height={36}
-          className="brightness-0 invert"
-          priority
-        />
+      {/* Logo + collapse toggle */}
+      <div
+        className={cn(
+          "flex h-16 items-center border-b border-border dark:border-white/[0.06]",
+          collapsed ? "justify-center px-2" : "justify-between px-5"
+        )}
+      >
+        {!collapsed && (
+          <Image
+            src="/logo.png"
+            alt="Daylog"
+            width={130}
+            height={36}
+            className="dark:brightness-0 dark:invert"
+            priority
+          />
+        )}
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground transition-colors shrink-0"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
+        </button>
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-3 py-4">
+      <ScrollArea className="flex-1 px-2 py-4">
         <nav className="space-y-0.5">
           {navItems.map((item) => {
             if (item.children) {
               const isOpen = openGroups.includes(item.title);
               const isGroupActive = item.children.some((child) => isActive(child.href));
+
+              if (collapsed) {
+                return (
+                  <Link
+                    key={item.title}
+                    href={item.children[0].href}
+                    title={item.title}
+                    className={cn(
+                      "flex items-center justify-center rounded-xl p-2 transition-all duration-200",
+                      isGroupActive
+                        ? "bg-gradient-to-r from-blue-500/20 to-violet-500/20 text-foreground border border-border shadow-sm"
+                        : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                  </Link>
+                );
+              }
+
               return (
                 <div key={item.title}>
                   <button
@@ -91,12 +136,12 @@ export function Sidebar() {
                     className={cn(
                       "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
                       isGroupActive
-                        ? "bg-white/10 text-white shadow-sm"
-                        : "text-white/50 hover:bg-white/[0.07] hover:text-white/80"
+                        ? "bg-foreground/10 text-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
                     )}
                   >
                     <span className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-4 w-4 shrink-0" />
                       {item.title}
                     </span>
                     <ChevronDown
@@ -104,7 +149,7 @@ export function Sidebar() {
                     />
                   </button>
                   {isOpen && (
-                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-white/[0.07] pl-3">
+                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border dark:border-white/[0.07] pl-3">
                       {item.children.map((child) => (
                         <Link
                           key={child.href}
@@ -112,8 +157,8 @@ export function Sidebar() {
                           className={cn(
                             "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
                             isActive(child.href)
-                              ? "bg-gradient-to-r from-blue-500/20 to-violet-500/20 text-white font-medium border border-white/10 shadow-sm"
-                              : "text-white/40 hover:bg-white/[0.07] hover:text-white/70"
+                              ? "bg-gradient-to-r from-blue-500/20 to-violet-500/20 text-foreground font-medium border border-border shadow-sm"
+                              : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
                           )}
                         >
                           <child.icon className="h-3.5 w-3.5" />
@@ -130,15 +175,17 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href!}
+                title={collapsed ? item.title : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
+                  "flex items-center rounded-xl transition-all duration-200",
+                  collapsed ? "justify-center p-2" : "gap-3 px-3 py-2 text-sm",
                   isActive(item.href!)
-                    ? "bg-gradient-to-r from-blue-500/20 to-violet-500/20 text-white font-medium border border-white/10 shadow-sm"
-                    : "text-white/50 hover:bg-white/[0.07] hover:text-white/80"
+                    ? "bg-gradient-to-r from-blue-500/20 to-violet-500/20 text-foreground font-medium border border-border shadow-sm"
+                    : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
                 )}
               >
-                <item.icon className="h-4 w-4" />
-                {item.title}
+                <item.icon className="h-4 w-4 shrink-0" />
+                {!collapsed && item.title}
               </Link>
             );
           })}

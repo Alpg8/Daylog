@@ -59,8 +59,8 @@ export function DriverTable() {
   ];
 
   const columns: ColumnDef<Driver>[] = [
-    { accessorKey: "fullName", header: "Ad Soyad" },
-    { accessorKey: "phoneNumber", header: "Telefon", cell: ({ row }) => row.getValue("phoneNumber") || "—" },
+    { accessorKey: "fullName", header: "Ad Soyad", meta: { editable: true } },
+    { accessorKey: "phoneNumber", header: "Telefon", meta: { editable: true }, cell: ({ row }) => row.getValue("phoneNumber") || "—" },
     { accessorKey: "licenseExpiryDate", header: "Ehliyet Bitiş", cell: ({ row }) => fmtDate(row.getValue("licenseExpiryDate")) },
     { accessorKey: "passportExpiryDate", header: "Pasaport Bitiş", cell: ({ row }) => fmtDate(row.getValue("passportExpiryDate")) },
     { accessorKey: "psychotechnicExpiryDate", header: "Psikoteknik Bitiş", cell: ({ row }) => fmtDate(row.getValue("psychotechnicExpiryDate")) },
@@ -99,7 +99,12 @@ export function DriverTable() {
       <PageHeader title="Sürücüler" onAdd={() => { setEditing(null); setFormOpen(true); }}
         actions={<ExcelExport data={exportData} fileName="suruculer" label="Excel İndir" />}
       />
-      {loading ? <p className="text-white/40">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchKey="fullName" searchPlaceholder="İsim ara..." filters={driverFilters} />}
+      {loading ? <p className="text-muted-foreground/60">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchKey="fullName" searchPlaceholder="İsim ara..." filters={driverFilters} onCellEdit={async (rowIndex, columnId, value) => {
+        const d = data[rowIndex];
+        if (!d) return;
+        const res = await fetch(`/api/drivers/${d.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [columnId]: value }) });
+        if (res.ok) { toast.success("Kaydedildi"); fetchData(); } else { toast.error("Kaydedilemedi"); }
+      }} />}
       <DriverForm open={formOpen} onOpenChange={setFormOpen} onSuccess={fetchData} initialData={editing} />
       <ConfirmDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)} onConfirm={handleDelete} description="Bu sürücüyü silmek istediğinize emin misiniz?" />
     </div>

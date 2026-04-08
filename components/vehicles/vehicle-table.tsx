@@ -75,9 +75,9 @@ export function VehicleTable() {
   ];
 
   const columns: ColumnDef<Vehicle>[] = [
-    { accessorKey: "plateNumber", header: "Plaka" },
-    { accessorKey: "brand", header: "Marka", cell: ({ row }) => row.original.brand ?? "—" },
-    { accessorKey: "model", header: "Model", cell: ({ row }) => row.original.model ?? "—" },
+    { accessorKey: "plateNumber", header: "Plaka", meta: { editable: true } },
+    { accessorKey: "brand", header: "Marka", meta: { editable: true }, cell: ({ row }) => row.original.brand ?? "—" },
+    { accessorKey: "model", header: "Model", meta: { editable: true }, cell: ({ row }) => row.original.model ?? "—" },
     { accessorKey: "usageType", header: "Kullanım", filterFn: "equals", cell: ({ row }) => row.original.usageType ?? "—" },
     { accessorKey: "ownershipType", header: "Mülkiyet", filterFn: "equals", cell: ({ row }) => row.original.ownershipType ?? "—" },
     { accessorKey: "status", header: "Durum", filterFn: "equals", cell: ({ row }) => <VehicleStatusBadge status={row.original.status} /> },
@@ -106,7 +106,12 @@ export function VehicleTable() {
         onAdd={() => { setEditing(null); setFormOpen(true); }}
         actions={<ExcelExport data={vehicles as unknown as Record<string, unknown>[]} columns={exportCols} fileName="araclar" />}
       />
-      <DataTable columns={columns} data={vehicles} loading={loading} searchPlaceholder="Plaka, marka ara..." filters={vehicleFilters} />
+      <DataTable columns={columns} data={vehicles} loading={loading} searchPlaceholder="Plaka, marka ara..." filters={vehicleFilters} onCellEdit={async (rowIndex, columnId, value) => {
+        const v = vehicles[rowIndex];
+        if (!v) return;
+        const res = await fetch(`/api/vehicles/${v.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [columnId]: value }) });
+        if (res.ok) { toast.success("Kaydedildi"); fetchVehicles(); } else { toast.error("Kaydedilemedi"); }
+      }} />
       <VehicleForm open={formOpen} onOpenChange={(o) => { setFormOpen(o); if (!o) setEditing(null); }} onSuccess={fetchVehicles} initialData={editing} />
       <ConfirmDialog open={!!deletingId} onOpenChange={(o) => !o && setDeletingId(null)} onConfirm={handleDelete} loading={deleteLoading} title="Aracı sil" description="Bu araç kalıcı olarak silinecektir." />
     </div>

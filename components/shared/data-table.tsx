@@ -11,8 +11,22 @@ import {
   type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
+  type VisibilityState,
+  type Table as TanstackTable,
+  type Cell,
+  type RowData,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, X, SlidersHorizontal, Search } from "lucide-react";
+import {
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Columns3,
+  Pencil,
+  Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +38,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+
+// ── TanStack Table type augmentation ────────────────────────────────────────
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TData extends RowData> {
+    onCellEdit?: (rowIndex: number, columnId: string, value: string) => void;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    editable?: boolean;
+    type?: "text" | "number" | "date";
+  }
+}
 
 export interface FilterConfig {
   label: string;
@@ -36,23 +64,81 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   loading?: boolean;
   searchPlaceholder?: string;
-  searchColumn?: string;
-  searchKey?: string;
   filters?: FilterConfig[];
+  onCellEdit?: (rowIndex: number, columnId: string, value: string) => void;
 }
 
-// ── Column filter popover ────────────────────────────────────────────────────
-interface ColumnFilterPopoverProps {
-  filterId: string;
-  config: FilterConfig;
-  value: string;
-  onChange: (val: string) => void;
+// ── Editable cell wrapper ────────────────────────────────────────────────────
+function EditableCell<TData, TValue>({
+  cell,
+  children,
+}: {
+  cell: Cell<TData, TValue>;
+  children: React.ReactNode;
+}) {
+  const isEditable = cell.column.columnDef.meta?.editable;
+  const onCellEdit = cell.getContext().table.options.meta?.onCellEdit;
+  const [editing, setEditing] = useState(false);
+  const [localValue, setLocalValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  if (!isEditable || !onCellEdit) return <>{children}</>;
+
+  const commit = () => {
+    onCellEdit(cell.row.index, cell.column.id, localValue);
+    setEditing(false);
+  };
+
+  const cancel = () => setEditing(false);
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <input
+          ref={inputRef}
+          type={cell.column.columnDef.meta?.type ?? "text"}
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commit(); }
+            if (e.key === "Escape") { e.preventDefault(); cancel(); }
+          }}
+          onBlur={commit}
+          className="min-w-0 flex-1 rounded-md border border-primary/60 bg-background px-2 py-0.5 text-sm text-foreground outline-none ring-1 ring-primary/40 focus:ring-primary"
+        />
+        <button onClick={commit} className="shrink-0 rounded p-0.5 text-primary hover:bg-primary/10">
+          <Check className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={cancel} className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="group flex cursor-text items-center gap-1.5 rounded px-0.5 hover:bg-primary/5 transition-colors"
+      onDoubleClick={() => {
+        setLocalValue(String(cell.getValue() ?? ""));
+        setEditing(true);
+      }}
+      title="Düzenlemek için çift tıklayın"
+    >
+      {children}
+      <Pencil className="h-3 w-3 shrink-0 text-primary/0 group-hover:text-primary/40 transition-colors" />
+    </div>
+  );
 }
 
-function ColumnFilterPopover({ filterId, config, value, onChange }: ColumnFilterPopoverProps) {
+// ── Column Visibility Toggle ─────────────────────────────────────────────────
+function ColumnVisibilityToggle<TData>({ table }: { table: TanstackTable<TData> }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const isActive = Boolean(value);
 
   useEffect(() => {
     if (!open) return;
@@ -64,69 +150,100 @@ function ColumnFilterPopover({ filterId, config, value, onChange }: ColumnFilter
   }, [open]);
 
   return (
-    <div ref={ref} className="relative inline-block" onClick={(e) => e.stopPropagation()}>
-      <button
+    <div ref={ref} className="relative">
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => setOpen((o) => !o)}
-        className={[
-          "ml-1 flex h-5 w-5 items-center justify-center rounded transition-colors",
-          isActive
-            ? "bg-blue-500/30 text-blue-300"
-            : "text-white/30 hover:bg-white/10 hover:text-white/60",
-        ].join(" ")}
-        title={config.label}
+        className={cn("gap-1.5 text-xs", open && "bg-muted")}
       >
-        <SlidersHorizontal className="h-3 w-3" />
-      </button>
+        <Columns3 className="h-3.5 w-3.5" />
+        Sütunlar
+      </Button>
       {open && (
-        <div className="glass-strong absolute left-0 top-full z-[200] mt-1 min-w-[180px] rounded-xl p-2 shadow-2xl shadow-black/50">
-          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-white/30">
-            {config.label}
+        <div className="glass-strong absolute right-0 top-full z-[200] mt-1 min-w-[190px] rounded-xl p-2 shadow-xl">
+          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            Sütunları Göster / Gizle
           </p>
-          {config.options ? (
-            <div className="space-y-0.5">
-              <button
-                onClick={() => { onChange(""); setOpen(false); }}
-                className={[
-                  "w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
-                  !value ? "bg-blue-500/20 text-blue-300" : "text-white/60 hover:bg-white/[0.08]",
-                ].join(" ")}
-              >
-                Tümü
-              </button>
-              {config.options.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => { onChange(opt.value); setOpen(false); }}
-                  className={[
-                    "w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
-                    value === opt.value
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-white/60 hover:bg-white/[0.08]",
-                  ].join(" ")}
+          <div className="space-y-0.5">
+            {table.getAllColumns().filter((col) => col.getCanHide()).map((col) => {
+              const label =
+                typeof col.columnDef.header === "string" ? col.columnDef.header : col.id;
+              return (
+                <label
+                  key={col.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted transition-colors"
                 >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center gap-1">
-              <Search className="h-3 w-3 shrink-0 text-white/30" />
-              <input
-                autoFocus
-                type="text"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder={`${config.label} ara...`}
-                className="w-full bg-transparent text-xs text-white outline-none placeholder:text-white/30"
-              />
-              {value && (
-                <button onClick={() => onChange("")}>
-                  <X className="h-3 w-3 text-white/30 hover:text-white/60" />
-                </button>
-              )}
-            </div>
-          )}
+                  <input
+                    type="checkbox"
+                    checked={col.getIsVisible()}
+                    onChange={col.toggleVisibility}
+                    className="accent-primary"
+                  />
+                  {label}
+                </label>
+              );
+            })}
+          </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inline column filter input ────────────────────────────────────────────────
+function ColumnFilterInput({
+  config,
+  value,
+  onChange,
+}: {
+  config: FilterConfig | undefined;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const isActive = Boolean(value);
+
+  if (config?.options) {
+    return (
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "w-full rounded-md border bg-background px-1.5 py-0.5 text-[11px] text-foreground outline-none focus:ring-1 focus:ring-primary/50 transition-colors",
+          isActive
+            ? "border-primary/50 bg-primary/5"
+            : "border-border text-muted-foreground"
+        )}
+      >
+        <option value="">Tümü</option>
+        {config.options.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <div className="relative flex items-center">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Filtrele..."
+        className={cn(
+          "w-full rounded-md border bg-background px-1.5 py-0.5 text-[11px] outline-none focus:ring-1 focus:ring-primary/50 transition-colors",
+          isActive
+            ? "border-primary/50 bg-primary/5 text-foreground pr-5"
+            : "border-border text-muted-foreground placeholder:text-muted-foreground/40"
+        )}
+      />
+      {isActive && (
+        <button
+          onClick={() => onChange("")}
+          className="absolute right-1 text-muted-foreground/60 hover:text-foreground"
+        >
+          <X className="h-2.5 w-2.5" />
+        </button>
       )}
     </div>
   );
@@ -138,13 +255,13 @@ export function DataTable<TData, TValue>({
   data,
   loading = false,
   searchPlaceholder = "Ara...",
-  searchColumn,
-  searchKey,
   filters,
+  onCellEdit,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   const filterMap = new Map<string, FilterConfig>(filters?.map((f) => [f.column, f]) ?? []);
   const activeFilterCount = columnFilters.length;
@@ -176,19 +293,21 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: { sorting, columnFilters, globalFilter },
+    state: { sorting, columnFilters, globalFilter, columnVisibility },
     initialState: { pagination: { pageSize: 20 } },
+    meta: { onCellEdit },
   });
 
   if (loading) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-10 w-64" />
-        <div className="overflow-hidden rounded-2xl border border-white/[0.06]">
+        <div className="overflow-hidden rounded-2xl border border-border">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-12 w-full rounded-none" />
           ))}
@@ -197,9 +316,11 @@ export function DataTable<TData, TValue>({
     );
   }
 
+  const pageSizes = [10, 20, 50, 100];
+
   return (
     <div className="space-y-3">
-      {/* Global search + active filter chips */}
+      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           placeholder={searchPlaceholder}
@@ -211,16 +332,20 @@ export function DataTable<TData, TValue>({
         {/* Active filter chips */}
         {columnFilters.map((f) => {
           const cfg = filterMap.get(f.id as string);
-          const label = cfg?.options?.find((o) => o.value === f.value)?.label ?? String(f.value);
+          const label =
+            cfg?.options?.find((o) => o.value === f.value)?.label ?? String(f.value);
           return (
             <span
               key={f.id}
-              className="flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-300"
+              className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs text-primary"
             >
-              <span className="opacity-60">{cfg?.label ?? columnLabelMap.get(f.id as string) ?? f.id}:</span> {label}
+              <span className="opacity-60">
+                {cfg?.label ?? columnLabelMap.get(f.id as string) ?? f.id}:
+              </span>{" "}
+              {label}
               <button
                 onClick={() => setColFilter(f.id as string, "")}
-                className="ml-0.5 hover:text-white"
+                className="ml-0.5 opacity-70 hover:opacity-100"
               >
                 <X className="h-2.5 w-2.5" />
               </button>
@@ -231,56 +356,53 @@ export function DataTable<TData, TValue>({
         {(activeFilterCount > 0 || globalFilter) && (
           <button
             onClick={() => { setColumnFilters([]); setGlobalFilter(""); }}
-            className="text-xs text-white/30 hover:text-white/60"
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
             Tümünü temizle
           </button>
         )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {onCellEdit && (
+            <span className="flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] text-primary/70">
+              <Pencil className="h-2.5 w-2.5" />
+              Çift tıkla: düzenle
+            </span>
+          )}
+          <ColumnVisibilityToggle table={table} />
+        </div>
       </div>
 
       {/* Table */}
-      <div className="glass glass-highlight overflow-hidden rounded-2xl">
+      <div className="glass glass-highlight overflow-auto rounded-2xl max-h-[calc(100vh-280px)]">
         <Table>
           <TableHeader>
+            {/* ── Sort row ── */}
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const colId = header.column.id;
-                  const filterCfg = filterMap.get(colId);
                   const sortDir = header.column.getIsSorted();
                   const canSort = header.column.getCanSort();
-
-                  const isAccessorCol = "accessorKey" in header.column.columnDef || "accessorFn" in header.column.columnDef;
 
                   return (
                     <TableHead key={header.id}>
                       {header.isPlaceholder ? null : (
-                        <div className="flex items-center gap-0.5">
-                          {/* Sort button */}
-                          <div
-                            className={canSort ? "flex cursor-pointer select-none items-center gap-1" : "flex items-center"}
-                            onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                          >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {canSort && (
-                              sortDir === "asc" ? (
-                                <ArrowUp className="h-3.5 w-3.5 text-blue-400" />
-                              ) : sortDir === "desc" ? (
-                                <ArrowDown className="h-3.5 w-3.5 text-blue-400" />
-                              ) : (
-                                <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
-                              )
-                            )}
-                          </div>
-
-                          {/* Column filter — shown for all accessor columns */}
-                          {isAccessorCol && (
-                            <ColumnFilterPopover
-                              filterId={colId}
-                              config={filterCfg ?? { label: columnLabelMap.get(colId) ?? colId, column: colId }}
-                              value={getColFilterValue(colId)}
-                              onChange={(val) => setColFilter(colId, val)}
-                            />
+                        <div
+                          className={cn(
+                            "flex items-center gap-1",
+                            canSort && "cursor-pointer select-none"
+                          )}
+                          onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {canSort && (
+                            sortDir === "asc" ? (
+                              <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                            ) : sortDir === "desc" ? (
+                              <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                            ) : (
+                              <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
+                            )
                           )}
                         </div>
                       )}
@@ -289,21 +411,57 @@ export function DataTable<TData, TValue>({
                 })}
               </TableRow>
             ))}
+
+            {/* ── Inline filter row ── */}
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={`filter-${headerGroup.id}`} className="border-b border-border bg-muted/30">
+                {headerGroup.headers.map((header) => {
+                  const colId = header.column.id;
+                  const isAccessorCol =
+                    "accessorKey" in header.column.columnDef ||
+                    "accessorFn" in header.column.columnDef;
+
+                  return (
+                    <th key={`filter-${header.id}`} className="px-3 py-1.5 border-r border-border/50 last:border-r-0">
+                      {isAccessorCol ? (
+                        <ColumnFilterInput
+                          config={filterMap.get(colId)}
+                          value={getColFilterValue(colId)}
+                          onChange={(val) => setColFilter(colId, val)}
+                        />
+                      ) : (
+                        <div className="h-5" />
+                      )}
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
           </TableHeader>
+
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+              table.getRowModel().rows.map((row, rowIndex) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className={rowIndex % 2 === 1 ? "bg-muted/[0.35]" : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      <EditableCell cell={cell}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </EditableCell>
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-white/30">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center text-muted-foreground/60"
+                >
                   Kayıt bulunamadı.
                 </TableCell>
               </TableRow>
@@ -314,20 +472,43 @@ export function DataTable<TData, TValue>({
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-1">
-        <p className="text-sm text-white/40">
-          {table.getFilteredRowModel().rows.length} kayıt
-          {activeFilterCount > 0 && (
-            <span className="ml-1 text-blue-400/70">({activeFilterCount} filtre aktif)</span>
-          )}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-muted-foreground">
+            {table.getFilteredRowModel().rows.length} kayıt
+            {activeFilterCount > 0 && (
+              <span className="ml-1 text-primary/70">({activeFilterCount} filtre aktif)</span>
+            )}
+          </p>
+          <select
+            value={table.getState().pagination.pageSize}
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
+            className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {pageSizes.map((size) => (
+              <option key={size} value={size}>
+                {size} / sayfa
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-xs text-white/50">
+          <span className="text-xs text-muted-foreground">
             {table.getState().pagination.pageIndex + 1} / {table.getPageCount() || 1}
           </span>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

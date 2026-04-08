@@ -37,6 +37,31 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getCurrentUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const allowed = ["plateNumber", "brand", "model", "notes"];
+    const patch: Record<string, string> = {};
+    for (const field of allowed) {
+      if (field in body && typeof body[field] === "string") patch[field] = body[field];
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
+    }
+    const vehicle = await prisma.vehicle.update({ where: { id: params.id }, data: patch });
+    return NextResponse.json({ vehicle });
+  } catch (error) {
+    console.error("[VEHICLES PATCH]", error);
+    return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }

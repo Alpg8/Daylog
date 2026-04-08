@@ -41,10 +41,10 @@ export function Header({ title }: HeaderProps) {
     : "AU";
 
   return (
-    <header className="relative flex h-16 items-center justify-between border-b border-white/[0.06] bg-white/[0.03] backdrop-blur-xl px-6">
+    <header className="relative flex h-16 items-center justify-between border-b border-border dark:border-white/[0.06] bg-background/60 backdrop-blur-xl dark:bg-white/[0.03] px-6">
       {/* Top highlight */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-      <h1 className="text-lg font-semibold tracking-tight text-white">{title}</h1>
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-foreground/15 to-transparent" />
+      <h1 className="text-lg font-semibold tracking-tight text-foreground">{title}</h1>
 
       <div className="flex items-center gap-1">
         {/* Theme toggle */}
@@ -65,7 +65,7 @@ export function Header({ title }: HeaderProps) {
         </Button>
 
         {/* Divider */}
-        <div className="mx-1 h-5 w-px bg-white/10" />
+        <div className="mx-1 h-5 w-px bg-border" />
 
         {/* User menu */}
         <DropdownMenu>
@@ -81,8 +81,8 @@ export function Header({ title }: HeaderProps) {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold text-white leading-none">{user?.name}</p>
-                <p className="text-xs leading-none text-white/40">{user?.email}</p>
+                <p className="text-sm font-semibold leading-none">{user?.name}</p>
+                <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

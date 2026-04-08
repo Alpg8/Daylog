@@ -61,3 +61,28 @@ export async function DELETE(
     return NextResponse.json({ error: "Driver not found or has related records" }, { status: 400 });
   }
 }
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getCurrentUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const allowed = ["fullName", "phoneNumber", "nationalId", "notes"];
+    const patch: Record<string, string> = {};
+    for (const field of allowed) {
+      if (field in body && typeof body[field] === "string") patch[field] = body[field];
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
+    }
+    const driver = await prisma.driver.update({ where: { id: params.id }, data: patch });
+    return NextResponse.json({ driver });
+  } catch (error) {
+    console.error("[DRIVERS PATCH]", error);
+    return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
+  }
+}

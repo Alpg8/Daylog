@@ -4,41 +4,41 @@
 
 @layer base {
   :root {
-    /* Liquid Glass — deep space dark theme */
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
-    --popover: 224 71% 4%;
-    --popover-foreground: 213 31% 91%;
-    --primary: 221 83% 60%;
+    /* Liquid Glass — light theme */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 222 47% 11%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215 20% 55%;
-    --accent: 222 47% 14%;
-    --accent-foreground: 210 40% 96%;
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 221 83% 60%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 94%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 221 83% 53%;
     --radius: 0.75rem;
-    --sidebar-background: 224 71% 4%;
-    --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 221 83% 60%;
+    --sidebar-background: 210 20% 97%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 222 47% 11%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 216 34% 14%;
-    --sidebar-ring: 221 83% 60%;
-    /* Glass tokens */
-    --glass-bg: rgba(255,255,255,0.05);
-    --glass-bg-hover: rgba(255,255,255,0.08);
-    --glass-border: rgba(255,255,255,0.08);
-    --glass-highlight: rgba(255,255,255,0.12);
-    --glass-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+    --sidebar-accent: 210 40% 94%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 86%;
+    --sidebar-ring: 221 83% 53%;
+    /* Glass tokens — light */
+    --glass-bg: rgba(255,255,255,0.72);
+    --glass-bg-hover: rgba(255,255,255,0.88);
+    --glass-border: rgba(0,0,0,0.07);
+    --glass-highlight: rgba(255,255,255,0.9);
+    --glass-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
   }
 
   .dark {
@@ -69,6 +69,12 @@
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 216 34% 14%;
     --sidebar-ring: 221 83% 60%;
+    /* Glass tokens — dark */
+    --glass-bg: rgba(255,255,255,0.05);
+    --glass-bg-hover: rgba(255,255,255,0.08);
+    --glass-border: rgba(255,255,255,0.08);
+    --glass-highlight: rgba(255,255,255,0.12);
+    --glass-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
   }
 }
 
@@ -77,8 +83,7 @@
     @apply border-border;
   }
   body {
-    @apply text-foreground;
-    background-color: #030c1a;
+    @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -86,8 +91,8 @@
   /* Custom scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 9999px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+  ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.35); }
 }
 
 @layer utilities {
@@ -101,11 +106,11 @@
   }
 
   .glass-strong {
-    background: rgba(255,255,255,0.07);
+    background: var(--glass-highlight);
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
   }
 
   /* Top-edge highlight shimmer */

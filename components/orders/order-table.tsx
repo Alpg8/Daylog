@@ -114,6 +114,26 @@ export function OrderTable({ category }: OrderTableProps) {
     }] : []),
   ];
 
+  const handleCellEdit = async (rowIndex: number, columnId: string, value: string) => {
+    const order = orders[rowIndex];
+    if (!order) return;
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [columnId]: value }),
+      });
+      if (res.ok) {
+        toast.success("Kaydedildi");
+        fetchData();
+      } else {
+        toast.error("Kaydedilemedi");
+      }
+    } catch {
+      toast.error("Bağlantı hatası");
+    }
+  };
+
   const columns: ColumnDef<OrderWithRelations>[] = [
     {
       accessorKey: "orderCategory",
@@ -122,19 +142,19 @@ export function OrderTable({ category }: OrderTableProps) {
       cell: ({ row }) => {
         const cat = row.original.orderCategory;
         const labels = { DOMESTIC: "Yurtiçi", IMPORT: "İthalat", EXPORT: "İhracat" };
-        return <span className="text-xs text-white/60">{labels[cat]}</span>;
+        return <span className="text-xs text-muted-foreground">{labels[cat]}</span>;
       },
     },
-    { accessorKey: "cargoNumber", header: "Yük No" },
-    { accessorKey: "tripNumber", header: "Sefer No" },
-    { accessorKey: "customerName", header: "Müşteri" },
-    { accessorKey: "routeText", header: "Güzergah" },
+    { accessorKey: "cargoNumber", header: "Yük No", meta: { editable: true } },
+    { accessorKey: "tripNumber", header: "Sefer No", meta: { editable: true } },
+    { accessorKey: "customerName", header: "Müşteri", meta: { editable: true } },
+    { accessorKey: "routeText", header: "Güzergah", meta: { editable: true } },
     {
       id: "vehicle",
       header: "Araç",
       cell: ({ row }) => {
         const v = row.original.vehicle;
-        if (!v) return <span className="text-white/30">—</span>;
+        if (!v) return <span className="text-muted-foreground/40">—</span>;
         return (
           <EntityPopover
             trigger={v.plateNumber}
@@ -155,7 +175,7 @@ export function OrderTable({ category }: OrderTableProps) {
       header: "Dorse",
       cell: ({ row }) => {
         const t = row.original.trailer;
-        if (!t) return <span className="text-white/30">—</span>;
+        if (!t) return <span className="text-muted-foreground/40">—</span>;
         return (
           <EntityPopover
             trigger={t.plateNumber}
@@ -174,7 +194,7 @@ export function OrderTable({ category }: OrderTableProps) {
       header: "Sürücü",
       cell: ({ row }) => {
         const d = row.original.driver;
-        if (!d) return <span className="text-white/30">—</span>;
+        if (!d) return <span className="text-muted-foreground/40">—</span>;
         return (
           <EntityPopover
             trigger={d.fullName}
@@ -266,6 +286,7 @@ export function OrderTable({ category }: OrderTableProps) {
         loading={loading}
         searchPlaceholder="Sipariş ara (müşteri, yük no, sefer no...)"
         filters={tableFilters}
+        onCellEdit={handleCellEdit}
       />
 
       <OrderForm

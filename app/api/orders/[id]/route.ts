@@ -62,6 +62,31 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getCurrentUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const allowed = ["cargoNumber", "tripNumber", "customerName", "routeText", "notes"];
+    const patch: Record<string, string> = {};
+    for (const field of allowed) {
+      if (field in body && typeof body[field] === "string") patch[field] = body[field];
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
+    }
+    const order = await prisma.order.update({ where: { id: params.id }, data: patch });
+    return NextResponse.json({ order });
+  } catch (error) {
+    console.error("[ORDERS PATCH]", error);
+    return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
