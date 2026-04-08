@@ -27,6 +27,48 @@ export const createOrderSchema = z.object({
   driverId: z.string().uuid().optional().nullable(),
   status: z.enum(["PENDING", "PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).default("PENDING"),
   notes: z.string().optional().nullable(),
+
+  // Ortak
+  sender: z.string().optional().nullable(),
+  recipient: z.string().optional().nullable(),
+  customs: z.string().optional().nullable(),
+
+  // EXPORT
+  borderExitDate: z.string().optional().nullable(),
+  customsGate: z.string().optional().nullable(),
+  loadingCountry: z.string().optional().nullable(),
+  unloadingCountry: z.string().optional().nullable(),
+  waitingPrice: z.number().optional().nullable(),
+  freightPrice: z.number().optional().nullable(),
+  customsCost: z.number().optional().nullable(),
+  supplyPrice: z.number().optional().nullable(),
+
+  // IMPORT
+  supply: z.string().optional().nullable(),
+  loadingCity: z.string().optional().nullable(),
+  unloadingCity: z.string().optional().nullable(),
+  unloadingWarehouse: z.string().optional().nullable(),
+  orderNumber: z.string().optional().nullable(),
+  purchasePrice: z.number().optional().nullable(),
+  salePrice: z.number().optional().nullable(),
+  t2MrnNo: z.string().optional().nullable(),
+
+  // DOMESTIC
+  rental: z.string().optional().nullable(),
+  containerTrailerNo: z.string().optional().nullable(),
+  containerPickupAddress: z.string().optional().nullable(),
+  loadUnloadLocation: z.string().optional().nullable(),
+  containerDropAddress: z.string().optional().nullable(),
+  deliveryCustomer: z.string().optional().nullable(),
+  waitingDays: z.number().int().optional().nullable(),
+  freightSalePrice: z.number().optional().nullable(),
+  waitingCustomsPrice: z.number().optional().nullable(),
+  customsKantarPrice: z.number().optional().nullable(),
+  supplierSalePrice: z.number().optional().nullable(),
+  transportProfitRate: z.number().optional().nullable(),
+  supplierInfo: z.string().optional().nullable(),
+  supplierPhone: z.string().optional().nullable(),
+  equipmentInfo: z.string().optional().nullable(),
 });
 
 export const updateOrderSchema = createOrderSchema.partial();

@@ -71,7 +71,7 @@ export function FuelTable() {
       id: "vehiclePlate", header: "Araç",
       cell: ({ row }) => {
         const v = (row.original as FuelRecordFull).vehicle;
-        if (!v) return <span className="text-white/30">—</span>;
+        if (!v) return <span className="text-muted-foreground/40">—</span>;
         return (
           <EntityPopover
             trigger={v.plateNumber}
@@ -89,7 +89,7 @@ export function FuelTable() {
       id: "driverName", header: "Sürücü",
       cell: ({ row }) => {
         const d = (row.original as FuelRecordFull).driver;
-        if (!d) return <span className="text-white/30">—</span>;
+        if (!d) return <span className="text-muted-foreground/40">—</span>;
         return (
           <EntityPopover
             trigger={d.fullName}

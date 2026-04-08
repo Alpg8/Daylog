@@ -161,6 +161,48 @@ model Order {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  // ── Ortak yeni alanlar ──────────────────────
+  sender          String?   // Gönderici
+  recipient       String?   // Alıcı
+  customs         String?   // Gümrük / Çıkış Kapısı
+
+  // ── EXPORT alanları ─────────────────────────
+  borderExitDate  DateTime? // Kapıkule Çıkış Tarihi
+  customsGate     String?   // Gümrük / Çıkış Kapısı (export)
+  loadingCountry  String?   // Yükleme Ülkesi
+  unloadingCountry String?  // Boşaltma Ülkesi
+  waitingPrice    Float?    // Bekleme Fiyatı
+  freightPrice    Float?    // Nakliye Fiyatı
+  customsCost     Float?    // Gümrük Masrafı
+  supplyPrice     Float?    // Tedarik Fiyatı
+
+  // ── IMPORT alanları ─────────────────────────
+  supply          String?   // Tedarik (tedarikçi)
+  loadingCity     String?   // Yükleme Şehri
+  unloadingCity   String?   // Boşaltma Şehri
+  unloadingWarehouse String? // Boşaltma Antrepo
+  orderNumber     String?   // Order Numarası
+  purchasePrice   Float?    // Alış Fiyatı
+  salePrice       Float?    // Satış Fiyatı
+  t2MrnNo        String?   // T2 MRN No
+
+  // ── DOMESTIC alanları ───────────────────────
+  rental          String?   // Kiralık
+  containerTrailerNo String? // Konteynır-Dorse
+  containerPickupAddress String? // Konteynır Alınacak Adres
+  loadUnloadLocation String? // Yük-Boş Yer
+  containerDropAddress String? // Konteynır Bırakılacak Adres
+  deliveryCustomer String?  // Varış Müşterisi
+  waitingDays     Int?      // Bekleme Gün
+  freightSalePrice Float?   // Nakliye Satış Fiyatı
+  waitingCustomsPrice Float? // Bekleme Güm. Uğrak Fiyatı
+  customsKantarPrice Float? // Güm-kant Fiyatı
+  supplierSalePrice Float?  // Tedarikçi Satış Fiyatı
+  transportProfitRate Float? // Taşıma Kar Oranı
+  supplierInfo    String?   // Tedarikçi Bilgileri
+  supplierPhone   String?   // Tedarikçi Cep Numarası
+  equipmentInfo   String?   // Ekipman Bilgisi
+
   vehicle       Vehicle? @relation(fields: [vehicleId], references: [id])
   trailer       Trailer? @relation(fields: [trailerId], references: [id])
   driver        Driver?  @relation(fields: [driverId], references: [id])

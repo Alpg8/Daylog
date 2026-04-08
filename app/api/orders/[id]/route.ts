@@ -71,11 +71,45 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const allowed = ["cargoNumber", "tripNumber", "customerName", "routeText", "notes"];
-    const patch: Record<string, string> = {};
-    for (const field of allowed) {
-      if (field in body && typeof body[field] === "string") patch[field] = body[field];
+
+    const stringFields = [
+      "cargoNumber", "tripNumber", "customerName", "routeText", "notes",
+      "referenceNumber", "transportType", "invoiceNumber", "positionNumber",
+      // EXPORT
+      "customsGate", "sender", "recipient", "loadingCountry", "unloadingCountry",
+      // IMPORT
+      "supply", "customs", "loadingCity", "unloadingCity", "unloadingWarehouse",
+      "orderNumber", "t2MrnNo",
+      // DOMESTIC
+      "rental", "containerTrailerNo", "containerPickupAddress", "loadUnloadLocation",
+      "containerDropAddress", "deliveryCustomer", "supplierInfo", "supplierPhone",
+      "equipmentInfo", "cita",
+    ];
+    const numberFields = [
+      "waitingPrice", "freightPrice", "customsCost", "supplyPrice",
+      "purchasePrice", "salePrice",
+      "freightSalePrice", "waitingCustomsPrice", "customsKantarPrice",
+      "supplierSalePrice", "transportProfitRate",
+    ];
+    const intFields = ["serialNumber", "waitingDays"];
+
+    const patch: Record<string, string | number | null> = {};
+    for (const field of stringFields) {
+      if (field in body) patch[field] = body[field] === "" ? null : String(body[field]);
     }
+    for (const field of numberFields) {
+      if (field in body) {
+        const val = body[field];
+        patch[field] = (val === "" || val === null) ? null : parseFloat(String(val));
+      }
+    }
+    for (const field of intFields) {
+      if (field in body) {
+        const val = body[field];
+        patch[field] = (val === "" || val === null) ? null : parseInt(String(val), 10);
+      }
+    }
+
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
     }
