@@ -67,8 +67,8 @@ export async function GET() {
   ]);
 
   const vehicleIds = groupedByVehicle
-    .map((item) => item.vehicleId)
-    .filter((id): id is string => Boolean(id));
+    .map((item: typeof groupedByVehicle[number]) => item.vehicleId)
+    .filter((id: string | null): id is string => Boolean(id));
 
   const vehicles = vehicleIds.length
     ? await prisma.vehicle.findMany({
@@ -77,26 +77,42 @@ export async function GET() {
       })
     : [];
 
-  const plateById = new Map(vehicles.map((v) => [v.id, v.plateNumber]));
+  const plateById = new Map(
+    vehicles.map((v: typeof vehicles[number]) => [v.id, v.plateNumber])
+  );
 
   const vehicleHistory = groupedByVehicle
-    .filter((item) => item.vehicleId)
-    .map((item) => ({
+    .filter(
+      (item: typeof groupedByVehicle[number]) => item.vehicleId
+    )
+    .map((item: typeof groupedByVehicle[number]) => ({
       vehicleId: item.vehicleId as string,
       plateNumber: plateById.get(item.vehicleId as string) ?? "Bilinmeyen Arac",
       jobCount: item._count._all,
       lastUsedAt: (item._max.updatedAt ?? new Date()).toISOString(),
     }))
-    .sort((a, b) => new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime());
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime()
+    );
 
-  const totalJobs = orderStats.reduce((sum, row) => sum + row._count._all, 0);
+  const totalJobs = orderStats.reduce(
+    (sum: number, row: typeof orderStats[number]) =>
+      sum + row._count._all,
+    0
+  );
   const completedJobs = orderStats
-    .filter((row) => row.status === "COMPLETED")
-    .reduce((sum, row) => sum + row._count._all, 0);
+    .filter((row: typeof orderStats[number]) => row.status === "COMPLETED")
+    .reduce(
+      (sum: number, row: typeof orderStats[number]) =>
+        sum + row._count._all,
+      0
+    );
 
   const stats = { totalJobs, completedJobs, totalFuelRecords };
 
-  const recentJobsPayload = recentJobs.map((job) => ({
+  const recentJobsPayload = recentJobs.map(
+    (job: typeof recentJobs[number]) => ({
     id: job.id,
     cargoNumber: job.cargoNumber,
     tripNumber: job.tripNumber,
