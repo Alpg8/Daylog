@@ -23,6 +23,23 @@ fi
 
 cd "$APP_ROOT"
 
+# Configure sparse checkout so the server only pulls website/data/scripts/deploy.
+# The mobile app/ directory is excluded — it is not needed on the server.
+if [ "$(git config core.sparseCheckout)" != "true" ]; then
+  echo "Configuring sparse checkout (first-time setup)..."
+  git config core.sparseCheckout true
+  mkdir -p .git/info
+  cat > .git/info/sparse-checkout << 'EOF'
+website/
+data/
+scripts/
+deploy/
+package.json
+.gitignore
+EOF
+  echo "Sparse checkout configured: app/ will not be fetched."
+fi
+
 git fetch origin
 git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
