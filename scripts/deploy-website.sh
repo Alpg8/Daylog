@@ -49,6 +49,12 @@ git pull --ff-only origin "$BRANCH"
 npm ci --prefix data
 npm ci --prefix website
 
+# Source env files for migration
+set -a
+[ -f "$APP_ROOT/website/.env.local" ] && source "$APP_ROOT/website/.env.local"
+[ -f "$APP_ROOT/data/.env.local" ] && source "$APP_ROOT/data/.env.local"
+set +a
+
 npm --prefix data run db:migrate:deploy
 npm --prefix website run build
 
