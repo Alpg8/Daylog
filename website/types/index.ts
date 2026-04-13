@@ -22,7 +22,7 @@ import type {
   DriverConfirmationType,
   DriverConfirmationStatus,
   HandoverStatus,
-} from "@prisma/client";
+} from "@/lib/db/prisma-client";
 
 // Re-export Prisma types
 export type {

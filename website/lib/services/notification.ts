@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { publishSSE } from "@/lib/services/sse";
-import type { NotificationType } from "@prisma/client";
+import type { NotificationType } from "@/lib/db/prisma-client";
 
 export const notificationService = {
   async create(

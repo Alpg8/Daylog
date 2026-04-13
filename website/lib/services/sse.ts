@@ -34,11 +34,11 @@ export function subscribeSSE(userId: string, handler: SSEHandler): () => void {
 export function publishSSE(userId: string, data: object): void {
   const set = subscribers.get(userId);
   if (!set || set.size === 0) return;
-  for (const handler of set) {
+  set.forEach((handler) => {
     try {
       handler(data);
     } catch {
       // Handler cleanup is the subscriber's responsibility
     }
-  }
+  });
 }

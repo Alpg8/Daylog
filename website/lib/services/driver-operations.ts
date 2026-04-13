@@ -3,7 +3,7 @@ import type {
   DriverEventType,
   User,
   UserRole,
-} from "@prisma/client";
+} from "@/lib/db/prisma-client";
 import { prisma } from "@/lib/db";
 import { notificationService } from "@/lib/services/notification";
 

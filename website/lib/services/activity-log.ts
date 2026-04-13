@@ -1,16 +1,27 @@
 import { prisma } from "@/lib/db";
 import { notificationService } from "@/lib/services/notification";
-import type { ActionSource, UserRole } from "@prisma/client";
+import type { ActionSource, Prisma, UserRole } from "@/lib/db/prisma-client";
+
+const USER_ROLES: UserRole[] = ["ADMIN", "DISPATCHER", "DRIVER"];
+const ACTION_SOURCES: ActionSource[] = ["WEB", "APP", "SYSTEM"];
+
+function toUserRole(role?: string | null): UserRole | null {
+  return role && USER_ROLES.includes(role as UserRole) ? (role as UserRole) : null;
+}
+
+function toActionSource(source?: string | null): ActionSource {
+  return source && ACTION_SOURCES.includes(source as ActionSource) ? (source as ActionSource) : "WEB";
+}
 
 interface LogInput {
   userId?: string | null;
-  role?: UserRole | null;
-  source?: ActionSource;
+  role?: string | null;
+  source?: string | null;
   action: string;
   entityType: string;
   entityId?: string | null;
   message?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonValue;
   notifyOps?: boolean;
   /** userId of the driver's User account to notify (not the Driver.id) */
   notifyDriverUserId?: string | null;
@@ -22,8 +33,8 @@ export async function recordActivity(input: LogInput) {
   const log = await prisma.userActivityLog.create({
     data: {
       userId: input.userId ?? null,
-      role: input.role ?? null,
-      source: input.source ?? "WEB",
+      role: toUserRole(input.role),
+      source: toActionSource(input.source),
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId ?? null,
@@ -38,7 +49,8 @@ export async function recordActivity(input: LogInput) {
       select: { id: true },
     });
 
-    const actorPrefix = input.role ? `[${input.role}]` : "[SYSTEM]";
+    const actorRole = toUserRole(input.role);
+    const actorPrefix = actorRole ? `[${actorRole}]` : "[SYSTEM]";
     await Promise.all(
       opsUsers.map((user) =>
         notificationService.create(

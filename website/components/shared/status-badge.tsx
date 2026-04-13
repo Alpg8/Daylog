@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { OrderStatus, VehicleStatus, TrailerStatus } from "@prisma/client";
+import type { OrderStatus, VehicleStatus, TrailerStatus } from "@/lib/db/prisma-client";
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const variants: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" }> = {

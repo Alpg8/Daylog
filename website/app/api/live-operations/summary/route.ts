@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import type { OrderStatus } from "@/lib/db/prisma-client";
 import { getCurrentUser } from "@/lib/auth/session";
 import { buildTimelineWarnings } from "@/lib/services/driver-operations";
 import { syncOperationTasksForOrder } from "@/lib/services/operation-task-queue";
@@ -16,9 +17,9 @@ export async function GET(request: NextRequest) {
   const driverId = searchParams.get("driverId") ?? undefined;
   const orderStatus = searchParams.get("orderStatus") ?? undefined;
 
-  const filteredStatuses = orderStatus && orderStatus !== "ALL"
-    ? [orderStatus as "PENDING" | "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED"]
-    : ["PLANNED", "IN_PROGRESS"] as const;
+  const filteredStatuses: OrderStatus[] = orderStatus && orderStatus !== "ALL"
+    ? [orderStatus as OrderStatus]
+    : ["PLANNED", "IN_PROGRESS"];
 
   const orderWhere = {
     status: { in: filteredStatuses },
