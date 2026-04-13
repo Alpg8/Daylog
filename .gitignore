@@ -1,5 +1,6 @@
 # Dependencies
 /node_modules
+**/node_modules
 /.pnp
 .pnp.js
 
@@ -7,6 +8,11 @@
 /.next/
 /out/
 /build
+**/.next/
+**/out/
+**/build/
+app/.expo/
+app/dist/
 
 # Environment files
 .env
@@ -14,6 +20,10 @@
 .env.development.local
 .env.test.local
 .env.production.local
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
 
 # Debug logs
 npm-debug.log*

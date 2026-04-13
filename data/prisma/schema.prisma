@@ -1,0 +1,504 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  DISPATCHER
+  DRIVER
+}
+
+enum UsageType {
+  YURTICI
+  YURTDISI
+}
+
+enum OwnershipType {
+  OZMAL
+  KIRALIK
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  ON_ROUTE
+  MAINTENANCE
+  PASSIVE
+}
+
+enum TrailerStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  SOLD
+}
+
+enum OrderCategory {
+  DOMESTIC
+  IMPORT
+  EXPORT
+}
+
+enum TradeType {
+  ITH
+  IHR
+}
+
+enum OrderStatus {
+  PENDING
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+  TASK
+}
+
+enum DriverEventType {
+  START_JOB
+  LOAD
+  UNLOAD
+  DELIVERY
+  WAITING
+  ISSUE
+  HANDOVER
+  END_JOB
+  START_SHIFT
+  END_SHIFT
+}
+
+enum DriverEventSeverity {
+  NORMAL
+  WARNING
+  CRITICAL
+}
+
+enum DriverConfirmationType {
+  JOB_STARTED
+  LOADING_CONFIRMED
+  DELIVERY_CONFIRMED
+  VEHICLE_HANDED_OVER
+  DELIVERY_RECEIVED
+  DOCUMENT_UPLOADED
+  DAMAGE_CONFIRMED
+}
+
+enum DriverConfirmationStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum HandoverStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ActionSource {
+  WEB
+  APP
+  SYSTEM
+}
+
+enum OperationTaskStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(ADMIN)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  notifications Notification[]
+  orders        Order[]        @relation("CreatedByUser")
+  driverProfile Driver?
+  DriverEvent   DriverEvent[]
+  activityLogs  UserActivityLog[]
+}
+
+model Vehicle {
+  id            String        @id @default(uuid())
+  plateNumber   String        @unique
+  usageType     UsageType?
+  ownershipType OwnershipType?
+  brand         String?
+  model         String?
+  capacity      String?
+  status        VehicleStatus @default(AVAILABLE)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  drivers     Driver[]
+  orders      Order[]
+  fuelRecords FuelRecord[]
+  attachments Attachment[]
+}
+
+model Trailer {
+  id          String        @id @default(uuid())
+  plateNumber String        @unique
+  type        String?
+  status      TrailerStatus @default(AVAILABLE)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  orders      Order[]
+  attachments Attachment[]
+}
+
+model Driver {
+  id                         String    @id @default(uuid())
+  userId                     String?   @unique
+  fullName                   String
+  phoneNumber                String?
+  nationalId                 String?
+  passportRemainingDays      Int?
+  passportExpiryDate         DateTime?
+  licenseRemainingDays       Int?
+  licenseExpiryDate          DateTime?
+  psychotechnicRemainingDays Int?
+  psychotechnicExpiryDate    DateTime?
+  assignedVehicleId          String?
+  usageType                  UsageType?
+  ownershipType              OwnershipType?
+  isActive                   Boolean   @default(true)
+  notes                      String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  user              User?                @relation(fields: [userId], references: [id])
+  assignedVehicle   Vehicle?             @relation(fields: [assignedVehicleId], references: [id])
+  orders            Order[]
+  fuelRecords       FuelRecord[]
+  attachments       Attachment[]
+  events            DriverEvent[]
+  confirmations     DriverConfirmation[]
+  outgoingHandovers Handover[]           @relation("HandoverFromDriver")
+  incomingHandovers Handover[]           @relation("HandoverToDriver")
+  operationTasks    OperationTask[]
+
+  @@index([passportExpiryDate])
+  @@index([licenseExpiryDate])
+  @@index([psychotechnicExpiryDate])
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  serialNumber    Int?
+  orderCategory   OrderCategory
+  tradeType       TradeType?
+  positionNumber  String?
+  loadingDate     DateTime?
+  unloadingDate   DateTime?
+  operationDate   DateTime?
+  pickupLocation  String?
+  companyName     String?
+  customerName    String?
+  referenceNumber String?
+  transportType   String?
+  cargoNumber     String?
+  tripNumber      String?
+  invoiceNumber   String?
+  routeText       String?
+  cmrStatus       String?
+  documentStatus  String?
+  spanzetStanga   String?
+  remaining       String?
+  cita            String?
+  vehicleId       String?
+  trailerId       String?
+  driverId        String?
+  status          OrderStatus   @default(PENDING)
+  notes           String?
+  createdByUserId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // ── Ortak yeni alanlar ──────────────────────
+  sender    String? // Gönderici
+  recipient String? // Alıcı
+  customs   String? // Gümrük / Çıkış Kapısı
+
+  // ── EXPORT alanları ─────────────────────────
+  borderExitDate   DateTime? // Kapıkule Çıkış Tarihi
+  customsGate      String? // Gümrük / Çıkış Kapısı (export)
+  loadingCountry   String? // Yükleme Ülkesi
+  unloadingCountry String? // Boşaltma Ülkesi
+  waitingPrice     Float? // Bekleme Fiyatı
+  freightPrice     Float? // Nakliye Fiyatı
+  customsCost      Float? // Gümrük Masrafı
+  supplyPrice      Float? // Tedarik Fiyatı
+
+  // ── IMPORT alanları ─────────────────────────
+  supply             String? // Tedarik (tedarikçi)
+  loadingCity        String? // Yükleme Şehri
+  unloadingCity      String? // Boşaltma Şehri
+  unloadingWarehouse String? // Boşaltma Antrepo
+  orderNumber        String? // Order Numarası
+  purchasePrice      Float? // Alış Fiyatı
+  salePrice          Float? // Satış Fiyatı
+  t2MrnNo            String? // T2 MRN No
+
+  // ── DOMESTIC alanları ───────────────────────
+  rental                 String? // Kiralık
+  containerTrailerNo     String? // Konteynır-Dorse
+  containerPickupAddress String? // Konteynır Alınacak Adres
+  loadUnloadLocation     String? // Yük-Boş Yer
+  containerDropAddress   String? // Konteynır Bırakılacak Adres
+  deliveryCustomer       String? // Varış Müşterisi
+  waitingDays            Int? // Bekleme Gün
+  freightSalePrice       Float? // Nakliye Satış Fiyatı
+  waitingCustomsPrice    Float? // Bekleme Güm. Uğrak Fiyatı
+  customsKantarPrice     Float? // Güm-kant Fiyatı
+  supplierSalePrice      Float? // Tedarikçi Satış Fiyatı
+  transportProfitRate    Float? // Taşıma Kar Oranı
+  supplierInfo           String? // Tedarikçi Bilgileri
+  supplierPhone          String? // Tedarikçi Cep Numarası
+  equipmentInfo          String? // Ekipman Bilgisi
+
+  vehicle             Vehicle?             @relation(fields: [vehicleId], references: [id])
+  trailer             Trailer?             @relation(fields: [trailerId], references: [id])
+  driver              Driver?              @relation(fields: [driverId], references: [id])
+  createdByUser       User?                @relation("CreatedByUser", fields: [createdByUserId], references: [id])
+  attachments         Attachment[]
+  driverEvents        DriverEvent[]
+  driverConfirmations DriverConfirmation[]
+  handovers           Handover[]
+  operationTasks      OperationTask[]
+
+  @@index([status, createdAt])
+  @@index([driverId, status])
+  @@index([vehicleId, status])
+  @@index([trailerId, status])
+  @@index([createdByUserId, createdAt])
+}
+
+model FuelRecord {
+  id                 String   @id @default(uuid())
+  vehicleId          String
+  driverId           String?
+  date               DateTime
+  fuelStation        String?
+  liters             Float?
+  pricePerLiter      Float?
+  totalCost          Float?
+  startKm            Int?
+  endKm              Int?
+  distanceKm         Int?
+  fuelType           String?
+  paymentMethod      String?
+  country            String?
+  city               String?
+  currency           String?
+  tankInLiters       Float?
+  tankRight          Float?
+  tankLeft           Float?
+  tankTotal          Float?
+  tankOutLiters      Float?
+  consumptionLiters  Float?
+  averageConsumption Float?
+  monthStartKm       Int?
+  monthEndKm         Int?
+  monthTotalKm       Int?
+  monthFuelIn        Float?
+  monthFuelOut       Float?
+  fuelPurchased      Float?
+  fuelUsed           Float?
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+  driver  Driver? @relation(fields: [driverId], references: [id])
+
+  @@index([vehicleId, date])
+  @@index([driverId, date])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead, createdAt])
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  url       String // Cloud storage URL (public access URL)
+  key       String // Storage object key (used for deletion)
+  label     String? // e.g. "Passport Scan", "CMR", "Front Photo"
+  mimeType  String?
+  size      Int? // in bytes
+  createdAt DateTime @default(now())
+
+  // Optional FK per entity — only one will be set per record
+  driverId  String?
+  vehicleId String?
+  trailerId String?
+  orderId   String?
+
+  driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trailer Trailer? @relation(fields: [trailerId], references: [id], onDelete: Cascade)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([trailerId])
+  @@index([orderId])
+}
+
+model DriverEvent {
+  id          String              @id @default(uuid())
+  orderId     String
+  driverId    String
+  createdById String?
+  type        DriverEventType
+  severity    DriverEventSeverity @default(NORMAL)
+  title       String?
+  notes       String?
+  odometerKm  Int?
+  latitude    Float?
+  longitude   Float?
+  eventAt     DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+
+  order         Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver        Driver               @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  createdBy     User?                @relation(fields: [createdById], references: [id])
+  photos        DriverEventPhoto[]
+  confirmations DriverConfirmation[]
+
+  @@index([orderId, eventAt])
+  @@index([driverId, eventAt])
+}
+
+model DriverEventPhoto {
+  id        String   @id @default(uuid())
+  eventId   String
+  url       String
+  key       String
+  label     String?
+  mimeType  String?
+  size      Int?
+  createdAt DateTime @default(now())
+
+  event DriverEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model DriverConfirmation {
+  id          String                   @id @default(uuid())
+  orderId     String
+  driverId    String
+  eventId     String?
+  type        DriverConfirmationType
+  status      DriverConfirmationStatus @default(PENDING)
+  statement   String
+  confirmedAt DateTime                 @default(now())
+  createdAt   DateTime                 @default(now())
+
+  order  Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  event  DriverEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, confirmedAt])
+  @@index([driverId, confirmedAt])
+}
+
+model Handover {
+  id           String         @id @default(uuid())
+  orderId      String
+  fromDriverId String
+  toDriverId   String?
+  status       HandoverStatus @default(PENDING)
+  notes        String?
+  handoverAt   DateTime       @default(now())
+  createdAt    DateTime       @default(now())
+
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromDriver Driver  @relation("HandoverFromDriver", fields: [fromDriverId], references: [id], onDelete: Cascade)
+  toDriver   Driver? @relation("HandoverToDriver", fields: [toDriverId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, handoverAt])
+  @@index([fromDriverId, handoverAt])
+}
+
+model UserActivityLog {
+  id         String       @id @default(uuid())
+  userId     String?
+  role       UserRole?
+  source     ActionSource @default(WEB)
+  action     String
+  entityType String
+  entityId   String?
+  message    String?
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entityType, createdAt])
+  @@index([userId, createdAt])
+}
+
+model OperationTask {
+  id          String              @id @default(uuid())
+  taskKey     String              @unique
+  orderId     String?
+  driverId    String?
+  warningCode String
+  title       String
+  description String?
+  status      OperationTaskStatus @default(OPEN)
+  firstSeenAt DateTime            @default(now())
+  lastSeenAt  DateTime            @default(now())
+  resolvedAt  DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  order  Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  driver Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  @@index([status, lastSeenAt])
+  @@index([orderId, status])
+  @@index([driverId, status])
+}

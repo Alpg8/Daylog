@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Daylog Driver",
+    "slug": "daylog-driver",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.daylog.driver"
+    },
+    "android": {
+      "package": "com.daylog.driver"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

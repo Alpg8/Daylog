@@ -1,0 +1,48 @@
+name: Deploy Website
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - website/**
+      - data/**
+      - package.json
+      - .github/workflows/deploy-website.yml
+      - scripts/deploy-website.sh
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: Add server host to known_hosts
+        run: |
+          SERVER_PORT_VALUE="${{ secrets.SERVER_PORT }}"
+          SERVER_PORT_VALUE="${SERVER_PORT_VALUE:-22}"
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$SERVER_PORT_VALUE" -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy on server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          APP_ROOT: ${{ secrets.APP_ROOT }}
+          DEPLOY_BRANCH: ${{ secrets.DEPLOY_BRANCH }}
+        run: |
+          SERVER_PORT_VALUE="${SERVER_PORT:-22}"
+          APP_ROOT_VALUE="${APP_ROOT:-/var/www/daylog}"
+          DEPLOY_BRANCH_VALUE="${DEPLOY_BRANCH:-main}"
+
+          ssh -p "$SERVER_PORT_VALUE" "${SERVER_USER}@${SERVER_HOST}" \
+            "APP_ROOT='$APP_ROOT_VALUE' BRANCH='$DEPLOY_BRANCH_VALUE' bash '$APP_ROOT_VALUE/scripts/deploy-website.sh'"
