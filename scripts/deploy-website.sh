@@ -35,7 +35,9 @@ data/
 scripts/
 deploy/
 package.json
+package-lock.json
 .gitignore
+.github/
 EOF
   echo "Sparse checkout configured: app/ will not be fetched."
 fi
