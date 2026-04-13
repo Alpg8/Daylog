@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   const payload = `${sender}: ${message}`;
 
   await Promise.all(
-    recipients.map((recipient) =>
+    recipients.map((recipient: typeof recipients[number]) =>
       notificationService.create(recipient.id, title, payload, "TASK")
     )
   );
