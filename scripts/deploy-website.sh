@@ -46,10 +46,10 @@ git fetch origin
 git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
 
-npm ci --prefix data
-npm ci --prefix website
+npm ci --include=dev --prefix data
+npm ci --include=dev --prefix website
 
-# Source env files for migration
+# Source env files after install so NODE_ENV from env files does not omit build-time dev dependencies.
 set -a
 [ -f "$APP_ROOT/website/.env.local" ] && source "$APP_ROOT/website/.env.local"
 [ -f "$APP_ROOT/data/.env.local" ] && source "$APP_ROOT/data/.env.local"
