@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { updateVehicleSchema } from "@/lib/validators/vehicle";
-import { recordActivity } from "@/lib/services/activity-log";
+import { recordEntityChange } from "@/lib/services/activity-log";
 
 export async function GET(
   _request: NextRequest,
@@ -31,9 +31,10 @@ export async function PUT(
   }
 
   try {
+    const before = await prisma.vehicle.findUnique({ where: { id: params.id } });
     const vehicle = await prisma.vehicle.update({ where: { id: params.id }, data: parsed.data });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
       source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
@@ -42,6 +43,8 @@ export async function PUT(
       entityId: vehicle.id,
       message: "Arac kaydi guncellendi",
       metadata: { plateNumber: vehicle.plateNumber },
+      before,
+      after: vehicle,
       notifyOps: true,
     });
 
@@ -68,9 +71,10 @@ export async function PATCH(
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
     }
+    const before = await prisma.vehicle.findUnique({ where: { id: params.id } });
     const vehicle = await prisma.vehicle.update({ where: { id: params.id }, data: patch });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
       source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
@@ -79,6 +83,8 @@ export async function PATCH(
       entityId: vehicle.id,
       message: "Arac parcali guncellendi",
       metadata: { updatedFields: Object.keys(patch) },
+      before,
+      after: vehicle,
       notifyOps: true,
     });
 
@@ -90,23 +96,26 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getCurrentUser();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    const before = await prisma.vehicle.findUnique({ where: { id: params.id } });
     await prisma.vehicle.delete({ where: { id: params.id } });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
-      source: "WEB",
+      source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
       action: "DELETE_VEHICLE",
       entityType: "Vehicle",
       entityId: params.id,
       message: "Arac kaydi silindi",
+      before,
+      after: null,
       notifyOps: true,
     });
 

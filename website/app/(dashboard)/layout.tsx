@@ -9,6 +9,8 @@ const titleMap: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/live-operations": "Canli Operasyon",
   "/activities": "Islem Kayitlari",
+  "/messages": "Mesajlar",
+  "/orders/operations-summary": "Operasyon Evrak Ozeti",
   "/orders": "Tüm Seferler",
   "/orders/domestic": "Yurt İçi Seferler",
   "/orders/import": "İthalat Seferleri",

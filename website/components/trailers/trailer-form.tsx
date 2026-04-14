@@ -44,10 +44,17 @@ export function TrailerForm({ open, onOpenChange, onSuccess, initialData }: Trai
   }, [open, initialData, form]);
 
   const onSubmit = async (data: FormData) => {
+    const payload = {
+      plateNumber: data.plateNumber.trim(),
+      status: data.status,
+      type: data.type?.trim() || null,
+      notes: data.notes?.trim() || null,
+    };
+
     const res = await fetch(initialData ? `/api/trailers/${initialData.id}` : "/api/trailers", {
       method: initialData ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) { const e = await res.json(); toast.error(e.error ?? "Hata"); return; }
     toast.success(initialData ? "Dorse güncellendi" : "Dorse eklendi");
@@ -56,7 +63,7 @@ export function TrailerForm({ open, onOpenChange, onSuccess, initialData }: Trai
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" disableAutoFocus>
         <DialogHeader><DialogTitle>{initialData ? "Dorse Düzenle" : "Yeni Dorse"}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

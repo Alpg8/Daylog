@@ -82,7 +82,21 @@ export function FuelForm({ open, onOpenChange, onSuccess, initialData }: FuelFor
   }, [open, initialData, form]);
 
   const onSubmit = async (data: FormData) => {
-    const payload = { ...data, driverId: (!data.driverId || data.driverId === "__none__") ? null : data.driverId };
+    const payload = {
+      ...data,
+      driverId: (!data.driverId || data.driverId === "__none__") ? null : data.driverId,
+      fuelStation: data.fuelStation?.trim() || null,
+      fuelType: data.fuelType?.trim() || null,
+      paymentMethod: data.paymentMethod?.trim() || null,
+      country: data.country?.trim() || null,
+      city: data.city?.trim() || null,
+      currency: data.currency?.trim() || null,
+      notes: data.notes?.trim() || null,
+      pricePerLiter: typeof data.pricePerLiter === "number" && Number.isFinite(data.pricePerLiter) ? data.pricePerLiter : null,
+      totalCost: typeof data.totalCost === "number" && Number.isFinite(data.totalCost) ? data.totalCost : null,
+      startKm: typeof data.startKm === "number" && Number.isFinite(data.startKm) ? data.startKm : null,
+      endKm: typeof data.endKm === "number" && Number.isFinite(data.endKm) ? data.endKm : null,
+    };
     const res = await fetch(initialData ? `/api/fuel/${initialData.id}` : "/api/fuel", {
       method: initialData ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -95,7 +109,7 @@ export function FuelForm({ open, onOpenChange, onSuccess, initialData }: FuelFor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" disableAutoFocus>
         <DialogHeader><DialogTitle>{initialData ? "Yakıt Kaydı Düzenle" : "Yeni Yakıt Kaydı"}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>

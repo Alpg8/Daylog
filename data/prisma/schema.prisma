@@ -104,6 +104,11 @@ enum DriverConfirmationStatus {
   REJECTED
 }
 
+enum DriverMessageDirection {
+  DRIVER_TO_OFFICE
+  OFFICE_TO_DRIVER
+}
+
 enum HandoverStatus {
   PENDING
   ACCEPTED
@@ -135,11 +140,13 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  notifications Notification[]
-  orders        Order[]        @relation("CreatedByUser")
-  driverProfile Driver?
-  DriverEvent   DriverEvent[]
-  activityLogs  UserActivityLog[]
+  notifications          Notification[]
+  orders                 Order[]         @relation("CreatedByUser")
+  driverProfile          Driver?
+  DriverEvent            DriverEvent[]
+  activityLogs           UserActivityLog[]
+  sentDriverMessages     DriverMessage[] @relation("DriverMessagesBySender")
+  receivedDriverMessages DriverMessage[] @relation("DriverMessagesByRecipient")
 }
 
 model Vehicle {
@@ -204,6 +211,7 @@ model Driver {
   outgoingHandovers Handover[]           @relation("HandoverFromDriver")
   incomingHandovers Handover[]           @relation("HandoverToDriver")
   operationTasks    OperationTask[]
+  officeMessages    DriverMessage[]
 
   @@index([passportExpiryDate])
   @@index([licenseExpiryDate])
@@ -356,6 +364,29 @@ model Notification {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId, isRead, createdAt])
+}
+
+model DriverMessage {
+  id           String   @id @default(uuid())
+  driverId     String
+  senderUserId String
+  recipientUserId String?
+  subject      String?
+  message      String
+  direction    DriverMessageDirection @default(DRIVER_TO_OFFICE)
+  isRead       Boolean  @default(false)
+  readAt       DateTime?
+  createdAt    DateTime @default(now())
+
+  driver        Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  senderUser    User   @relation("DriverMessagesBySender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  recipientUser User?  @relation("DriverMessagesByRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([driverId, createdAt])
+  @@index([senderUserId, createdAt])
+  @@index([recipientUserId, createdAt])
+  @@index([direction, isRead, createdAt])
 }
 
 model Attachment {

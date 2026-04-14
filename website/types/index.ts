@@ -4,8 +4,10 @@ import type {
   Trailer,
   Driver,
   Order,
+  Attachment,
   FuelRecord,
   Notification,
+  DriverMessage,
   DriverEvent,
   DriverEventPhoto,
   DriverConfirmation,
@@ -21,6 +23,7 @@ import type {
   DriverEventSeverity,
   DriverConfirmationType,
   DriverConfirmationStatus,
+  DriverMessageDirection,
   HandoverStatus,
 } from "@/lib/db/prisma-client";
 
@@ -31,8 +34,10 @@ export type {
   Trailer,
   Driver,
   Order,
+  Attachment,
   FuelRecord,
   Notification,
+  DriverMessage,
   DriverEvent,
   DriverEventPhoto,
   DriverConfirmation,
@@ -48,6 +53,7 @@ export type {
   DriverEventSeverity,
   DriverConfirmationType,
   DriverConfirmationStatus,
+  DriverMessageDirection,
   HandoverStatus,
 };
 
@@ -66,6 +72,12 @@ export type DriverWithVehicle = Driver & {
 export type FuelRecordWithRelations = FuelRecord & {
   vehicle: Vehicle;
   driver?: Driver | null;
+};
+
+export type DriverMessageWithRelations = DriverMessage & {
+  driver: Pick<Driver, "id" | "fullName" | "phoneNumber">;
+  senderUser: Pick<User, "id" | "name" | "email" | "role">;
+  recipientUser?: Pick<User, "id" | "name" | "email" | "role"> | null;
 };
 
 // Auth

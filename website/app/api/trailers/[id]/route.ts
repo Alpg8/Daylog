@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { updateTrailerSchema } from "@/lib/validators/trailer";
-import { recordActivity } from "@/lib/services/activity-log";
+import { recordEntityChange } from "@/lib/services/activity-log";
 
 export async function GET(
   _request: NextRequest,
@@ -30,9 +30,10 @@ export async function PUT(
     return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
   }
 
+  const before = await prisma.trailer.findUnique({ where: { id: params.id } });
   const trailer = await prisma.trailer.update({ where: { id: params.id }, data: parsed.data });
 
-  await recordActivity({
+  await recordEntityChange({
     userId: session.sub,
     role: session.role,
     source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
@@ -41,6 +42,8 @@ export async function PUT(
     entityId: trailer.id,
     message: "Dorse kaydi guncellendi",
     metadata: { plateNumber: trailer.plateNumber },
+    before,
+    after: trailer,
     notifyOps: true,
   });
 
@@ -48,23 +51,26 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getCurrentUser();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    const before = await prisma.trailer.findUnique({ where: { id: params.id } });
     await prisma.trailer.delete({ where: { id: params.id } });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
-      source: "WEB",
+      source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
       action: "DELETE_TRAILER",
       entityType: "Trailer",
       entityId: params.id,
       message: "Dorse kaydi silindi",
+      before,
+      after: null,
       notifyOps: true,
     });
 

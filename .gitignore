@@ -48,5 +48,10 @@ app/ios/
 .vscode/
 .idea/
 
+# Local runtime files
+.tmp*
+website/public/uploads/
+separated-projects/daylog-website/public/uploads/
+
 # Prisma migrations (keep these in version control normally)
 # /prisma/migrations

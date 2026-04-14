@@ -44,8 +44,8 @@ export function VehicleForm({ open, onOpenChange, onSuccess, initialData }: Vehi
       if (initialData) {
         form.reset({
           plateNumber: initialData.plateNumber,
-          usageType: initialData.usageType ?? "",
-          ownershipType: initialData.ownershipType ?? "",
+          usageType: initialData.usageType ?? undefined,
+          ownershipType: initialData.ownershipType ?? undefined,
           brand: initialData.brand ?? "",
           model: initialData.model ?? "",
           capacity: initialData.capacity ?? "",
@@ -59,12 +59,22 @@ export function VehicleForm({ open, onOpenChange, onSuccess, initialData }: Vehi
   }, [open, initialData, form]);
 
   const onSubmit = async (data: FormData) => {
+    const payload = {
+      ...data,
+      usageType: data.usageType || null,
+      ownershipType: data.ownershipType || null,
+      brand: data.brand?.trim() || null,
+      model: data.model?.trim() || null,
+      capacity: data.capacity?.trim() || null,
+      notes: data.notes?.trim() || null,
+    };
+
     const res = await fetch(
       initialData ? `/api/vehicles/${initialData.id}` : "/api/vehicles",
       {
         method: initialData ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       }
     );
     if (!res.ok) {
@@ -79,7 +89,7 @@ export function VehicleForm({ open, onOpenChange, onSuccess, initialData }: Vehi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" disableAutoFocus>
         <DialogHeader>
           <DialogTitle>{initialData ? "Araç Düzenle" : "Yeni Araç"}</DialogTitle>
         </DialogHeader>

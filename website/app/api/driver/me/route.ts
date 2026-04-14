@@ -20,11 +20,43 @@ export async function GET() {
       phoneNumber: true,
       notes: true,
       isActive: true,
+      attachments: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          label: true,
+          url: true,
+          mimeType: true,
+          size: true,
+          createdAt: true,
+        },
+      },
+      passportRemainingDays: true,
+      passportExpiryDate: true,
+      licenseRemainingDays: true,
+      licenseExpiryDate: true,
+      psychotechnicRemainingDays: true,
+      psychotechnicExpiryDate: true,
       assignedVehicleId: true,
       assignedVehicle: {
         select: {
           id: true,
           plateNumber: true,
+          brand: true,
+          model: true,
+          status: true,
+          notes: true,
+          attachments: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              label: true,
+              url: true,
+              mimeType: true,
+              size: true,
+              createdAt: true,
+            },
+          },
         },
       },
     },
@@ -122,7 +154,25 @@ export async function GET() {
   }));
 
   return NextResponse.json({
-    driver,
+    driver: {
+      ...driver,
+      attachments: driver.attachments.map((attachment) => ({
+        ...attachment,
+        createdAt: attachment.createdAt.toISOString(),
+      })),
+      passportExpiryDate: driver.passportExpiryDate?.toISOString() ?? null,
+      licenseExpiryDate: driver.licenseExpiryDate?.toISOString() ?? null,
+      psychotechnicExpiryDate: driver.psychotechnicExpiryDate?.toISOString() ?? null,
+      assignedVehicle: driver.assignedVehicle
+        ? {
+            ...driver.assignedVehicle,
+            attachments: driver.assignedVehicle.attachments.map((attachment) => ({
+              ...attachment,
+              createdAt: attachment.createdAt.toISOString(),
+            })),
+          }
+        : null,
+    },
     vehicleHistory,
     recentJobs: recentJobsPayload,
     stats,

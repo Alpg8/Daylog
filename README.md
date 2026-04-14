@@ -1,6 +1,51 @@
-# Daylog — Lojistik Operasyon Paneli
+# Daylog
 
-Daylog is a production-ready full-stack logistics CRM and operations tracking system built with Next.js 14, TypeScript, PostgreSQL, Prisma, TailwindCSS, and shadcn/ui.
+This workspace uses a split monorepo layout. The active projects are kept in separate top-level folders:
+
+- `website/` — Next.js admin and operations panel
+- `app/` — Expo mobile app for drivers
+- `data/` — Prisma schema, migrations, and seeds
+
+There is also a `separated-projects/` folder. That folder is not the active local development path for this workspace; it is a standalone split copy/export of the same three projects. For daily development in this repo, use only `website/`, `app/`, and `data/`.
+
+## Active Development Commands
+
+From the repo root:
+
+```bash
+npm run dev          # Starts the website from ./website on http://localhost:3000
+npm run website      # Same as above
+npm run app:start    # Starts the Expo app from ./app
+npm run data:migrate # Runs Prisma migrations from ./data
+```
+
+## Workspace Structure
+
+```text
+Daylog/
+├── website/             # Active Next.js web app
+├── app/                 # Active Expo mobile app
+├── data/                # Active Prisma schema and migrations
+├── separated-projects/  # Optional exported copies, not the active dev path
+├── scripts/             # Deployment and utility scripts
+└── deploy/              # Deployment assets
+```
+
+## Shared Boundaries
+
+- `website/` uses the Prisma schema from `data/prisma/schema.prisma`.
+- `app/` talks to the backend exposed by `website/` APIs.
+- `data/` owns the database schema, migrations, and seed data.
+- The repo root only orchestrates scripts; it is not the app source for the website.
+
+## Notes
+
+- If you want fully separate repositories later, the material in `separated-projects/` can be used as a starting point.
+- If you want to avoid duplicate maintenance entirely, the safest next step is to archive or remove `separated-projects/` after confirming it is no longer needed.
+
+## Legacy Notes
+
+The sections below describe the product capabilities. Some older path examples may refer to a pre-split layout and should be interpreted through the active folders above.
 
 ## Tech Stack
 

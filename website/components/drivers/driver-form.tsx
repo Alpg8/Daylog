@@ -84,13 +84,17 @@ export function DriverForm({ open, onOpenChange, onSuccess, initialData }: Drive
   const onSubmit = async (data: FormData) => {
     const payload = {
       ...data,
+      fullName: data.fullName.trim(),
       userId: (!data.userId || data.userId === "__none__") ? null : data.userId,
+      phoneNumber: data.phoneNumber?.trim() || null,
+      nationalId: data.nationalId?.trim() || null,
       assignedVehicleId: (!data.assignedVehicleId || data.assignedVehicleId === "__none__") ? null : data.assignedVehicleId,
       usageType: (!data.usageType || (data.usageType as string) === "__none__") ? undefined : data.usageType,
       ownershipType: (!data.ownershipType || (data.ownershipType as string) === "__none__") ? undefined : data.ownershipType,
       passportExpiryDate: data.passportExpiryDate || null,
       licenseExpiryDate: data.licenseExpiryDate || null,
       psychotechnicExpiryDate: data.psychotechnicExpiryDate || null,
+      notes: data.notes?.trim() || null,
     };
     const res = await fetch(initialData ? `/api/drivers/${initialData.id}` : "/api/drivers", {
       method: initialData ? "PUT" : "POST",
@@ -104,7 +108,7 @@ export function DriverForm({ open, onOpenChange, onSuccess, initialData }: Drive
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" disableAutoFocus>
         <DialogHeader><DialogTitle>{initialData ? "Sürücü Düzenle" : "Yeni Sürücü"}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>

@@ -44,6 +44,8 @@ interface LiveOpsCards {
   missingCloseoutOrders: number;
 }
 
+const LIVE_UPDATE_EVENT = "daylog:live-update";
+
 export function StatsCards() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -72,6 +74,15 @@ export function StatsCards() {
   }, [selectedYear, selectedMonth]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      void fetchStats();
+    };
+
+    window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+    return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+  }, [fetchStats]);
 
   const handleRefresh = () => {
     router.refresh();

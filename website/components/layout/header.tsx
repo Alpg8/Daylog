@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Moon, Sun, LogOut, User, Bell } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/components/layout/theme-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,8 @@ interface HeaderProps {
   title: string;
 }
 
+const LIVE_UPDATE_EVENT = "daylog:live-update";
+
 export function Header({ title }: HeaderProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -30,29 +32,60 @@ export function Header({ title }: HeaderProps) {
 
   // Fetch initial unread count
   useEffect(() => {
+    let active = true;
+
     fetch("/api/notifications?unread=true")
-      .then((r) => r.json())
-      .then((d) => { if (typeof d.unreadCount === "number") setUnreadCount(d.unreadCount); })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return response.json();
+      })
+      .then((data) => {
+        if (!active) return;
+        if (typeof data?.unreadCount === "number") {
+          setUnreadCount(data.unreadCount);
+        }
+      })
       .catch(() => {});
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Connect to SSE stream for real-time notifications
   useEffect(() => {
-    const es = new EventSource("/api/notifications/stream");
-    eventSourceRef.current = es;
+    if (typeof window === "undefined" || typeof EventSource === "undefined") {
+      return;
+    }
 
-    es.onmessage = (e) => {
-      try {
-        const payload = JSON.parse(e.data as string) as { event: string; title: string; message: string };
-        if (payload.event === "notification") {
-          setUnreadCount((c) => c + 1);
-          toast.info(payload.title, { description: payload.message });
+    let es: EventSource | null = null;
+
+    try {
+      es = new EventSource("/api/notifications/stream");
+      eventSourceRef.current = es;
+
+      es.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data as string) as { event: string; title: string; message: string };
+          if (payload.event === "notification") {
+            setUnreadCount((current) => current + 1);
+            window.dispatchEvent(new CustomEvent(LIVE_UPDATE_EVENT, { detail: payload }));
+            toast.info(payload.title, { description: payload.message });
+          }
+        } catch {
+          // Ignore malformed frames.
         }
-      } catch { /* ignore malformed frames */ }
-    };
+      };
+
+      es.onerror = () => {
+        // Keep the page usable if the notification stream temporarily fails.
+      };
+    } catch {
+      eventSourceRef.current = null;
+    }
 
     return () => {
-      es.close();
+      es?.close();
       eventSourceRef.current = null;
     };
   }, []);

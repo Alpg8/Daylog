@@ -38,6 +38,8 @@ type DriverRow = {
   user: { email: string; role: string } | null;
 };
 
+const LIVE_UPDATE_EVENT = "daylog:live-update";
+
 const statusVariant = (status: string): "default" | "secondary" | "outline" | "destructive" => {
   if (status === "IN_PROGRESS") return "default";
   if (status === "COMPLETED") return "secondary";
@@ -86,6 +88,15 @@ export function OperationsOverview() {
 
   useEffect(() => {
     fetchAll();
+  }, [fetchAll]);
+
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      void fetchAll();
+    };
+
+    window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+    return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
   }, [fetchAll]);
 
   const activeOrders = useMemo(

@@ -1,11 +1,16 @@
 "use client";
 
-import { ThemeProvider } from "next-themes";
-import { Toaster } from "@/components/ui/sonner";
+import dynamic from "next/dynamic";
+import { ThemeProvider } from "@/components/layout/theme-provider";
+
+const Toaster = dynamic(
+  () => import("@/components/ui/sonner").then((module) => module.Toaster),
+  { ssr: false }
+);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+    <ThemeProvider>
       {children}
       <Toaster richColors position="top-right" />
     </ThemeProvider>

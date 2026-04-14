@@ -5,23 +5,33 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "doctor": "expo doctor",
+    "build:android:preview": "eas build --platform android --profile preview",
+    "build:ios:preview": "eas build --platform ios --profile preview",
+    "build:android:production": "eas build --platform android --profile production",
+    "build:ios:production": "eas build --platform ios --profile production",
+    "submit:android": "eas submit --platform android --profile production",
+    "submit:ios": "eas submit --platform ios --profile production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
     "@react-native-async-storage/async-storage": "1.23.1",
     "expo": "~51.0.10",
-    "expo-image-picker": "~15.0.7",
+    "expo-document-picker": "~12.0.2",
+    "expo-image-picker": "~15.1.0",
     "expo-status-bar": "~1.12.1",
     "react": "18.2.0",
     "react-dom": "^18.2.0",
-    "react-native": "0.74.1",
+    "react-native": "^0.74.5",
+    "react-native-sse": "^1.2.1",
     "react-native-web": "^0.19.13"
   },
   "devDependencies": {
     "@types/react": "~18.2.79",
+    "eas-cli": "^18.6.0",
     "typescript": "~5.3.3"
   }
 }

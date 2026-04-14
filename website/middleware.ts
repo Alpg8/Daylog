@@ -14,6 +14,7 @@ const PROTECTED_PREFIXES = [
   "/trailers",
   "/drivers",
   "/fuel",
+  "/messages",
   "/notifications",
   "/users",
 ];
@@ -23,16 +24,22 @@ function applyApiCors(request: NextRequest, response: NextResponse): NextRespons
   const allowedOrigins = new Set([
     "http://localhost:8081",
     "http://127.0.0.1:8081",
+    "http://localhost:8082",
+    "http://127.0.0.1:8082",
+    "http://localhost:8083",
+    "http://127.0.0.1:8083",
     "http://localhost:19006",
     "http://127.0.0.1:19006",
   ]);
 
-  if (origin && allowedOrigins.has(origin)) {
+  const isLocalhostOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+
+  if (origin && (allowedOrigins.has(origin) || isLocalhostOrigin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
   }
   response.headers.set("Vary", "Origin");
   response.headers.set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-client-source");
   response.headers.set("Access-Control-Allow-Credentials", "true");
 
   return response;
@@ -45,6 +52,10 @@ function isProtected(pathname: string): boolean {
     return true;
   }
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isDriverAppPath(pathname: string): boolean {
+  return pathname === "/driver" || pathname.startsWith("/driver/") || pathname.startsWith("/app");
 }
 
 export async function middleware(request: NextRequest) {
@@ -104,7 +115,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/app", request.url));
     }
 
-    if ((payload.role === "ADMIN" || payload.role === "DISPATCHER") && (pathname.startsWith("/driver") || pathname.startsWith("/app"))) {
+    if ((payload.role === "ADMIN" || payload.role === "DISPATCHER") && isDriverAppPath(pathname)) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 

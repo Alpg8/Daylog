@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { updateUserSchema } from "@/lib/validators/user";
 import { hashPassword } from "@/lib/auth/passwords";
-import { recordActivity } from "@/lib/services/activity-log";
+import { recordEntityChange } from "@/lib/services/activity-log";
 
 export async function GET(
   _request: NextRequest,
@@ -44,13 +44,18 @@ export async function PUT(
     updateData.passwordHash = await hashPassword(password);
   }
 
+  const before = await prisma.user.findUnique({
+    where: { id: params.id },
+    select: { id: true, name: true, email: true, role: true, isActive: true },
+  });
+
   const user = await prisma.user.update({
     where: { id: params.id },
     data: updateData,
     select: { id: true, name: true, email: true, role: true, isActive: true },
   });
 
-  await recordActivity({
+  await recordEntityChange({
     userId: session.sub,
     role: session.role,
     source: "WEB",
@@ -59,6 +64,8 @@ export async function PUT(
     entityId: user.id,
     message: "Kullanici guncellendi",
     metadata: { role: user.role, isActive: user.isActive },
+    before,
+    after: user,
     notifyOps: true,
   });
 
@@ -66,7 +73,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getCurrentUser();
@@ -80,16 +87,22 @@ export async function DELETE(
   }
 
   try {
+    const before = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: { id: true, name: true, email: true, role: true, isActive: true },
+    });
     await prisma.user.delete({ where: { id: params.id } });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
-      source: "WEB",
+      source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
       action: "DELETE_USER",
       entityType: "User",
       entityId: params.id,
       message: "Kullanici silindi",
+      before,
+      after: null,
       notifyOps: true,
     });
 

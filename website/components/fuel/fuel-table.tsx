@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { FuelRecord } from "@/types";
 
+const LIVE_UPDATE_EVENT = "daylog:live-update";
+
 const fmtDate = (d: Date | string | null | undefined) => d ? new Date(d).toLocaleDateString("tr-TR") : "-";
 
 export function FuelTable() {
@@ -31,6 +33,15 @@ export function FuelTable() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      void fetchData();
+    };
+
+    window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+    return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+  }, [fetchData]);
 
   const handleDelete = async () => {
     if (!deletingId) return;

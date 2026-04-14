@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -41,6 +42,7 @@ interface UserFormProps {
 }
 
 export function UserForm({ open, onOpenChange, onSuccess, initialData }: UserFormProps) {
+  const [showPassword, setShowPassword] = useState(false);
   const form = useForm<FormData>({
     resolver: zodResolver(initialData ? editSchema : createSchema),
     defaultValues: { role: "DISPATCHER", isActive: true },
@@ -48,6 +50,7 @@ export function UserForm({ open, onOpenChange, onSuccess, initialData }: UserFor
 
   useEffect(() => {
     if (open) {
+      setShowPassword(false);
       form.reset(initialData ? {
         name: initialData.name,
         email: initialData.email,
@@ -59,21 +62,33 @@ export function UserForm({ open, onOpenChange, onSuccess, initialData }: UserFor
   }, [open, initialData, form]);
 
   const onSubmit = async (data: FormData) => {
-    const payload: Record<string, unknown> = { name: data.name, email: data.email, role: data.role, isActive: (data as EditData).isActive };
-    if ("password" in data && data.password) payload.password = data.password;
+    const payload: Record<string, unknown> = {
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      role: data.role,
+      isActive: (data as EditData).isActive,
+    };
+    if ("password" in data && data.password?.trim()) payload.password = data.password.trim();
     const res = await fetch(initialData ? `/api/users/${initialData.id}` : "/api/users", {
       method: initialData ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) { const e = await res.json(); toast.error(e.error ?? "Hata"); return; }
+    if (!res.ok) {
+      const e = await res.json();
+      const detailText = e.details && typeof e.details === "object"
+        ? Object.values(e.details as Record<string, unknown>).flat().filter(Boolean).join(" ")
+        : "";
+      toast.error([e.error ?? "Hata", detailText].filter(Boolean).join(" - "));
+      return;
+    }
     toast.success(initialData ? "Kullanıcı güncellendi" : "Kullanıcı eklendi");
     onSuccess(); onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" disableAutoFocus>
         <DialogHeader><DialogTitle>{initialData ? "Kullanıcı Düzenle" : "Yeni Kullanıcı"}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -86,7 +101,18 @@ export function UserForm({ open, onOpenChange, onSuccess, initialData }: UserFor
             <FormField control={form.control} name="password" render={({ field }) => (
               <FormItem>
                 <FormLabel>{initialData ? "Yeni Şifre (boş bırakılırsa değişmez)" : "Şifre *"}</FormLabel>
-                <FormControl><Input type="password" {...field} /></FormControl>
+                <FormControl>
+                  <div className="relative">
+                    <Input type={showPassword ? "text" : "password"} {...field} className="pr-10" />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-3 flex items-center text-muted-foreground"
+                      onClick={() => setShowPassword((current) => !current)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )} />

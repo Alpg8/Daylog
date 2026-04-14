@@ -4,30 +4,51 @@ import { useState, useEffect, useCallback } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { format } from "date-fns";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type FilterConfig } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
-import { OrderStatusBadge, VehicleStatusBadge, TrailerStatusBadge } from "@/components/shared/status-badge";
+import { VehicleStatusBadge, TrailerStatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExcelExport } from "@/components/shared/excel-export";
 import { OrderForm } from "@/components/orders/order-form";
 import { EntityPopover } from "@/components/shared/entity-popover";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { OrderWithRelations, Vehicle, Trailer, Driver } from "@/types";
 
 interface OrderTableProps {
   category?: "DOMESTIC" | "IMPORT" | "EXPORT";
 }
 
+const LIVE_UPDATE_EVENT = "daylog:live-update";
+
 const fmtDate = (d: Date | string | null | undefined) =>
   d ? new Date(d).toLocaleDateString("tr-TR") : "—";
+
+const statusCellClassMap: Record<string, string> = {
+  PENDING: "bg-amber-100 border-amber-200 text-amber-900",
+  PLANNED: "bg-sky-100 border-sky-200 text-sky-900",
+  IN_PROGRESS: "bg-blue-100 border-blue-200 text-blue-900",
+  COMPLETED: "bg-emerald-100 border-emerald-200 text-emerald-900",
+  CANCELLED: "bg-rose-100 border-rose-200 text-rose-900",
+};
+
+const statusLabelMap: Record<string, string> = {
+  PENDING: "Bekliyor",
+  PLANNED: "Planlandi",
+  IN_PROGRESS: "Devam Ediyor",
+  COMPLETED: "Tamamlandi",
+  CANCELLED: "Iptal",
+};
 
 export function OrderTable({ category }: OrderTableProps) {
   const [orders, setOrders] = useState<OrderWithRelations[]>([]);
@@ -37,6 +58,9 @@ export function OrderTable({ category }: OrderTableProps) {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<OrderWithRelations | null>(null);
+  const [assigningOrder, setAssigningOrder] = useState<OrderWithRelations | null>(null);
+  const [assignDriverId, setAssignDriverId] = useState("__none__");
+  const [assignLoading, setAssignLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -70,6 +94,15 @@ export function OrderTable({ category }: OrderTableProps) {
   }, [category]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      void fetchData();
+    };
+
+    window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+    return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+  }, [fetchData]);
 
   const handleDelete = async () => {
     if (!deletingId) return;
@@ -135,6 +168,40 @@ export function OrderTable({ category }: OrderTableProps) {
     }
   };
 
+  const openAssignDialog = (order: OrderWithRelations) => {
+    setAssigningOrder(order);
+    setAssignDriverId(order.driverId ?? "__none__");
+  };
+
+  const handleAssignDriver = async () => {
+    if (!assigningOrder) return;
+
+    setAssignLoading(true);
+    try {
+      const response = await fetch(`/api/orders/${assigningOrder.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          driverId: assignDriverId === "__none__" ? null : assignDriverId,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error ?? "Surucu atanamadi");
+      }
+
+      toast.success(assignDriverId === "__none__" ? "Surucu atamasi kaldirildi" : "Surucu atandi");
+      setAssigningOrder(null);
+      setAssignDriverId("__none__");
+      await fetchData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Surucu atamasi basarisiz");
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
   // ── Ortak hücreler ────────────────────────────────────────────────
   const vehicleCell: ColumnDef<OrderWithRelations> = {
     id: "vehicle", header: "Çekici",
@@ -183,28 +250,53 @@ export function OrderTable({ category }: OrderTableProps) {
 
   const statusCell: ColumnDef<OrderWithRelations> = {
     accessorKey: "status", header: "Durum", filterFn: "equals",
-    cell: ({ row }) => <OrderStatusBadge status={row.original.status} />,
+    cell: ({ row }) => (
+      <div className={`rounded-md border px-3 py-2 text-center ${statusCellClassMap[row.original.status] ?? "bg-muted"}`}>
+        <span className="text-xs font-semibold">{statusLabelMap[row.original.status] ?? row.original.status}</span>
+      </div>
+    ),
   };
 
   const actionsCell: ColumnDef<OrderWithRelations> = {
     id: "actions", header: "",
     cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => { setEditingOrder(row.original); setFormOpen(true); }}>
-            <Pencil className="mr-2 h-4 w-4" /> Düzenle
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/orders/${row.original.id}`}>Operasyon Detay</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-destructive" onClick={() => setDeletingId(row.original.id)}>
-            <Trash2 className="mr-2 h-4 w-4" /> Sil
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => openAssignDialog(row.original)}
+        >
+          <UserPlus className="h-4 w-4" />
+          {row.original.driver ? "Surucu Degistir" : "Surucu Ata"}
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => { setEditingOrder(row.original); setFormOpen(true); }}>
+              <Pencil className="mr-2 h-4 w-4" /> Düzenle
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/orders/${row.original.id}`}>Operasyon Detay</Link>
+            </DropdownMenuItem>
+            <div className="px-2 py-1.5">
+              <AttachmentManager
+                title="Siparis Dosyalari"
+                description="Siparise ait CMR, fatura ve diger operasyon belgelerini yonetin."
+                entityId={row.original.id}
+                endpointBase="/api/orders"
+                triggerClassName="h-auto w-full justify-start gap-2 rounded-sm border-0 bg-transparent px-0 py-0 text-sm font-normal shadow-none hover:bg-transparent"
+              />
+            </div>
+            <DropdownMenuItem className="text-destructive" onClick={() => setDeletingId(row.original.id)}>
+              <Trash2 className="mr-2 h-4 w-4" /> Sil
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     ),
   };
 
@@ -412,6 +504,59 @@ export function OrderTable({ category }: OrderTableProps) {
         trailers={trailers}
         drivers={drivers}
       />
+
+      <Dialog
+        open={!!assigningOrder}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAssigningOrder(null);
+            setAssignDriverId("__none__");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sürücü Ata</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {assigningOrder
+                ? `${assigningOrder.cargoNumber ?? assigningOrder.tripNumber ?? "Secilen siparis"} icin surucu secin.`
+                : "Surucu secin."}
+            </p>
+            <Select value={assignDriverId} onValueChange={setAssignDriverId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Surucu secin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Surucu atama</SelectItem>
+                {drivers.map((driver) => (
+                  <SelectItem key={driver.id} value={driver.id}>
+                    {driver.fullName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAssigningOrder(null);
+                setAssignDriverId("__none__");
+              }}
+              disabled={assignLoading}
+            >
+              Vazgec
+            </Button>
+            <Button type="button" onClick={handleAssignDriver} disabled={assignLoading} className="gap-2">
+              {assignLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              Kaydet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!deletingId}

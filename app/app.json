@@ -3,15 +3,41 @@
     "name": "Daylog Driver",
     "slug": "daylog-driver",
     "version": "1.0.0",
+    "scheme": "daylogdriver",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.daylog.driver"
+      "bundleIdentifier": "com.daylog.driver",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Daylog Driver, teslimat ve yakit belgeleri icin fotograf yuklemenizi ister.",
+        "NSCameraUsageDescription": "Daylog Driver, teslimat ve yakit belgeleri icin fotograf cekmenizi ister."
+      }
     },
     "android": {
-      "package": "com.daylog.driver"
+      "package": "com.daylog.driver",
+      "versionCode": 1,
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Daylog Driver, teslimat ve yakit belgeleri icin galeriden fotograf secmenizi ister.",
+          "cameraPermission": "Daylog Driver, teslimat ve yakit belgeleri icin fotograf cekmenizi ister."
+        }
+      ]
+    ],
     "web": {
       "bundler": "metro"
     }

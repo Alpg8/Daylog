@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { User } from "@/types";
 
+const LIVE_UPDATE_EVENT = "daylog:live-update";
+
 export function UserTable() {
   const [data, setData] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,12 +25,34 @@ export function UserTable() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/users");
-    if (res.ok) { const j = await res.json(); setData(j.users ?? []); }
-    setLoading(false);
+    try {
+      const res = await fetch("/api/users", { cache: "no-store" });
+      const contentType = res.headers.get("content-type") ?? "";
+
+      if (!res.ok || !contentType.includes("application/json")) {
+        throw new Error("Kullanici verisi alinamadi");
+      }
+
+      const j = (await res.json()) as { users?: User[] };
+      setData(j.users ?? []);
+    } catch {
+      setData([]);
+      toast.error("Kullanicilar yuklenemedi");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      void fetchData();
+    };
+
+    window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+    return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+  }, [fetchData]);
 
   const handleDelete = async () => {
     if (!deletingId) return;

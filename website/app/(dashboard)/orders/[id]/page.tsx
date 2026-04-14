@@ -14,10 +14,22 @@ import {
   Truck,
   Users,
 } from "lucide-react";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { TRAILER_ATTACHMENT_LABEL_OPTIONS } from "@/lib/document-presets";
+import type { Attachment } from "@/types";
+
+const ORDER_ATTACHMENT_LABEL_OPTIONS = [
+  "CMR",
+  "Fatura",
+  "Irsaliye",
+  "Teslim Belgesi",
+  "Gumruk Evragi",
+  "Operasyon Notu",
+];
 
 const EVENT_LABELS: Record<string, string> = {
   START_JOB: "Is Basladi",
@@ -65,7 +77,7 @@ interface TimelineResponse {
     routeText: string | null;
     driver?: { id: string; fullName: string } | null;
     vehicle?: { plateNumber: string } | null;
-    trailer?: { plateNumber: string } | null;
+    trailer?: { id: string; plateNumber: string } | null;
     driverEvents: Array<{
       id: string;
       type: string;
@@ -95,16 +107,77 @@ interface TimelineResponse {
   warnings: Array<{ code: string; message: string }>;
 }
 
+function AttachmentList({
+  attachments,
+  emptyLabel,
+}: {
+  attachments: Attachment[];
+  emptyLabel: string;
+}) {
+  if (attachments.length === 0) {
+    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {attachments.map((attachment) => (
+        <div key={attachment.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+          <div className="min-w-0">
+            <a
+              href={attachment.url}
+              target="_blank"
+              rel="noreferrer"
+              className="truncate font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {attachment.label || "Dosya"}
+            </a>
+            <p className="text-xs text-muted-foreground">
+              {attachment.mimeType || "Bilinmeyen tip"} · {new Date(attachment.createdAt).toLocaleString("tr-TR")}
+            </p>
+          </div>
+          <span className="text-xs text-muted-foreground">{(((attachment.size ?? 0) / 1024)).toFixed(1)} KB</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function OrderOperationsDetailPage() {
   const params = useParams<{ id: string }>();
   const [data, setData] = useState<TimelineResponse | null>(null);
+  const [orderAttachments, setOrderAttachments] = useState<Attachment[]>([]);
+  const [trailerAttachments, setTrailerAttachments] = useState<Attachment[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(true);
+
+  const loadAttachments = useCallback(async (trailerId?: string | null) => {
+    setAttachmentsLoading(true);
+    try {
+      const orderRequest = fetch(`/api/orders/${params.id}/attachments`);
+      const trailerRequest = trailerId ? fetch(`/api/trailers/${trailerId}/attachments`) : null;
+
+      const [orderResponse, trailerResponse] = await Promise.all([
+        orderRequest,
+        trailerRequest ?? Promise.resolve(null),
+      ]);
+
+      const orderPayload = orderResponse ? await orderResponse.json() : { attachments: [] };
+      const trailerPayload = trailerResponse ? await trailerResponse.json() : { attachments: [] };
+
+      setOrderAttachments(orderResponse?.ok ? (orderPayload.attachments ?? []) : []);
+      setTrailerAttachments(trailerResponse?.ok ? (trailerPayload.attachments ?? []) : []);
+    } finally {
+      setAttachmentsLoading(false);
+    }
+  }, [params.id]);
 
   const fetchData = useCallback(async () => {
     const res = await fetch(`/api/driver/orders/${params.id}/timeline`);
     if (res.ok) {
-      setData((await res.json()) as TimelineResponse);
+      const payload = (await res.json()) as TimelineResponse;
+      setData(payload);
+      void loadAttachments(payload.order.trailer?.id);
     }
-  }, [params.id]);
+  }, [loadAttachments, params.id]);
 
   useEffect(() => {
     fetchData();
@@ -121,6 +194,74 @@ export default function OrderOperationsDetailPage() {
     <div className="space-y-4">
       {/* Header card */}
       <Card>
+
+      <Card>
+        <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <CardTitle>Operasyon ve Siparis Dosyalari</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Operasyona ait siparis evraklarini ve varsa dorse dosyalarini bu alandan yonetin.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <AttachmentManager
+              title="Siparis Dosyalari"
+              description="CMR, fatura ve operasyon belgelerini yukleyin."
+              entityId={order.id}
+              endpointBase="/api/orders"
+              triggerLabel="Siparis Dosyalari"
+              labelOptions={ORDER_ATTACHMENT_LABEL_OPTIONS}
+            />
+            {order.trailer ? (
+              <AttachmentManager
+                title="Dorse Dosyalari"
+                description="Dorseye ait ruhsat ve diger operasyon dosyalarini yonetin."
+                entityId={order.trailer.id}
+                endpointBase="/api/trailers"
+                triggerLabel="Dorse Dosyalari"
+                labelOptions={TRAILER_ATTACHMENT_LABEL_OPTIONS}
+              />
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-medium">Siparis Dosyalari</h3>
+                  <p className="text-xs text-muted-foreground">Siparise yuklenen operasyon evraklari</p>
+                </div>
+                <Badge variant="outline">{orderAttachments.length}</Badge>
+              </div>
+              {attachmentsLoading ? (
+                <p className="text-sm text-muted-foreground">Dosyalar yukleniyor...</p>
+              ) : (
+                <AttachmentList attachments={orderAttachments} emptyLabel="Siparise ait dosya yok." />
+              )}
+            </div>
+
+            <div className="rounded-xl border p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-medium">Dorse Dosyalari</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {order.trailer ? `${order.trailer.plateNumber} icin yuklenen dosyalar` : "Bu siparise dorse atanmamis."}
+                  </p>
+                </div>
+                {order.trailer ? <Badge variant="outline">{trailerAttachments.length}</Badge> : null}
+              </div>
+              {!order.trailer ? (
+                <p className="text-sm text-muted-foreground">Dorse atanmadan dorse dosyalari gorunmez.</p>
+              ) : attachmentsLoading ? (
+                <p className="text-sm text-muted-foreground">Dosyalar yukleniyor...</p>
+              ) : (
+                <AttachmentList attachments={trailerAttachments} emptyLabel="Dorseye ait dosya yok." />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle>Operasyon Detayi</CardTitle>

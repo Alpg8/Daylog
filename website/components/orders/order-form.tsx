@@ -92,6 +92,11 @@ interface OrderFormProps {
 
 const d = (v: unknown) => (v != null ? String(v) : "");
 const dn = (v: unknown) => (v != null && v !== "" ? Number(v) : undefined);
+const nilIfBlank = (value: string | null | undefined) => {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+};
 
 export function OrderForm({
   open,
@@ -186,6 +191,37 @@ export function OrderForm({
       loadingDate: data.loadingDate || null,
       unloadingDate: data.unloadingDate || null,
       borderExitDate: data.borderExitDate || null,
+      transportType: nilIfBlank(data.transportType),
+      referenceNumber: nilIfBlank(data.referenceNumber),
+      cargoNumber: nilIfBlank(data.cargoNumber),
+      tripNumber: nilIfBlank(data.tripNumber),
+      invoiceNumber: nilIfBlank(data.invoiceNumber),
+      routeText: nilIfBlank(data.routeText),
+      notes: nilIfBlank(data.notes),
+      customsGate: nilIfBlank(data.customsGate),
+      customerName: nilIfBlank(data.customerName),
+      sender: nilIfBlank(data.sender),
+      recipient: nilIfBlank(data.recipient),
+      loadingCountry: nilIfBlank(data.loadingCountry),
+      unloadingCountry: nilIfBlank(data.unloadingCountry),
+      supply: nilIfBlank(data.supply),
+      positionNumber: nilIfBlank(data.positionNumber),
+      customs: nilIfBlank(data.customs),
+      loadingCity: nilIfBlank(data.loadingCity),
+      unloadingCity: nilIfBlank(data.unloadingCity),
+      unloadingWarehouse: nilIfBlank(data.unloadingWarehouse),
+      orderNumber: nilIfBlank(data.orderNumber),
+      rental: nilIfBlank(data.rental),
+      companyName: nilIfBlank(data.companyName),
+      containerTrailerNo: nilIfBlank(data.containerTrailerNo),
+      containerPickupAddress: nilIfBlank(data.containerPickupAddress),
+      loadUnloadLocation: nilIfBlank(data.loadUnloadLocation),
+      containerDropAddress: nilIfBlank(data.containerDropAddress),
+      deliveryCustomer: nilIfBlank(data.deliveryCustomer),
+      supplierInfo: nilIfBlank(data.supplierInfo),
+      supplierPhone: nilIfBlank(data.supplierPhone),
+      equipmentInfo: nilIfBlank(data.equipmentInfo),
+      cita: nilIfBlank(data.cita),
     };
 
     const res = await fetch(
@@ -294,7 +330,7 @@ export function OrderForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl" disableAutoFocus>
         <DialogHeader>
           <DialogTitle>{initialData ? "Sipariş Düzenle" : "Yeni Sipariş"}</DialogTitle>
         </DialogHeader>

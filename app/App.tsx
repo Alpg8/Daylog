@@ -1,6 +1,6 @@
 import { ActivityIndicator, Alert, SafeAreaView, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./src/styles";
@@ -17,9 +17,11 @@ import { THEME_KEY, type TabKey } from "./src/constants";
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("job");
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [email, setEmail] = useState("driver@example.com");
-  const [password, setPassword] = useState("Driver12345!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
+  const unreadCountsRef = useRef<{ notifications: number; messages: number } | null>(null);
 
   const app = useDriverApp();
 
@@ -30,17 +32,22 @@ export default function App() {
     tasks,
     activeTasks,
     notifications,
+    messages,
+    messageUnreadCount,
     selectedTask,
     selectedTaskId,
     setSelectedTaskId,
+    driverProfile,
     driverPhone,
     setDriverPhone,
     driverNotes,
     setDriverNotes,
+    driverAttachments,
     assignedVehicle,
     vehicleHistory,
     recentJobs,
     overviewStats,
+    currentTaskAttachments,
     stepType,
     setStepType,
     stepNotes,
@@ -57,18 +64,74 @@ export default function App() {
     setFuelStation,
     fuelCost,
     setFuelCost,
-    fuelPhotoUri,
-    setFuelPhotoUri,
+    fuelStartKm,
+    setFuelStartKm,
+    fuelEndKm,
+    setFuelEndKm,
+    fuelTankLeft,
+    setFuelTankLeft,
+    fuelTankRight,
+    setFuelTankRight,
+    damageTitle,
+    setDamageTitle,
+    damageDescription,
+    setDamageDescription,
     login,
     logout,
     loadTasks,
     pickImage,
+    uploadCurrentTaskDocument,
+    uploadDriverDocument,
     submitStepUpdate,
     submitFuelRequest,
+    submitVehicleDamageReport,
     saveProfile,
     markAllNotificationsRead,
+    markAllMessagesRead,
     sendOfficeMessage,
+    deleteMessage,
   } = app;
+
+  const unreadNotificationsCount = notifications.filter((item) => !item.isRead).length;
+  const messagesTabBadgeCount = unreadNotificationsCount + messageUnreadCount;
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timeout);
+  }, [toast]);
+
+  useEffect(() => {
+    const unreadOfficeMessages = messages.filter((item) => item.direction === "OFFICE_TO_DRIVER" && !item.isRead);
+    const unreadNotifications = notifications.filter((item) => !item.isRead);
+
+    if (!unreadCountsRef.current) {
+      unreadCountsRef.current = {
+        notifications: unreadNotifications.length,
+        messages: unreadOfficeMessages.length,
+      };
+      return;
+    }
+
+    const counts = unreadCountsRef.current;
+
+    if (unreadOfficeMessages.length > counts.messages) {
+      const latestMessage = unreadOfficeMessages[0];
+      setToast({
+        title: latestMessage.subject || "Ofisten yeni mesaj",
+        message: latestMessage.message,
+      });
+    } else if (unreadNotifications.length > counts.notifications) {
+      const latestNotification = unreadNotifications[0];
+      setToast({
+        title: latestNotification.title,
+        message: latestNotification.message,
+      });
+    }
+
+    counts.notifications = unreadNotifications.length;
+    counts.messages = unreadOfficeMessages.length;
+  }, [messages, notifications]);
 
   useEffect(() => {
     (async () => {
@@ -129,6 +192,15 @@ export default function App() {
         </View>
       </View>
 
+      {toast ? (
+        <View pointerEvents="none" style={styles.toastWrap}>
+          <View style={[styles.toastCard, isDarkMode && styles.toastCardDark]}>
+            <Text style={[styles.toastTitle, isDarkMode && styles.toastTitleDark]}>{toast.title}</Text>
+            <Text numberOfLines={2} style={[styles.toastMessage, isDarkMode && styles.toastMessageDark]}>{toast.message}</Text>
+          </View>
+        </View>
+      ) : null}
+
       <View style={[styles.content, isDarkMode && styles.contentDark]}>
         {activeTab === "job" && (
           <TasksScreen
@@ -140,6 +212,7 @@ export default function App() {
             stepNotes={stepNotes}
             stepKm={stepKm}
             stepPhotoUri={stepPhotoUri}
+            currentTaskAttachments={currentTaskAttachments}
             onRefresh={async () => {
               const err = await loadTasks();
               if (err) Alert.alert("Isler", err);
@@ -153,6 +226,11 @@ export default function App() {
               if (result?.startsWith("/")) setStepPhotoUri(result);
               else if (result) Alert.alert("Fotograf", result);
             }}
+            onUploadJobDocument={async () => {
+              const err = await uploadCurrentTaskDocument(selectedTask?.cargoNumber ?? selectedTask?.tripNumber ?? undefined);
+              if (err) Alert.alert("Is Dokumani", err);
+              else Alert.alert("Basarili", "Dokuman yuklendi");
+            }}
             onSubmitStep={submitStepUpdate}
           />
         )}
@@ -160,9 +238,13 @@ export default function App() {
         {activeTab === "messages" && (
           <MessagesScreen
             darkMode={isDarkMode}
+            messages={messages}
+            messageUnreadCount={messageUnreadCount}
             notifications={notifications}
             onMarkAllNotificationsRead={markAllNotificationsRead}
+            onMarkAllMessagesRead={markAllMessagesRead}
             onSendOfficeMessage={sendOfficeMessage}
+            onDeleteMessage={deleteMessage}
           />
         )}
 
@@ -173,16 +255,18 @@ export default function App() {
             fuelLiters={fuelLiters}
             fuelStation={fuelStation}
             fuelCost={fuelCost}
-            fuelPhotoUri={fuelPhotoUri}
+            fuelStartKm={fuelStartKm}
+            fuelEndKm={fuelEndKm}
+            fuelTankLeft={fuelTankLeft}
+            fuelTankRight={fuelTankRight}
             onDateChange={setFuelDate}
             onLitersChange={setFuelLiters}
             onStationChange={setFuelStation}
             onCostChange={setFuelCost}
-            onPickPhoto={async () => {
-              const result = await pickImage();
-              if (result?.startsWith("/")) setFuelPhotoUri(result);
-              else if (result) Alert.alert("Fotograf", result);
-            }}
+            onStartKmChange={setFuelStartKm}
+            onEndKmChange={setFuelEndKm}
+            onTankLeftChange={setFuelTankLeft}
+            onTankRightChange={setFuelTankRight}
             onSubmit={submitFuelRequest}
           />
         )}
@@ -191,20 +275,29 @@ export default function App() {
           <VehicleScreen
             darkMode={isDarkMode}
             assignedVehicle={assignedVehicle}
+            driverProfile={driverProfile}
             vehicleHistory={vehicleHistory}
             recentJobs={recentJobs}
             overviewStats={overviewStats}
+            damageTitle={damageTitle}
+            damageDescription={damageDescription}
+            onDamageTitleChange={setDamageTitle}
+            onDamageDescriptionChange={setDamageDescription}
+            onSubmitDamageReport={submitVehicleDamageReport}
           />
         )}
 
         {activeTab === "profile" && (
           <ProfileScreen
             user={user}
+            driverProfile={driverProfile}
+            driverAttachments={driverAttachments}
             tasks={tasks}
             driverPhone={driverPhone}
             driverNotes={driverNotes}
             darkMode={isDarkMode}
             onToggleDarkMode={setIsDarkMode}
+            onUploadDriverDocument={uploadDriverDocument}
             onPhoneChange={setDriverPhone}
             onNotesChange={setDriverNotes}
             onSave={saveProfile}
@@ -213,7 +306,7 @@ export default function App() {
         )}
       </View>
 
-      <TabBar activeTab={activeTab} onChange={setActiveTab} darkMode={isDarkMode} />
+      <TabBar activeTab={activeTab} onChange={setActiveTab} darkMode={isDarkMode} messagesBadgeCount={messagesTabBadgeCount} />
     </SafeAreaView>
   );
 }

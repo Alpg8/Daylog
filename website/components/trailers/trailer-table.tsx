@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type FilterConfig } from "@/components/shared/data-table";
@@ -9,10 +10,14 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TrailerStatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExcelExport } from "@/components/shared/excel-export";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
+import { TRAILER_ATTACHMENT_LABEL_OPTIONS } from "@/lib/document-presets";
 import { TrailerForm } from "./trailer-form";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Trailer } from "@/types";
+
+const LIVE_UPDATE_EVENT = "daylog:live-update";
 
 export function TrailerTable() {
   const [data, setData] = useState<Trailer[]>([]);
@@ -23,12 +28,34 @@ export function TrailerTable() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/trailers");
-    if (res.ok) { const j = await res.json(); setData(j.trailers ?? []); }
-    setLoading(false);
+    try {
+      const res = await fetch("/api/trailers", { cache: "no-store" });
+      const contentType = res.headers.get("content-type") ?? "";
+
+      if (!res.ok || !contentType.includes("application/json")) {
+        throw new Error("Dorse verisi alinamadi");
+      }
+
+      const j = (await res.json()) as { trailers?: Trailer[] };
+      setData(j.trailers ?? []);
+    } catch {
+      setData([]);
+      toast.error("Dorseler yuklenemedi");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const handleLiveUpdate = () => {
+      void fetchData();
+    };
+
+    window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+    return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
+  }, [fetchData]);
 
   const handleDelete = async () => {
     if (!deletingId) return;
@@ -71,6 +98,19 @@ export function TrailerTable() {
           <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => { setEditing(row.original); setFormOpen(true); }}><Pencil className="h-4 w-4 mr-2" />Düzenle</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/trailers/${row.original.id}`}>Dorse Detay</Link>
+            </DropdownMenuItem>
+            <div className="px-2 py-1.5">
+              <AttachmentManager
+                title={`${row.original.plateNumber} Dosyalari`}
+                description="Dorseye ait belge ve evraklari yonetin."
+                entityId={row.original.id}
+                endpointBase="/api/trailers"
+                triggerClassName="h-auto w-full justify-start gap-2 rounded-sm border-0 bg-transparent px-0 py-0 text-sm font-normal shadow-none hover:bg-transparent"
+                labelOptions={TRAILER_ATTACHMENT_LABEL_OPTIONS}
+              />
+            </div>
             <DropdownMenuItem onClick={() => setDeletingId(row.original.id)} className="text-destructive"><Trash2 className="h-4 w-4 mr-2" />Sil</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

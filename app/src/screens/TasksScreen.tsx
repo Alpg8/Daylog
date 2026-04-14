@@ -2,7 +2,7 @@ import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from "reac
 import { useEffect, useMemo } from "react";
 import { STEP_LABELS, type StepType } from "../constants";
 import { styles } from "../styles";
-import type { DriverTask } from "../types";
+import type { AttachmentItem, DriverTask } from "../types";
 
 interface TasksScreenProps {
   darkMode: boolean;
@@ -13,12 +13,14 @@ interface TasksScreenProps {
   stepNotes: string;
   stepKm: string;
   stepPhotoUri: string | null;
+  currentTaskAttachments: AttachmentItem[];
   onRefresh: () => void;
   onSelectTask: (id: string) => void;
   onStepTypeChange: (step: StepType) => void;
   onStepNotesChange: (value: string) => void;
   onStepKmChange: (value: string) => void;
   onPickStepPhoto: () => void;
+  onUploadJobDocument: () => void;
   onSubmitStep: () => Promise<string | null>;
 }
 
@@ -32,12 +34,14 @@ export function TasksScreen(props: TasksScreenProps) {
     stepNotes,
     stepKm,
     stepPhotoUri,
+    currentTaskAttachments,
     onRefresh,
     onSelectTask,
     onStepTypeChange,
     onStepNotesChange,
     onStepKmChange,
     onPickStepPhoto,
+    onUploadJobDocument,
     onSubmitStep,
   } = props;
 
@@ -123,6 +127,27 @@ export function TasksScreen(props: TasksScreenProps) {
           <Pressable style={styles.primaryBtn} onPress={handleSubmit}>
             <Text style={styles.primaryBtnText}>Asamayi Kaydet</Text>
           </Pressable>
+        </View>
+      )}
+
+      {currentTask && (
+        <View style={[styles.card, darkMode && styles.cardDark]}>
+          <View style={styles.sectionHead}>
+            <Text style={[styles.cardTitle, darkMode && styles.cardTitleDark]}>Is Dokumanlari</Text>
+            <Pressable onPress={onUploadJobDocument}>
+              <Text style={styles.linkText}>Dokuman Ekle</Text>
+            </Pressable>
+          </View>
+          {currentTaskAttachments.length === 0 ? (
+            <Text style={[styles.cardLine, darkMode && styles.cardLineDark]}>Bu ise ait dokuman eklenmedi.</Text>
+          ) : (
+            currentTaskAttachments.map((attachment) => (
+              <View key={attachment.id} style={styles.listItemBlock}>
+                <Text style={[styles.cardLine, darkMode && styles.cardLineDark]}>{attachment.label ?? "Dokuman"}</Text>
+                <Text style={styles.meta}>{new Date(attachment.createdAt).toLocaleString("tr-TR")}</Text>
+              </View>
+            ))
+          )}
         </View>
       )}
     </ScrollView>

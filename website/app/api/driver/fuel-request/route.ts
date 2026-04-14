@@ -23,30 +23,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Araciniz atanmamis" }, { status: 400 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file");
+  const body = (await request.json()) as {
+    date?: string;
+    liters?: number | string;
+    totalCost?: number | string | null;
+    fuelStation?: string | null;
+    startKm?: number | string | null;
+    endKm?: number | string | null;
+    tankRight?: number | string | null;
+    tankLeft?: number | string | null;
+    notes?: string | null;
+  };
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Yakit talebi icin gorsel zorunludur" }, { status: 400 });
-  }
-
-  const maxBytes = 8 * 1024 * 1024;
-  if (file.size > maxBytes) {
-    return NextResponse.json({ error: "Dosya boyutu 8MB ustunde" }, { status: 400 });
-  }
-
-  const date = String(formData.get("date") ?? "").trim();
-  const litersRaw = String(formData.get("liters") ?? "").trim();
-  const totalCostRaw = String(formData.get("totalCost") ?? "").trim();
-  const fuelStation = String(formData.get("fuelStation") ?? "").trim();
-  const startKmRaw = String(formData.get("startKm") ?? "").trim();
-  const endKmRaw = String(formData.get("endKm") ?? "").trim();
-  const notes = String(formData.get("notes") ?? "").trim();
+  const date = String(body.date ?? "").trim();
+  const litersRaw = String(body.liters ?? "").trim();
+  const totalCostRaw = String(body.totalCost ?? "").trim();
+  const fuelStation = String(body.fuelStation ?? "").trim();
+  const startKmRaw = String(body.startKm ?? "").trim();
+  const endKmRaw = String(body.endKm ?? "").trim();
+  const tankRightRaw = String(body.tankRight ?? "").trim();
+  const tankLeftRaw = String(body.tankLeft ?? "").trim();
+  const notes = String(body.notes ?? "").trim();
 
   const liters = Number(litersRaw);
   const totalCost = totalCostRaw ? Number(totalCostRaw) : null;
   const startKm = startKmRaw ? Number(startKmRaw) : null;
   const endKm = endKmRaw ? Number(endKmRaw) : null;
+  const tankRight = tankRightRaw ? Number(tankRightRaw) : null;
+  const tankLeft = tankLeftRaw ? Number(tankLeftRaw) : null;
+  const tankTotal = (tankRight ?? 0) + (tankLeft ?? 0) || null;
   const distanceKm =
     startKm != null && endKm != null && Number.isFinite(startKm) && Number.isFinite(endKm) && endKm > startKm
       ? endKm - startKm
@@ -70,9 +75,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Yakit talebi icin aktif is bulunamadi" }, { status: 400 });
   }
 
-  const storage = getStorageProvider();
-  const uploaded = await storage.upload(file, `fuel-requests/${driver.id}`);
-
   const record = await prisma.fuelRecord.create({
     data: {
       vehicleId: fullDriver.assignedVehicleId,
@@ -84,33 +86,10 @@ export async function POST(request: NextRequest) {
       startKm,
       endKm,
       distanceKm,
+      tankRight,
+      tankLeft,
+      tankTotal,
       notes: notes || null,
-    },
-  });
-
-  const event = await prisma.driverEvent.create({
-    data: {
-      orderId: activeOrder.id,
-      driverId: driver.id,
-      createdById: session.sub,
-      type: "WAITING",
-      severity: "NORMAL",
-      title: "YAKIT_TALEBI",
-      notes: `Yakit talebi: ${liters} L${fuelStation ? ` / ${fuelStation}` : ""}`,
-    },
-    select: { id: true },
-  });
-
-  const evidenceEventId = event.id;
-
-  await prisma.driverEventPhoto.create({
-    data: {
-      eventId: event.id,
-      url: uploaded.url,
-      key: uploaded.key,
-      label: "Yakit fis/foto",
-      mimeType: uploaded.mimeType,
-      size: uploaded.size,
     },
   });
 
@@ -125,11 +104,12 @@ export async function POST(request: NextRequest) {
     metadata: {
       driverId: driver.id,
       liters,
-      hasEvidencePhoto: true,
-      evidenceEventId,
+      tankRight,
+      tankLeft,
+      distanceKm,
     },
     notifyOps: true,
   });
 
-  return NextResponse.json({ record, evidenceEventId }, { status: 201 });
+  return NextResponse.json({ record }, { status: 201 });
 }

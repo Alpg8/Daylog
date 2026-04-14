@@ -46,13 +46,26 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data;
+    const driverCreateData = {
+      fullName: data.fullName,
+      isActive: data.isActive,
+      ...(data.userId ? { userId: data.userId } : {}),
+      ...(data.phoneNumber ? { phoneNumber: data.phoneNumber } : {}),
+      ...(data.nationalId ? { nationalId: data.nationalId } : {}),
+      ...(typeof data.passportRemainingDays === "number" ? { passportRemainingDays: data.passportRemainingDays } : {}),
+      ...(data.passportExpiryDate ? { passportExpiryDate: new Date(data.passportExpiryDate) } : {}),
+      ...(typeof data.licenseRemainingDays === "number" ? { licenseRemainingDays: data.licenseRemainingDays } : {}),
+      ...(data.licenseExpiryDate ? { licenseExpiryDate: new Date(data.licenseExpiryDate) } : {}),
+      ...(typeof data.psychotechnicRemainingDays === "number" ? { psychotechnicRemainingDays: data.psychotechnicRemainingDays } : {}),
+      ...(data.psychotechnicExpiryDate ? { psychotechnicExpiryDate: new Date(data.psychotechnicExpiryDate) } : {}),
+      ...(data.assignedVehicleId ? { assignedVehicleId: data.assignedVehicleId } : {}),
+      ...(data.usageType ? { usageType: data.usageType } : {}),
+      ...(data.ownershipType ? { ownershipType: data.ownershipType } : {}),
+      ...(data.notes ? { notes: data.notes } : {}),
+    };
+
     const driver = await prisma.driver.create({
-      data: {
-        ...data,
-        passportExpiryDate: data.passportExpiryDate ? new Date(data.passportExpiryDate) : null,
-        licenseExpiryDate: data.licenseExpiryDate ? new Date(data.licenseExpiryDate) : null,
-        psychotechnicExpiryDate: data.psychotechnicExpiryDate ? new Date(data.psychotechnicExpiryDate) : null,
-      },
+      data: driverCreateData,
       include: {
         assignedVehicle: { select: { id: true, plateNumber: true } },
         user: { select: { id: true, name: true, email: true, role: true, isActive: true } },
@@ -72,7 +85,13 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ driver }, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
+    if ((error as { code?: string }).code === "P2002") {
+      return NextResponse.json({ error: "Bu sürücü kullanıcısı zaten başka bir kayıtla eşleşmiş" }, { status: 409 });
+    }
+    if ((error as { code?: string }).code === "P2003") {
+      return NextResponse.json({ error: "Seçilen kullanıcı veya araç kaydı bulunamadı" }, { status: 400 });
+    }
     console.error("[DRIVERS POST]", error);
     return NextResponse.json({ error: "Sunucu hatası" }, { status: 500 });
   }

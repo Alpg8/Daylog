@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { updateDriverSchema } from "@/lib/validators/driver";
-import { recordActivity } from "@/lib/services/activity-log";
+import { recordEntityChange } from "@/lib/services/activity-log";
 
 async function getDriverIdForUser(userId: string): Promise<string | null> {
   const driver = await prisma.driver.findUnique({
@@ -58,6 +58,7 @@ export async function PUT(
   }
 
   const data = parsed.data;
+  const before = await prisma.driver.findUnique({ where: { id: params.id } });
   const driver = await prisma.driver.update({
     where: { id: params.id },
     data: {
@@ -72,7 +73,7 @@ export async function PUT(
     },
   });
 
-  await recordActivity({
+  await recordEntityChange({
     userId: session.sub,
     role: session.role,
     source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
@@ -81,6 +82,8 @@ export async function PUT(
     entityId: driver.id,
     message: "Surucu kaydi guncellendi",
     metadata: { fullName: driver.fullName },
+    before,
+    after: driver,
     notifyOps: true,
     notifyDriverUserId: driver.user?.id ?? null,
     driverTitle: "Profil Güncellendi",
@@ -91,7 +94,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getCurrentUser();
@@ -102,16 +105,19 @@ export async function DELETE(
   }
 
   try {
+    const before = await prisma.driver.findUnique({ where: { id: params.id } });
     await prisma.driver.delete({ where: { id: params.id } });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
-      source: "WEB",
+      source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
       action: "DELETE_DRIVER",
       entityType: "Driver",
       entityId: params.id,
       message: "Surucu kaydi silindi",
+      before,
+      after: null,
       notifyOps: true,
     });
 
@@ -145,12 +151,13 @@ export async function PATCH(
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
     }
+    const before = await prisma.driver.findUnique({ where: { id: params.id } });
     const driver = await prisma.driver.update({ where: { id: params.id }, data: patch });
 
     // Ops kendi şoförünü güncelliyorsa (değil de başka birini), şoföre bildir
     const isOwnUpdate = session.role === "DRIVER" && ownDriverId === params.id;
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
       source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
@@ -159,6 +166,8 @@ export async function PATCH(
       entityId: driver.id,
       message: "Surucu parcali guncellendi",
       metadata: { updatedFields: Object.keys(patch) },
+      before,
+      after: driver,
       notifyOps: true,
       notifyDriverUserId: !isOwnUpdate ? (driver.userId ?? null) : null,
       driverTitle: "Profil Güncellendi",

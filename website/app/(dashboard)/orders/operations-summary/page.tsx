@@ -1,0 +1,578 @@
+import Link from "next/link";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CarFront,
+  FileText,
+  FolderOpen,
+  Package,
+  ShieldCheck,
+  Truck,
+  UserSquare2,
+  UserRound,
+} from "lucide-react";
+import { prisma } from "@/lib/db";
+import { AttachmentManager } from "@/components/shared/attachment-manager";
+import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const dynamic = "force-dynamic";
+
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: "Beklemede",
+  PLANNED: "Planli",
+  IN_PROGRESS: "Devam Ediyor",
+  COMPLETED: "Tamamlandi",
+  CANCELLED: "Iptal",
+};
+
+const ORDER_STATUS_VARIANTS: Record<string, "warning" | "info" | "default" | "success" | "destructive"> = {
+  PENDING: "warning",
+  PLANNED: "info",
+  IN_PROGRESS: "default",
+  COMPLETED: "success",
+  CANCELLED: "destructive",
+};
+
+const DRIVER_DOCUMENTS = [
+  { key: "passport", label: "Pasaport", keywords: ["pasaport", "passport"], dateField: "passportExpiryDate" },
+  { key: "license", label: "Ehliyet", keywords: ["ehliyet", "license", "licence", "surucu belgesi"], dateField: "licenseExpiryDate" },
+  { key: "psychotechnic", label: "Psikoteknik", keywords: ["psikoteknik", "psychotechnic"], dateField: "psychotechnicExpiryDate" },
+  { key: "src", label: "SRC", keywords: ["src"] },
+  { key: "visa", label: "Vize", keywords: ["vize", "visa"] },
+] as const;
+
+const VEHICLE_DOCUMENTS = [
+  { key: "kasko", label: "Kasko", keywords: ["kasko", "casko"] },
+  { key: "inspection", label: "Muayene", keywords: ["muayene", "inspection"] },
+  { key: "roder", label: "Roder", keywords: ["roder", "ro-ro", "roro"] },
+  { key: "trafficInsurance", label: "Trafik Sigortasi", keywords: ["trafik sigortasi", "traffic insurance", "zorunlu trafik"] },
+  { key: "tako", label: "Tako", keywords: ["tako", "takograf", "tachograph"] },
+  { key: "exhaust", label: "Egzoz", keywords: ["egzoz", "emisyon", "exhaust"] },
+] as const;
+
+type OrderSummary = Awaited<ReturnType<typeof getOrderSummaries>>[number];
+type AttachmentItem = OrderSummary["attachments"][number];
+type DriverRecord = NonNullable<OrderSummary["driver"]>;
+type VehicleRecord = NonNullable<OrderSummary["vehicle"]>;
+
+function normalizeText(value: string | null | undefined) {
+  return (value ?? "")
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ı/g, "i")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c");
+}
+
+function formatDate(value: Date | null | undefined) {
+  if (!value) return "Tarih yok";
+  return new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(value);
+}
+
+function getRelativeDayLabel(value: Date | null | undefined) {
+  if (!value) return null;
+  const today = new Date();
+  const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const target = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const diffInDays = Math.ceil((target.getTime() - current.getTime()) / 86400000);
+
+  if (diffInDays < 0) return `${Math.abs(diffInDays)} gun gecmis`;
+  if (diffInDays === 0) return "Bugun son gun";
+  return `${diffInDays} gun kaldi`;
+}
+
+function findMatchingAttachment(attachments: AttachmentItem[], keywords: readonly string[]) {
+  return attachments.find((attachment) => {
+    const haystack = normalizeText([attachment.label, attachment.key, attachment.url].filter(Boolean).join(" "));
+    return keywords.some((keyword) => haystack.includes(normalizeText(keyword)));
+  }) ?? null;
+}
+
+function summarizeDocument(label: string, attachment: AttachmentItem | null, expiryDate?: Date | null) {
+  const relativeLabel = getRelativeDayLabel(expiryDate);
+
+  if (expiryDate && expiryDate.getTime() < Date.now()) {
+    return {
+      label,
+      attachment,
+      expiryDate,
+      statusLabel: "Suresi doldu",
+      variant: "destructive" as const,
+      tone: "border-red-500/20 bg-red-500/5",
+      meta: relativeLabel,
+    };
+  }
+
+  if (expiryDate && relativeLabel) {
+    const distance = Math.ceil((expiryDate.getTime() - Date.now()) / 86400000);
+    if (distance <= 30) {
+      return {
+        label,
+        attachment,
+        expiryDate,
+        statusLabel: attachment ? "Yenileme yaklasti" : "Dosya eksik",
+        variant: "warning" as const,
+        tone: "border-amber-500/20 bg-amber-500/5",
+        meta: relativeLabel,
+      };
+    }
+  }
+
+  if (!attachment && expiryDate) {
+    return {
+      label,
+      attachment,
+      expiryDate,
+      statusLabel: "Dosya yok",
+      variant: "warning" as const,
+      tone: "border-amber-500/20 bg-amber-500/5",
+      meta: relativeLabel,
+    };
+  }
+
+  if (attachment && expiryDate) {
+    return {
+      label,
+      attachment,
+      expiryDate,
+      statusLabel: "Hazir",
+      variant: "success" as const,
+      tone: "border-emerald-500/20 bg-emerald-500/5",
+      meta: relativeLabel,
+    };
+  }
+
+  if (attachment) {
+    return {
+      label,
+      attachment,
+      expiryDate,
+      statusLabel: "Dosya var",
+      variant: "success" as const,
+      tone: "border-emerald-500/20 bg-emerald-500/5",
+      meta: attachment.label ?? "Etiket yok",
+    };
+  }
+
+  return {
+    label,
+    attachment,
+    expiryDate,
+    statusLabel: "Eksik",
+    variant: "destructive" as const,
+    tone: "border-red-500/20 bg-red-500/5",
+    meta: "Dosya yuklenmemis",
+  };
+}
+
+function buildDriverDocuments(driver: DriverRecord | null) {
+  if (!driver) return [];
+
+  return DRIVER_DOCUMENTS.map((document) => {
+    const attachment = findMatchingAttachment(driver.attachments, document.keywords);
+    const expiryDate = "dateField" in document ? driver[document.dateField] : null;
+    return summarizeDocument(document.label, attachment, expiryDate);
+  });
+}
+
+function buildVehicleDocuments(vehicle: VehicleRecord | null) {
+  if (!vehicle) return [];
+
+  return VEHICLE_DOCUMENTS.map((document) => {
+    const attachment = findMatchingAttachment(vehicle.attachments, document.keywords);
+    return summarizeDocument(document.label, attachment, null);
+  });
+}
+
+function getMissingCount(items: Array<{ variant: string }>) {
+  return items.filter((item) => item.variant === "destructive" || item.variant === "warning").length;
+}
+
+function renderAttachmentList(attachments: AttachmentItem[], emptyLabel: string) {
+  if (attachments.length === 0) {
+    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {attachments.slice(0, 6).map((attachment) => (
+        <a
+          key={attachment.id}
+          href={attachment.url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs text-foreground/85 transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <FolderOpen className="h-3.5 w-3.5" />
+          {attachment.label || "Etiketsiz dosya"}
+        </a>
+      ))}
+      {attachments.length > 6 && <Badge variant="outline">+{attachments.length - 6} ek dosya</Badge>}
+    </div>
+  );
+}
+
+async function getOrderSummaries() {
+  return prisma.order.findMany({
+    where: {
+      status: {
+        in: ["PENDING", "PLANNED", "IN_PROGRESS"],
+      },
+    },
+    orderBy: [{ operationDate: "desc" }, { updatedAt: "desc" }],
+    take: 12,
+    include: {
+      attachments: { orderBy: { createdAt: "desc" } },
+      vehicle: {
+        include: {
+          attachments: { orderBy: { createdAt: "desc" } },
+        },
+      },
+      trailer: {
+        include: {
+          attachments: { orderBy: { createdAt: "desc" } },
+        },
+      },
+      driver: {
+        include: {
+          attachments: { orderBy: { createdAt: "desc" } },
+        },
+      },
+      _count: {
+        select: {
+          attachments: true,
+          driverEvents: true,
+          driverConfirmations: true,
+        },
+      },
+    },
+  });
+}
+
+export default async function OrderOperationsSummaryPage() {
+  const orders = await getOrderSummaries();
+
+  const aggregates = orders.reduce(
+    (summary, order) => {
+      const driverDocuments = buildDriverDocuments(order.driver);
+      const vehicleDocuments = buildVehicleDocuments(order.vehicle);
+
+      summary.missingDriverDocuments += getMissingCount(driverDocuments);
+      summary.missingVehicleDocuments += getMissingCount(vehicleDocuments);
+      if (order.attachments.length === 0) summary.ordersWithoutFiles += 1;
+      return summary;
+    },
+    { missingDriverDocuments: 0, missingVehicleDocuments: 0, ordersWithoutFiles: 0 }
+  );
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Operasyon Evrak Ozeti"
+        description="Aktif siparislerde operasyon akisini, surucu evraklarini ve arac dosyalarini tek ekranda takip edin."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/orders">Tum siparislere don</Link>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card>
+          <CardContent className="flex items-center gap-3 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Package className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{orders.length}</p>
+              <p className="text-xs text-muted-foreground">Takip edilen aktif siparis</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+              <UserSquare2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{aggregates.missingDriverDocuments}</p>
+              <p className="text-xs text-muted-foreground">Surucu belge uyarisi</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{aggregates.missingVehicleDocuments}</p>
+              <p className="text-xs text-muted-foreground">Arac belge uyarisi</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-5">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500/10 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{aggregates.ordersWithoutFiles}</p>
+              <p className="text-xs text-muted-foreground">Siparis dosyasi eksik kayit</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {orders.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-sm text-muted-foreground">
+            Su anda aktif siparis bulunmuyor. Yeni siparis planlandiginda bu ekranda otomatik gorunecek.
+          </CardContent>
+        </Card>
+      ) : (
+        orders.map((order) => {
+          const driverDocuments = buildDriverDocuments(order.driver);
+          const vehicleDocuments = buildVehicleDocuments(order.vehicle);
+
+          return (
+            <Card key={order.id} className="overflow-hidden">
+              <CardHeader className="gap-3 border-b border-border/60 bg-background/40 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CardTitle className="text-xl">{order.cargoNumber || order.tripNumber || "Numarasiz Siparis"}</CardTitle>
+                    <Badge variant={ORDER_STATUS_VARIANTS[order.status] ?? "outline"}>
+                      {ORDER_STATUS_LABELS[order.status] ?? order.status}
+                    </Badge>
+                    <Badge variant="outline">{order.orderCategory}</Badge>
+                  </div>
+                  <CardDescription>{order.routeText || "Guzergah girilmemis"}</CardDescription>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>Musteri: {order.customerName || "—"}</span>
+                    <span>Yukleme: {formatDate(order.loadingDate)}</span>
+                    <span>Bosaltma: {formatDate(order.unloadingDate)}</span>
+                    <span>Operasyon: {formatDate(order.operationDate)}</span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/orders/${order.id}`}>Operasyon detayi</Link>
+                  </Button>
+                  <AttachmentManager
+                    title="Siparis dosyalari"
+                    description="CMR, fatura ve operasyon evraklarini bu siparis uzerinde yonetin."
+                    entityId={order.id}
+                    endpointBase="/api/orders"
+                    triggerLabel="Siparis dosyalari"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-4 p-5 lg:grid-cols-3">
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold">Operasyon ve siparis dosyalari</h3>
+                  </div>
+                  <div className="grid gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
+                      <span>Cekici</span>
+                      <span className="font-medium text-foreground">{order.vehicle?.plateNumber || "Atanmadi"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
+                      <span>Dorse</span>
+                      <span className="font-medium text-foreground">{order.trailer?.plateNumber || "Atanmadi"}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
+                      <span>Surucu</span>
+                      <span className="font-medium text-foreground">{order.driver?.fullName || "Atanmadi"}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{order._count.driverEvents} event</Badge>
+                    <Badge variant="outline">{order._count.driverConfirmations} onam</Badge>
+                    <Badge variant={order._count.attachments > 0 ? "success" : "warning"}>
+                      {order._count.attachments} siparis dosyasi
+                    </Badge>
+                    {order.trailer && (
+                      <Badge variant={order.trailer.attachments.length > 0 ? "success" : "warning"}>
+                        {order.trailer.attachments.length} dorse dosyasi
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-foreground">Yuklu siparis belgeleri</p>
+                    {renderAttachmentList(order.attachments, "Siparise belge yuklenmemis.")}
+                  </div>
+                  {order.trailer && (
+                    <div className="space-y-2 rounded-xl border border-border/50 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Dorse dosyalari</p>
+                          <p className="text-xs text-muted-foreground">{order.trailer.plateNumber} {order.trailer.type ? `· ${order.trailer.type}` : ""}</p>
+                        </div>
+                        <AttachmentManager
+                          title="Dorse dosyalari"
+                          description="Dorseye ait ilgili operasyon dosyalarini yonetin."
+                          entityId={order.trailer.id}
+                          endpointBase="/api/trailers"
+                          triggerLabel="Dorse dosyalari"
+                          triggerClassName="h-8 gap-2"
+                        />
+                      </div>
+                      {renderAttachmentList(order.trailer.attachments, "Dorseye bagli dosya yok.")}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <UserRound className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold">Surucu evraklari</h3>
+                    </div>
+                    {order.driver && (
+                      <AttachmentManager
+                        title="Surucu dosyalari"
+                        description="Pasaport, ehliyet ve diger surucu belgelerini yonetin."
+                        entityId={order.driver.id}
+                        endpointBase="/api/drivers"
+                        triggerLabel="Surucu dosyalari"
+                        triggerClassName="h-8 gap-2"
+                      />
+                    )}
+                  </div>
+                  {!order.driver ? (
+                    <p className="text-sm text-muted-foreground">Bu siparise surucu atanmamis.</p>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border border-border/50 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-foreground">{order.driver.fullName}</p>
+                            <p className="text-xs text-muted-foreground">{order.driver.phoneNumber || "Telefon yok"}</p>
+                          </div>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link href={`/drivers/${order.driver.id}`}>Surucu karti</Link>
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        {driverDocuments.map((document) => (
+                          <div key={`${order.id}-${document.label}`} className={`rounded-xl border p-3 ${document.tone}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{document.label}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {document.expiryDate ? `${formatDate(document.expiryDate)} · ${document.meta || ""}` : document.meta}
+                                </p>
+                              </div>
+                              <Badge variant={document.variant}>{document.statusLabel}</Badge>
+                            </div>
+                            {document.attachment && (
+                              <a
+                                href={document.attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex items-center gap-2 text-xs text-primary hover:underline"
+                              >
+                                <FolderOpen className="h-3.5 w-3.5" />
+                                {document.attachment.label || `${document.label} dosyasi`}
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold">Arac evraklari</h3>
+                    </div>
+                    {order.vehicle && (
+                      <AttachmentManager
+                        title="Arac dosyalari"
+                        description="Kasko, sigorta ve teknik belge dosyalarini yonetin."
+                        entityId={order.vehicle.id}
+                        endpointBase="/api/vehicles"
+                        triggerLabel="Arac dosyalari"
+                        triggerClassName="h-8 gap-2"
+                      />
+                    )}
+                  </div>
+                  {!order.vehicle ? (
+                    <p className="text-sm text-muted-foreground">Bu siparise arac atanmamis.</p>
+                  ) : (
+                    <>
+                      <div className="rounded-xl border border-border/50 p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <CarFront className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{order.vehicle.plateNumber}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {[order.vehicle.brand, order.vehicle.model].filter(Boolean).join(" ") || "Marka/model yok"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        {vehicleDocuments.map((document) => (
+                          <div key={`${order.id}-${document.label}`} className={`rounded-xl border p-3 ${document.tone}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{document.label}</p>
+                                <p className="text-xs text-muted-foreground">{document.meta}</p>
+                              </div>
+                              <Badge variant={document.variant}>{document.statusLabel}</Badge>
+                            </div>
+                            {document.attachment && (
+                              <a
+                                href={document.attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 inline-flex items-center gap-2 text-xs text-primary hover:underline"
+                              >
+                                <FolderOpen className="h-3.5 w-3.5" />
+                                {document.attachment.label || `${document.label} dosyasi`}
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-5 py-4 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    Son guncelleme: {formatDate(order.updatedAt)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <UserRound className="h-3.5 w-3.5" />
+                    Surucu belge alarmi: {getMissingCount(driverDocuments)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Arac belge alarmi: {getMissingCount(vehicleDocuments)}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          );
+        })
+      )}
+    </div>
+  );
+}

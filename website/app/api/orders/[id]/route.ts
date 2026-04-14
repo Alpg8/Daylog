@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { updateOrderSchema } from "@/lib/validators/order";
-import { recordActivity } from "@/lib/services/activity-log";
+import { recordEntityChange } from "@/lib/services/activity-log";
 
 export async function GET(
   _request: NextRequest,
@@ -41,6 +41,7 @@ export async function PUT(
     }
 
     const data = parsed.data;
+  const before = await prisma.order.findUnique({ where: { id: params.id } });
     const order = await prisma.order.update({
       where: { id: params.id },
       data: {
@@ -57,7 +58,7 @@ export async function PUT(
     });
 
     const jobLabel = order.cargoNumber ?? order.tripNumber ?? "İş";
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
       source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
@@ -66,6 +67,8 @@ export async function PUT(
       entityId: order.id,
       message: "Order bilgileri guncellendi",
       metadata: { status: order.status },
+      before,
+      after: order,
       notifyOps: true,
       notifyDriverUserId: order.driver?.userId ?? null,
       driverTitle: "İş Güncellendi",
@@ -130,9 +133,10 @@ export async function PATCH(
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
     }
+    const before = await prisma.order.findUnique({ where: { id: params.id } });
     const order = await prisma.order.update({ where: { id: params.id }, data: patch });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
       source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
@@ -141,6 +145,8 @@ export async function PATCH(
       entityId: order.id,
       message: "Order alanlari parcali guncellendi",
       metadata: { updatedFields: Object.keys(patch) },
+      before,
+      after: order,
       notifyOps: true,
     });
 
@@ -152,23 +158,26 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const session = await getCurrentUser();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    const before = await prisma.order.findUnique({ where: { id: params.id } });
     await prisma.order.delete({ where: { id: params.id } });
 
-    await recordActivity({
+    await recordEntityChange({
       userId: session.sub,
       role: session.role,
-      source: "WEB",
+      source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
       action: "DELETE_ORDER",
       entityType: "Order",
       entityId: params.id,
       message: "Order silindi",
+      before,
+      after: null,
       notifyOps: true,
     });
 

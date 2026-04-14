@@ -1,19 +1,41 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, Platform, type AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import { apiFetch, apiFetchForm, apiFetchPublic } from "../api";
 import { API_BASE_URL } from "../config";
-import { apiFetch, apiFetchForm } from "../api";
 import { STEP_LABELS, TOKEN_KEY, USER_KEY, type StepType } from "../constants";
 import type {
+  AttachmentItem,
+  DriverMessage,
   DriverMeResponse,
   DriverNotification,
   DriverOverviewStats,
+  DriverProfile,
   DriverRecentJobItem,
   DriverTask,
   DriverUser,
   DriverVehicleHistoryItem,
 } from "../types";
+
+interface MobileLoginResponse {
+  token: string;
+  user: DriverUser;
+  message?: string;
+}
+
+interface NotificationStreamEvent {
+  type: string;
+  data?: string;
+}
+
+interface NativeEventSource {
+  addEventListener(type: string, listener: (event: NotificationStreamEvent) => void): void;
+  removeEventListener(type: string, listener: (event: NotificationStreamEvent) => void): void;
+  removeAllEventListeners(): void;
+  close(): void;
+}
 
 export function useDriverApp() {
   const [booting, setBooting] = useState(true);
@@ -22,8 +44,11 @@ export function useDriverApp() {
 
   const [tasks, setTasks] = useState<DriverTask[]>([]);
   const [notifications, setNotifications] = useState<DriverNotification[]>([]);
+  const [messages, setMessages] = useState<DriverMessage[]>([]);
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
   const [driverId, setDriverId] = useState("");
+  const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
   const [driverPhone, setDriverPhone] = useState("");
   const [driverNotes, setDriverNotes] = useState("");
   const [assignedVehicle, setAssignedVehicle] = useState<string>("-");
@@ -34,6 +59,8 @@ export function useDriverApp() {
     completedJobs: 0,
     totalFuelRecords: 0,
   });
+  const [currentTaskAttachments, setCurrentTaskAttachments] = useState<AttachmentItem[]>([]);
+  const [driverAttachments, setDriverAttachments] = useState<AttachmentItem[]>([]);
 
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [stepType, setStepType] = useState<StepType>("START_JOB");
@@ -45,7 +72,13 @@ export function useDriverApp() {
   const [fuelLiters, setFuelLiters] = useState("");
   const [fuelStation, setFuelStation] = useState("");
   const [fuelCost, setFuelCost] = useState("");
-  const [fuelPhotoUri, setFuelPhotoUri] = useState<string | null>(null);
+  const [fuelStartKm, setFuelStartKm] = useState("");
+  const [fuelEndKm, setFuelEndKm] = useState("");
+  const [fuelTankLeft, setFuelTankLeft] = useState("");
+  const [fuelTankRight, setFuelTankRight] = useState("");
+
+  const [damageTitle, setDamageTitle] = useState("");
+  const [damageDescription, setDamageDescription] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -68,7 +101,63 @@ export function useDriverApp() {
     void refreshAll();
   }, [token]);
 
-  // Auto-refresh: when app comes to foreground + every 60s while active
+  useEffect(() => {
+    if (!token || !selectedTaskId) {
+      setCurrentTaskAttachments([]);
+      return;
+    }
+    void loadCurrentTaskAttachments(selectedTaskId);
+  }, [token, selectedTaskId]);
+
+  useEffect(() => {
+    if (!token || Platform.OS === "web") return;
+
+    let cancelled = false;
+    let stream: NativeEventSource | null = null;
+
+    const handleNotification = () => {
+      void refreshAll();
+    };
+
+    const connect = async () => {
+      try {
+        const mod = require("react-native-sse") as {
+          default: new (
+            url: string,
+            options?: { headers?: Record<string, string>; pollingInterval?: number }
+          ) => NativeEventSource;
+        };
+        if (cancelled) return;
+
+        const EventSource = mod.default;
+        const baseUrl = API_BASE_URL.replace(/\/$/, "");
+
+        stream = new EventSource(`${baseUrl}/api/notifications/stream`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "x-client-source": "APP",
+          },
+          pollingInterval: 5_000,
+        }) as NativeEventSource;
+
+        stream.addEventListener("message", handleNotification);
+        stream.addEventListener("notification", handleNotification);
+      } catch (error) {
+        console.warn("SSE connection could not be started", error);
+      }
+    };
+
+    void connect();
+
+    return () => {
+      cancelled = true;
+      if (stream) {
+        stream.removeAllEventListeners();
+        stream.close();
+      }
+    };
+  }, [token]);
+
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
@@ -78,14 +167,12 @@ export function useDriverApp() {
       return;
     }
 
-    // Start 60s polling
     pollingRef.current = setInterval(() => {
       if (AppState.currentState === "active") {
         void refreshAll();
       }
     }, 60_000);
 
-    // Refresh when app comes back to foreground
     const subscription = AppState.addEventListener("change", (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
         void refreshAll();
@@ -100,29 +187,25 @@ export function useDriverApp() {
   }, [token]);
 
   const activeTasks = useMemo(
-    () => tasks.filter((t) => t.status === "PLANNED" || t.status === "IN_PROGRESS"),
+    () => tasks.filter((task) => task.status === "PLANNED" || task.status === "IN_PROGRESS"),
     [tasks]
   );
 
-  const selectedTask = useMemo(() => tasks.find((t) => t.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
+  const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
 
   async function login(email: string, password: string): Promise<string | null> {
     try {
       setBooting(true);
-      const res = await fetch(`${API_BASE_URL}/api/auth/mobile-login`, {
+      const json = await apiFetchPublic<MobileLoginResponse>("/api/auth/mobile-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const json = await res.json();
-      if (!res.ok) return json?.error ?? "Login failed";
-      if (json?.user?.role !== "DRIVER") return "Bu uygulama yalnizca soforler icin";
+      if (json.user?.role !== "DRIVER") return "Bu uygulama yalnizca soforler icin";
 
-      const driverUser = json.user as DriverUser;
       await AsyncStorage.setItem(TOKEN_KEY, json.token);
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(driverUser));
-      setToken(json.token as string);
-      setUser(driverUser);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(json.user));
+      setToken(json.token);
+      setUser(json.user);
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "Bilinmeyen hata";
@@ -137,14 +220,18 @@ export function useDriverApp() {
     setUser(null);
     setTasks([]);
     setNotifications([]);
+    setMessages([]);
+    setMessageUnreadCount(0);
     setDriverId("");
+    setDriverProfile(null);
     setVehicleHistory([]);
     setRecentJobs([]);
+    setCurrentTaskAttachments([]);
     setOverviewStats({ totalJobs: 0, completedJobs: 0, totalFuelRecords: 0 });
   }
 
   async function refreshAll() {
-    await Promise.all([loadTasks(), loadNotifications(), loadDriverMe()]);
+    await Promise.all([loadTasks(), loadNotifications(), loadMessages(), loadDriverMe()]);
   }
 
   async function loadTasks(): Promise<string | null> {
@@ -152,8 +239,8 @@ export function useDriverApp() {
     try {
       const data = await apiFetch<{ tasks: DriverTask[] }>("/api/driver/tasks", token);
       setTasks(data.tasks ?? []);
-      const firstActive = (data.tasks ?? []).find((t) => t.status === "PLANNED" || t.status === "IN_PROGRESS");
-      setSelectedTaskId((prev) => prev || firstActive?.id || "");
+      const firstActive = (data.tasks ?? []).find((task) => task.status === "PLANNED" || task.status === "IN_PROGRESS");
+      setSelectedTaskId((previous) => previous || firstActive?.id || "");
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "Isler alinamadi";
@@ -171,14 +258,28 @@ export function useDriverApp() {
     }
   }
 
+  async function loadMessages(): Promise<string | null> {
+    if (!token) return null;
+    try {
+      const data = await apiFetch<{ messages: DriverMessage[]; unreadCount: number }>("/api/driver/messages", token);
+      setMessages(data.messages ?? []);
+      setMessageUnreadCount(data.unreadCount ?? 0);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Mesajlar alinamadi";
+    }
+  }
+
   async function loadDriverMe(): Promise<string | null> {
     if (!token) return null;
     try {
       const data = await apiFetch<DriverMeResponse>("/api/driver/me", token);
       setDriverId(data.driver.id);
+      setDriverProfile(data.driver);
       setDriverPhone(data.driver.phoneNumber ?? "");
       setDriverNotes(data.driver.notes ?? "");
       setAssignedVehicle(data.driver.assignedVehicle?.plateNumber ?? "Atanmamis");
+      setDriverAttachments(data.driver.attachments ?? []);
       setVehicleHistory(data.vehicleHistory ?? []);
       setRecentJobs(data.recentJobs ?? []);
       setOverviewStats(data.stats ?? { totalJobs: 0, completedJobs: 0, totalFuelRecords: 0 });
@@ -188,11 +289,20 @@ export function useDriverApp() {
     }
   }
 
+  async function loadCurrentTaskAttachments(taskId: string): Promise<string | null> {
+    if (!token || !taskId) return null;
+    try {
+      const data = await apiFetch<{ attachments: AttachmentItem[] }>(`/api/driver/orders/${taskId}/attachments`, token);
+      setCurrentTaskAttachments(data.attachments ?? []);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Is dokumanlari alinamadi";
+    }
+  }
+
   async function pickImage(): Promise<string | null> {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      return "Galeri izni gerekli";
-    }
+    if (!perm.granted) return "Galeri izni gerekli";
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -202,6 +312,65 @@ export function useDriverApp() {
 
     if (result.canceled) return null;
     return result.assets[0].uri;
+  }
+
+  async function uploadCurrentTaskDocument(label?: string): Promise<string | null> {
+    if (!token) return "Oturum bulunamadi";
+    if (!selectedTaskId) return "Lutfen once bir is secin";
+
+    const result = await DocumentPicker.getDocumentAsync({
+      multiple: false,
+      copyToCacheDirectory: true,
+      type: ["application/pdf", "image/*", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    });
+
+    if (result.canceled) return null;
+    const asset = result.assets[0];
+
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: asset.uri,
+        name: asset.name,
+        type: asset.mimeType ?? "application/octet-stream",
+      } as unknown as Blob);
+      if (label?.trim()) formData.append("label", label.trim());
+
+      await apiFetchForm(`/api/driver/orders/${selectedTaskId}/attachments`, token, formData);
+      await loadCurrentTaskAttachments(selectedTaskId);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Dosya yuklenemedi";
+    }
+  }
+
+  async function uploadDriverDocument(label?: string): Promise<string | null> {
+    if (!token) return "Oturum bulunamadi";
+
+    const result = await DocumentPicker.getDocumentAsync({
+      multiple: false,
+      copyToCacheDirectory: true,
+      type: ["application/pdf", "image/*", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    });
+
+    if (result.canceled) return null;
+    const asset = result.assets[0];
+
+    try {
+      const formData = new FormData();
+      formData.append("file", {
+        uri: asset.uri,
+        name: asset.name,
+        type: asset.mimeType ?? "application/octet-stream",
+      } as unknown as Blob);
+      if (label?.trim()) formData.append("label", label.trim());
+
+      await apiFetchForm("/api/driver/me/attachments", token, formData);
+      await loadDriverMe();
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Sofor dosyasi yuklenemedi";
+    }
   }
 
   async function submitStepUpdate(): Promise<string | null> {
@@ -255,29 +424,51 @@ export function useDriverApp() {
 
   async function submitFuelRequest(): Promise<string | null> {
     if (!token) return "Oturum bulunamadi";
-    if (!fuelPhotoUri) return "Yakit talebi icin fis/fotograf zorunlu";
     if (!fuelLiters) return "Litre bilgisi zorunlu";
+    if (!fuelStartKm || !fuelEndKm) return "Baslangic ve bitis kilometresi gerekli";
+    if (!fuelTankLeft || !fuelTankRight) return "Sol ve sag depo miktarlari gerekli";
 
     try {
-      const formData = new FormData();
-      formData.append("date", fuelDate);
-      formData.append("liters", fuelLiters);
-      if (fuelStation) formData.append("fuelStation", fuelStation);
-      if (fuelCost) formData.append("totalCost", fuelCost);
-      formData.append("file", {
-        uri: fuelPhotoUri,
-        name: `fuel-${Date.now()}.jpg`,
-        type: "image/jpeg",
-      } as unknown as Blob);
-
-      await apiFetchForm("/api/driver/fuel-request", token, formData);
+      await apiFetch("/api/driver/fuel-request", token, {
+        method: "POST",
+        body: JSON.stringify({
+          date: fuelDate,
+          liters: Number(fuelLiters),
+          fuelStation: fuelStation || null,
+          totalCost: fuelCost ? Number(fuelCost) : null,
+          startKm: Number(fuelStartKm),
+          endKm: Number(fuelEndKm),
+          tankLeft: Number(fuelTankLeft),
+          tankRight: Number(fuelTankRight),
+        }),
+      });
       setFuelLiters("");
       setFuelStation("");
       setFuelCost("");
-      setFuelPhotoUri(null);
+      setFuelStartKm("");
+      setFuelEndKm("");
+      setFuelTankLeft("");
+      setFuelTankRight("");
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "Yakit talebi gonderilemedi";
+    }
+  }
+
+  async function submitVehicleDamageReport(): Promise<string | null> {
+    if (!token) return "Oturum bulunamadi";
+    if (!damageTitle.trim() || !damageDescription.trim()) return "Baslik ve aciklama gerekli";
+
+    try {
+      await apiFetch("/api/driver/vehicle-damage", token, {
+        method: "POST",
+        body: JSON.stringify({ title: damageTitle.trim(), description: damageDescription.trim() }),
+      });
+      setDamageTitle("");
+      setDamageDescription("");
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Hasar bildirimi gonderilemedi";
     }
   }
 
@@ -315,9 +506,35 @@ export function useDriverApp() {
         method: "POST",
         body: JSON.stringify({ subject, message }),
       });
+      await loadMessages();
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "Mesaj gonderilemedi";
+    }
+  }
+
+  async function deleteMessage(messageId: string): Promise<string | null> {
+    if (!token) return "Oturum bulunamadi";
+    try {
+      await apiFetch(`/api/driver/messages/${messageId}`, token, { method: "DELETE" });
+      await loadMessages();
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Mesaj silinemedi";
+    }
+  }
+
+  async function markAllMessagesRead(): Promise<string | null> {
+    if (!token) return "Oturum bulunamadi";
+    try {
+      await apiFetch("/api/driver/messages", token, {
+        method: "PATCH",
+        body: JSON.stringify({ markAll: true }),
+      });
+      await loadMessages();
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Mesajlar guncellenemedi";
     }
   }
 
@@ -331,14 +548,19 @@ export function useDriverApp() {
     selectedTaskId,
     setSelectedTaskId,
     notifications,
+    messages,
+    messageUnreadCount,
+    driverProfile,
     driverPhone,
     setDriverPhone,
     driverNotes,
     setDriverNotes,
+    driverAttachments,
     assignedVehicle,
     vehicleHistory,
     recentJobs,
     overviewStats,
+    currentTaskAttachments,
     stepType,
     setStepType,
     stepNotes,
@@ -355,18 +577,34 @@ export function useDriverApp() {
     setFuelStation,
     fuelCost,
     setFuelCost,
-    fuelPhotoUri,
-    setFuelPhotoUri,
+    fuelStartKm,
+    setFuelStartKm,
+    fuelEndKm,
+    setFuelEndKm,
+    fuelTankLeft,
+    setFuelTankLeft,
+    fuelTankRight,
+    setFuelTankRight,
+    damageTitle,
+    setDamageTitle,
+    damageDescription,
+    setDamageDescription,
     login,
     logout,
     refreshAll,
     loadTasks,
     loadNotifications,
+    loadMessages,
     pickImage,
+    uploadCurrentTaskDocument,
+    uploadDriverDocument,
     submitStepUpdate,
     submitFuelRequest,
+    submitVehicleDamageReport,
     saveProfile,
     markAllNotificationsRead,
+    markAllMessagesRead,
     sendOfficeMessage,
+    deleteMessage,
   };
 }

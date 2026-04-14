@@ -11,6 +11,7 @@ import {
   Users,
   FuelIcon,
   Bell,
+  Mail,
   Radio,
   ChevronDown,
   ArrowDownToLine,
@@ -20,6 +21,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   History,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,12 +46,14 @@ const navItems: NavItem[] = [
       { title: "İhracat", href: "/orders/export", icon: ArrowUpFromLine },
     ],
   },
+  { title: "Evrak Özeti", href: "/orders/operations-summary", icon: FolderOpen },
   { title: "Araçlar (Çekici)", href: "/vehicles", icon: Truck },
   { title: "Dorseler", href: "/trailers", icon: Caravan as React.ElementType },
   { title: "Sürücüler", href: "/drivers", icon: Users },
   { title: "Yakıt Kayıtları", href: "/fuel", icon: FuelIcon },
   { title: "Canli Operasyon", href: "/live-operations", icon: Radio },
   { title: "Islem Kayitlari", href: "/activities", icon: History },
+  { title: "Mesajlar", href: "/messages", icon: Mail },
   { title: "Bildirimler", href: "/notifications", icon: Bell },
   { title: "Kullanıcılar", href: "/users", icon: UserCog },
 ];
