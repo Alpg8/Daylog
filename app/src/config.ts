@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 
 const LAN_DEV_HOST = "127.0.0.1";
-const DEFAULT_API_PORT = "3001";
+const DEFAULT_API_PORT = "3000";
 
 function getExpoHost(): string | null {
 	const expoHostUri =

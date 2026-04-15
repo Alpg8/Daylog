@@ -38,11 +38,10 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 
-# Mobile app — Expo / React Native artefacts (sunucuya gitmez)
+# Mobile app — Expo / React Native artefacts
 app/.expo/
 app/dist/
 app/android/
-app/ios/
 
 # IDE
 .vscode/
