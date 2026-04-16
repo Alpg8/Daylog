@@ -7,20 +7,22 @@ import { Header } from "@/components/layout/header";
 
 const titleMap: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/live-operations": "Canli Operasyon",
-  "/activities": "Islem Kayitlari",
+  "/live-operations": "Canlı Operasyon",
+  "/activities": "İşlem Kayıtları",
   "/messages": "Mesajlar",
-  "/orders/operations-summary": "Operasyon Evrak Ozeti",
-  "/orders": "Tüm Seferler",
-  "/orders/domestic": "Yurt İçi Seferler",
-  "/orders/import": "İthalat Seferleri",
-  "/orders/export": "İhracat Seferleri",
-  "/vehicles": "Araçlar",
+  "/orders/operations-summary": "Evrak Özeti",
+  "/orders": "Tüm Siparişler",
+  "/orders/domestic": "Yurtiçi Siparişler",
+  "/orders/import": "İthalat Siparişleri",
+  "/orders/export": "İhracat Siparişleri",
+  "/vehicles": "Araçlar (Çekici)",
   "/trailers": "Dorseler",
   "/drivers": "Sürücüler",
   "/fuel": "Yakıt Kayıtları",
   "/notifications": "Bildirimler",
   "/users": "Kullanıcılar",
+  "/customers": "Müşteriler",
+  "/suppliers": "Tedarikçiler",
 };
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {

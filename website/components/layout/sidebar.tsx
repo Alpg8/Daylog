@@ -22,40 +22,87 @@ import {
   PanelLeftOpen,
   History,
   FolderOpen,
+  Building2,
+  UserCheck,
+  PackageSearch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 
+interface NavChild {
+  title: string;
+  href: string;
+  icon: React.ElementType;
+}
+
 interface NavItem {
   title: string;
   href?: string;
   icon: React.ElementType;
-  children?: { title: string; href: string; icon: React.ElementType }[];
+  children?: NavChild[];
 }
 
-const navItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+interface NavSection {
+  section: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
   {
-    title: "Siparişler",
-    icon: Package,
-    children: [
-      { title: "Tüm Siparişler", href: "/orders", icon: Package },
-      { title: "Yurtiçi", href: "/orders/domestic", icon: MapPin },
-      { title: "İthalat", href: "/orders/import", icon: ArrowDownToLine },
-      { title: "İhracat", href: "/orders/export", icon: ArrowUpFromLine },
+    section: "Operasyon",
+    items: [
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      {
+        title: "Siparişler",
+        icon: Package,
+        children: [
+          { title: "Tüm Siparişler", href: "/orders", icon: Package },
+          { title: "Yurtiçi", href: "/orders/domestic", icon: MapPin },
+          { title: "İthalat", href: "/orders/import", icon: ArrowDownToLine },
+          { title: "İhracat", href: "/orders/export", icon: ArrowUpFromLine },
+        ],
+      },
+      { title: "Evrak Özeti", href: "/orders/operations-summary", icon: FolderOpen },
+      { title: "Canlı Operasyon", href: "/live-operations", icon: Radio },
     ],
   },
-  { title: "Evrak Özeti", href: "/orders/operations-summary", icon: FolderOpen },
-  { title: "Araçlar (Çekici)", href: "/vehicles", icon: Truck },
-  { title: "Dorseler", href: "/trailers", icon: Caravan as React.ElementType },
-  { title: "Sürücüler", href: "/drivers", icon: Users },
-  { title: "Yakıt Kayıtları", href: "/fuel", icon: FuelIcon },
-  { title: "Canli Operasyon", href: "/live-operations", icon: Radio },
-  { title: "Islem Kayitlari", href: "/activities", icon: History },
-  { title: "Mesajlar", href: "/messages", icon: Mail },
-  { title: "Bildirimler", href: "/notifications", icon: Bell },
-  { title: "Kullanıcılar", href: "/users", icon: UserCog },
+  {
+    section: "Kaynak Yönetimi",
+    items: [
+      { title: "Araçlar (Çekici)", href: "/vehicles", icon: Truck },
+      { title: "Dorseler", href: "/trailers", icon: Caravan as React.ElementType },
+      { title: "Sürücüler", href: "/drivers", icon: Users },
+      { title: "Yakıt Kayıtları", href: "/fuel", icon: FuelIcon },
+    ],
+  },
+  {
+    section: "Ticari Yapı",
+    items: [
+      {
+        title: "Firmalar",
+        icon: Building2,
+        children: [
+          { title: "Müşteriler", href: "/customers", icon: UserCheck },
+          { title: "Tedarikçiler", href: "/suppliers", icon: PackageSearch },
+        ],
+      },
+    ],
+  },
+  {
+    section: "İletişim",
+    items: [
+      { title: "Mesajlar", href: "/messages", icon: Mail },
+      { title: "Bildirimler", href: "/notifications", icon: Bell },
+    ],
+  },
+  {
+    section: "Sistem",
+    items: [
+      { title: "İşlem Kayıtları", href: "/activities", icon: History },
+      { title: "Kullanıcılar", href: "/users", icon: UserCog },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -118,90 +165,101 @@ export function Sidebar() {
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-2 py-4">
-        <nav className="space-y-0.5">
-          {navItems.map((item) => {
-            if (item.children) {
-              const isOpen = openGroups.includes(item.title);
-              const isGroupActive = item.children.some((child) => isActive(child.href));
+        <nav className="space-y-4">
+          {navSections.map((section) => (
+            <div key={section.section}>
+              {!collapsed && (
+                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  {section.section}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  if (item.children) {
+                    const isOpen = openGroups.includes(item.title);
+                    const isGroupActive = item.children.some((child) => isActive(child.href));
 
-              if (collapsed) {
-                return (
-                  <Link
-                    key={item.title}
-                    href={item.children[0].href}
-                    title={item.title}
-                    className={cn(
-                      "flex items-center justify-center rounded-xl p-2 transition-all duration-200",
-                      isGroupActive
-                        ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-foreground border border-border shadow-sm"
-                        : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                  </Link>
-                );
-              }
-
-              return (
-                <div key={item.title}>
-                  <button
-                    onClick={() => toggleGroup(item.title)}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
-                      isGroupActive
-                        ? "bg-cyan-500/10 text-foreground shadow-sm"
-                        : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
-                    )}
-                  >
-                    <span className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      {item.title}
-                    </span>
-                    <ChevronDown
-                      className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-180")}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border dark:border-white/[0.07] pl-3">
-                      {item.children.map((child) => (
+                    if (collapsed) {
+                      return (
                         <Link
-                          key={child.href}
-                          href={child.href}
+                          key={item.title}
+                          href={item.children[0].href}
+                          title={item.title}
                           className={cn(
-                            "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
-                            isActive(child.href)
-                              ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-foreground font-medium border border-border shadow-sm"
+                            "flex items-center justify-center rounded-xl p-2 transition-all duration-200",
+                            isGroupActive
+                              ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-foreground border border-border shadow-sm"
                               : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
                           )}
                         >
-                          <child.icon className="h-3.5 w-3.5" />
-                          {child.title}
+                          <item.icon className="h-4 w-4 shrink-0" />
                         </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            }
+                      );
+                    }
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href!}
-                title={collapsed ? item.title : undefined}
-                className={cn(
-                  "flex items-center rounded-xl transition-all duration-200",
-                  collapsed ? "justify-center p-2" : "gap-3 px-3 py-2 text-sm",
-                  isActive(item.href!)
-                    ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-foreground font-medium border border-border shadow-sm"
-                    : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {!collapsed && item.title}
-              </Link>
-            );
-          })}
+                    return (
+                      <div key={item.title}>
+                        <button
+                          onClick={() => toggleGroup(item.title)}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
+                            isGroupActive
+                              ? "bg-cyan-500/10 text-foreground shadow-sm"
+                              : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
+                          )}
+                        >
+                          <span className="flex items-center gap-3">
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            {item.title}
+                          </span>
+                          <ChevronDown
+                            className={cn("h-3.5 w-3.5 transition-transform duration-200", isOpen && "rotate-180")}
+                          />
+                        </button>
+                        {isOpen && (
+                          <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border dark:border-white/[0.07] pl-3">
+                            {item.children.map((child) => (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                className={cn(
+                                  "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200",
+                                  isActive(child.href)
+                                    ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-foreground font-medium border border-border shadow-sm"
+                                    : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
+                                )}
+                              >
+                                <child.icon className="h-3.5 w-3.5" />
+                                {child.title}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href!}
+                      title={collapsed ? item.title : undefined}
+                      className={cn(
+                        "flex items-center rounded-xl transition-all duration-200",
+                        collapsed ? "justify-center p-2" : "gap-3 px-3 py-2 text-sm",
+                        isActive(item.href!)
+                          ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-foreground font-medium border border-border shadow-sm"
+                          : "text-muted-foreground hover:bg-foreground/[0.07] hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && item.title}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </ScrollArea>
     </aside>
