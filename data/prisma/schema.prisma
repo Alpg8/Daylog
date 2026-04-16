@@ -121,6 +121,11 @@ enum ActionSource {
   SYSTEM
 }
 
+enum JobType {
+  LOADING
+  UNLOADING
+}
+
 enum OperationTaskStatus {
   OPEN
   IN_PROGRESS
@@ -252,9 +257,12 @@ model Order {
   updatedAt       DateTime      @updatedAt
 
   // ── Ortak yeni alanlar ──────────────────────
+  jobType   JobType @default(LOADING) // Is tipi: Yukleme veya Bosaltma
   sender    String? // Gönderici
   recipient String? // Alıcı
   customs   String? // Gümrük / Çıkış Kapısı
+  loadingAddress   String? // Yükleme / Alış Adresi (sürücüye gösterilen)
+  deliveryAddress  String? // Teslim / Boşaltma Adresi (sürücüye gösterilen)
 
   // ── EXPORT alanları ─────────────────────────
   borderExitDate   DateTime? // Kapıkule Çıkış Tarihi

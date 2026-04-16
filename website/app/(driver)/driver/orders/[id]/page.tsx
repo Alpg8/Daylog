@@ -94,10 +94,17 @@ interface FlowStep {
   requiresPhoto: boolean;
 }
 
-const OPERATION_FLOW: FlowStep[] = [
+const LOADING_FLOW: FlowStep[] = [
   { eventType: "START_JOB", label: "Isi Baslat", icon: Play, confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum", requiresPhoto: false },
   { eventType: "LOAD", label: "Yukleme", icon: PackageOpen, confirmationType: "LOADING_CONFIRMED", confirmLabel: "Yuklemeyi onayliyorum", requiresPhoto: true },
   { eventType: "DELIVERY", label: "Teslim", icon: PackageCheck, confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Teslimi gerceklestirdim", requiresPhoto: true },
+  { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: true },
+];
+
+const UNLOADING_FLOW: FlowStep[] = [
+  { eventType: "START_JOB", label: "Isi Baslat", icon: Play, confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum", requiresPhoto: false },
+  { eventType: "UNLOAD", label: "Bosaltma", icon: PackageCheck, confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Bosaltmayi onayliyorum", requiresPhoto: true },
+  { eventType: "DELIVERY", label: "Teslim", icon: Flag, requiresPhoto: true },
   { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: true },
 ];
 
@@ -107,9 +114,12 @@ interface TimelineResponse {
   order: {
     id: string;
     status: string;
+    jobType: "LOADING" | "UNLOADING" | null;
     cargoNumber: string | null;
     tripNumber: string | null;
     routeText: string | null;
+    loadingAddress: string | null;
+    deliveryAddress: string | null;
     vehicle?: { plateNumber: string } | null;
     trailer?: { plateNumber: string; type: string | null } | null;
     driver?: { id: string; fullName: string; phoneNumber: string | null } | null;
@@ -211,11 +221,13 @@ export default function DriverOrderDetailPage() {
     timeline?.order.driverEvents.filter((e) => e.photos.length > 0).map((e) => e.type) ?? []
   );
 
+  const activeFlow = timeline?.order.jobType === "UNLOADING" ? UNLOADING_FLOW : LOADING_FLOW;
+
   function isStepDone(step: FlowStep) { return doneEventTypes.has(step.eventType); }
   function isStepPhotoOk(step: FlowStep) { return !step.requiresPhoto || photoEventTypes.has(step.eventType); }
   function isStepConfirmOk(step: FlowStep) { return !step.confirmationType || doneConfirmTypes.has(step.confirmationType); }
   function getNextStep(): FlowStep | null {
-    for (const step of OPERATION_FLOW) { if (!isStepDone(step)) return step; }
+    for (const step of activeFlow) { if (!isStepDone(step)) return step; }
     return null;
   }
 
@@ -429,10 +441,35 @@ export default function DriverOrderDetailPage() {
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchTimeline}><RefreshCw className="h-3.5 w-3.5" /></Button>
           </div>
           <p className="mt-2 text-base font-semibold">{order.cargoNumber || "Yuk No Yok"}{order.tripNumber ? ` / ${order.tripNumber}` : ""}</p>
+          <div className="mt-1 mb-1">
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+              order.jobType === "UNLOADING"
+                ? "bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-500/30"
+                : "bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30"
+            }`}>
+              {order.jobType === "UNLOADING" ? "Bosaltma Isi" : "Yukleme Isi"}
+            </span>
+          </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {order.vehicle && <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> {order.vehicle.plateNumber}</span>}
             {order.routeText && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {order.routeText}</span>}
           </div>
+          {(order.loadingAddress || order.deliveryAddress) && (
+            <div className="mt-2 space-y-1.5 rounded-lg border border-border/60 bg-muted/30 p-2.5 text-xs">
+              {order.loadingAddress && (
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-[9px] font-bold text-blue-700 dark:text-blue-300">Y</span>
+                  <div><p className="font-medium text-foreground/80">Yukleme Adresi</p><p className="text-muted-foreground">{order.loadingAddress}</p></div>
+                </div>
+              )}
+              {order.deliveryAddress && (
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[9px] font-bold text-emerald-700 dark:text-emerald-300">T</span>
+                  <div><p className="font-medium text-foreground/80">Teslim / Bosaltma Adresi</p><p className="text-muted-foreground">{order.deliveryAddress}</p></div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -455,7 +492,7 @@ export default function DriverOrderDetailPage() {
         <CardHeader className="pb-2 px-3.5 pt-3.5"><CardTitle className="text-sm">Operasyon Adimlari</CardTitle></CardHeader>
         <CardContent className="px-3.5 pb-3.5">
           <div className="space-y-2">
-            {OPERATION_FLOW.map((step, idx) => {
+            {activeFlow.map((step, idx) => {
               const done = isStepDone(step);
               const photoOk = isStepPhotoOk(step);
               const confirmOk = isStepConfirmOk(step);

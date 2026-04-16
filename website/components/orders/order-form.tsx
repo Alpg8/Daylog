@@ -33,6 +33,10 @@ const formSchema = z.object({
   invoiceNumber: str,
   routeText: str,
   notes: str,
+  // İş Tipi + Adresler (sürücüye gösterilen)
+  jobType: z.enum(["LOADING", "UNLOADING"]).default("LOADING"),
+  loadingAddress: str,
+  deliveryAddress: str,
   // EXPORT
   borderExitDate: str,
   customsGate: str,
@@ -134,6 +138,10 @@ export function OrderForm({
         invoiceNumber: d(o.invoiceNumber),
         routeText: d(o.routeText),
         notes: d(o.notes),
+        // İş Tipi + Adresler
+        jobType: (o as { jobType?: "LOADING" | "UNLOADING" }).jobType ?? "LOADING",
+        loadingAddress: d((o as { loadingAddress?: unknown }).loadingAddress),
+        deliveryAddress: d((o as { deliveryAddress?: unknown }).deliveryAddress),
         // EXPORT
         borderExitDate: o.borderExitDate ? new Date(o.borderExitDate).toISOString().split("T")[0] : "",
         customsGate: d(o.customsGate),
@@ -191,6 +199,8 @@ export function OrderForm({
       loadingDate: data.loadingDate || null,
       unloadingDate: data.unloadingDate || null,
       borderExitDate: data.borderExitDate || null,
+      loadingAddress: nilIfBlank(data.loadingAddress),
+      deliveryAddress: nilIfBlank(data.deliveryAddress),
       transportType: nilIfBlank(data.transportType),
       referenceNumber: nilIfBlank(data.referenceNumber),
       cargoNumber: nilIfBlank(data.cargoNumber),
@@ -358,6 +368,32 @@ export function OrderForm({
                     </FormItem>
                   )} />
                   {statusSelect}
+                </div>
+
+                {/* İş Tipi + Adresler */}
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Operasyon Tipi</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="jobType" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>İş Tipi</FormLabel>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="LOADING">Yükleme</SelectItem>
+                              <SelectItem value="UNLOADING">Boşaltma</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    <F name="loadingAddress" label="Yükleme Adresi (Sürücüye gösterilir)" placeholder="Örn: İstanbul, Pendik OSB" />
+                    <F name="deliveryAddress" label="Teslim / Boşaltma Adresi (Sürücüye gösterilir)" placeholder="Örn: Ankara, Eryaman Depo" />
+                  </div>
                 </div>
 
                 {/* ────────── EXPORT ────────── */}

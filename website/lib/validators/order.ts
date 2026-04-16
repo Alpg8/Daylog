@@ -29,9 +29,12 @@ export const createOrderSchema = z.object({
   notes: z.string().optional().nullable(),
 
   // Ortak
+  jobType: z.enum(["LOADING", "UNLOADING"]).default("LOADING"),
   sender: z.string().optional().nullable(),
   recipient: z.string().optional().nullable(),
   customs: z.string().optional().nullable(),
+  loadingAddress: z.string().optional().nullable(),
+  deliveryAddress: z.string().optional().nullable(),
 
   // EXPORT
   borderExitDate: z.string().optional().nullable(),
