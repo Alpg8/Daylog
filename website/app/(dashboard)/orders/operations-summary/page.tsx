@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CarFront,
   FileText,
+  FolderOpen,
   Package,
   ShieldCheck,
   Truck,
