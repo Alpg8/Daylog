@@ -492,8 +492,7 @@ export default async function OrderOperationsSummaryPage() {
                     const grouped = PHASES.map((phase) => ({
                       ...phase,
                       events: order.driverEvents.filter((e) => phase.types.includes(e.type)),
-                    })).filter((g) => g.events.length > 0);
-                    if (grouped.length === 0) return null;
+                    }));
                     return (
                       <div className="space-y-2 rounded-xl border border-border/50 p-3">
                         <p className="text-sm font-medium text-foreground">Is Asamalari</p>
@@ -505,31 +504,35 @@ export default async function OrderOperationsSummaryPage() {
                                 {group.label}
                               </div>
                               <div className="space-y-1.5 pl-1">
-                                {group.events.map((event: EvType) => (
-                                  <div key={event.id} className="rounded-lg border border-border/40 bg-background/60 p-2 text-xs">
-                                    <div className="flex items-center justify-between gap-2 mb-1">
-                                      <span className="font-medium text-foreground/80">{event.driver.fullName}</span>
-                                      <span className="text-muted-foreground">{new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}</span>
-                                    </div>
-                                    {event.notes && (
-                                      <p className="text-muted-foreground mb-1.5 italic">&ldquo;{event.notes}&rdquo;</p>
-                                    )}
-                                    {event.photos.length > 0 && (
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {event.photos.map((photo) => (
-                                          <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
-                                            className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-2 py-0.5 text-[10px] hover:border-primary/50 hover:text-primary">
-                                            <FileText className="h-3 w-3" />
-                                            {photo.label || "foto"}
-                                          </a>
-                                        ))}
+                                {group.events.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground italic">Henuz kayit yok</p>
+                                ) : (
+                                  group.events.map((event: EvType) => (
+                                    <div key={event.id} className="rounded-lg border border-border/40 bg-background/60 p-2 text-xs">
+                                      <div className="flex items-center justify-between gap-2 mb-1">
+                                        <span className="font-medium text-foreground/80">{event.driver.fullName}</span>
+                                        <span className="text-muted-foreground">{new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}</span>
                                       </div>
-                                    )}
-                                    {!event.notes && event.photos.length === 0 && (
-                                      <p className="text-muted-foreground">Foto veya not yok</p>
-                                    )}
-                                  </div>
-                                ))}
+                                      {event.notes && (
+                                        <p className="text-muted-foreground mb-1.5 italic">&ldquo;{event.notes}&rdquo;</p>
+                                      )}
+                                      {event.photos.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {event.photos.map((photo) => (
+                                            <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
+                                              className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-2 py-0.5 text-[10px] hover:border-primary/50 hover:text-primary">
+                                              <FileText className="h-3 w-3" />
+                                              {photo.label || "foto"}
+                                            </a>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {!event.notes && event.photos.length === 0 && (
+                                        <p className="text-muted-foreground">Foto veya not yok</p>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
                               </div>
                             </div>
                           ))}
