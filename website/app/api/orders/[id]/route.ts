@@ -44,7 +44,7 @@ export async function PUT(
     }
 
     const data = parsed.data;
-  const before = await prisma.order.findUnique({ where: { id: params.id } });
+    const before = await prisma.order.findUnique({ where: { id: params.id } });
     const order = await prisma.order.update({
       where: { id: params.id },
       data: {
@@ -60,7 +60,29 @@ export async function PUT(
       },
     });
 
+    // Track driver assignment history when driver changes
+    const newDriverId = data.driverId !== undefined ? data.driverId : before?.driverId;
+    if (newDriverId && newDriverId !== before?.driverId) {
+      await prisma.orderDriverHistory.create({
+        data: {
+          orderId: params.id,
+          driverId: newDriverId,
+          assignedByUserId: session.sub,
+        },
+      });
+    }
+
     const jobLabel = order.cargoNumber ?? order.tripNumber ?? "İş";
+
+    // Notify newly assigned driver
+    const notifyUserId = data.driverId !== undefined ? (order.driver?.userId ?? null) : null;
+    const driverTitle = data.driverId !== undefined && data.driverId !== before?.driverId
+      ? "Yeni İş Atandı"
+      : "İş Güncellendi";
+    const driverMessage = data.driverId !== undefined && data.driverId !== before?.driverId
+      ? `${jobLabel} numaralı iş size atandı.`
+      : `${jobLabel} numaralı işiniz güncellendi. Durum: ${order.status}`;
+
     await recordEntityChange({
       userId: session.sub,
       role: session.role,
@@ -73,9 +95,9 @@ export async function PUT(
       before,
       after: order,
       notifyOps: true,
-      notifyDriverUserId: order.driver?.userId ?? null,
-      driverTitle: "İş Güncellendi",
-      driverMessage: `${jobLabel} numaralı işiniz güncellendi. Durum: ${order.status}`,
+      notifyDriverUserId: notifyUserId ?? order.driver?.userId ?? null,
+      driverTitle,
+      driverMessage,
     });
 
     return NextResponse.json({ order });

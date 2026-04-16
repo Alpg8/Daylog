@@ -118,6 +118,12 @@ interface TimelineResponse {
       fromDriver: { fullName: string };
       toDriver: { fullName: string } | null;
     }>;
+    driverHistory: Array<{
+      id: string;
+      assignedAt: string;
+      driver: { id: string; fullName: string; phoneNumber: string | null };
+      assignedByUser: { id: string; name: string } | null;
+    }>;
     notes: string | null;
   };
   warnings: Array<{ code: string; message: string }>;
@@ -688,6 +694,38 @@ export default function OrderOperationsDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Şoför Atama Geçmişi */}
+      {order.driverHistory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Şoför Atama Geçmişi ({order.driverHistory.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {order.driverHistory.map((item, idx) => (
+                <div key={item.id} className="rounded-lg border p-3 text-sm flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    {idx === 0 && <Badge className="text-xs">Güncel</Badge>}
+                    <Link href={`/drivers/${item.driver.id}`} className="font-medium text-primary underline underline-offset-2">
+                      {item.driver.fullName}
+                    </Link>
+                    {item.driver.phoneNumber && (
+                      <span className="text-muted-foreground">{item.driver.phoneNumber}</span>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs text-muted-foreground">{new Date(item.assignedAt).toLocaleString("tr-TR")}</p>
+                    {item.assignedByUser && (
+                      <p className="text-xs text-muted-foreground">atayan: {item.assignedByUser.name}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
 
     {/* Sürücü / Araç / Dorse Atama Dialog */}

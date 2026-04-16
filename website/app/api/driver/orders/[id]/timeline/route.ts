@@ -53,6 +53,13 @@ export async function GET(
         },
         orderBy: { handoverAt: "desc" },
       },
+      driverHistory: {
+        include: {
+          driver: { select: { id: true, fullName: true, phoneNumber: true } },
+          assignedByUser: { select: { id: true, name: true } },
+        },
+        orderBy: { assignedAt: "desc" },
+      },
     },
   });
 

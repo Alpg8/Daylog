@@ -152,6 +152,7 @@ model User {
   activityLogs           UserActivityLog[]
   sentDriverMessages     DriverMessage[] @relation("DriverMessagesBySender")
   receivedDriverMessages DriverMessage[] @relation("DriverMessagesByRecipient")
+  orderDriverAssignments OrderDriverHistory[] @relation("OrderDriverHistoryAssigner")
 }
 
 model Vehicle {
@@ -214,10 +215,11 @@ model Driver {
   attachments       Attachment[]
   events            DriverEvent[]
   confirmations     DriverConfirmation[]
-  outgoingHandovers Handover[]           @relation("HandoverFromDriver")
-  incomingHandovers Handover[]           @relation("HandoverToDriver")
-  operationTasks    OperationTask[]
-  officeMessages    DriverMessage[]
+  outgoingHandovers  Handover[]           @relation("HandoverFromDriver")
+  incomingHandovers  Handover[]           @relation("HandoverToDriver")
+  operationTasks     OperationTask[]
+  officeMessages     DriverMessage[]
+  orderDriverHistory OrderDriverHistory[]
 
   @@index([passportExpiryDate])
   @@index([licenseExpiryDate])
@@ -316,6 +318,7 @@ model Order {
   driverConfirmations DriverConfirmation[]
   handovers           Handover[]
   operationTasks      OperationTask[]
+  driverHistory       OrderDriverHistory[]
 
   @@index([status, createdAt])
   @@index([driverId, status])
@@ -552,4 +555,18 @@ model OperationTask {
   @@index([status, lastSeenAt])
   @@index([orderId, status])
   @@index([driverId, status])
+}
+
+model OrderDriverHistory {
+  id               String   @id @default(uuid())
+  orderId          String
+  driverId         String
+  assignedAt       DateTime @default(now())
+  assignedByUserId String?
+
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver         Driver  @relation(fields: [driverId], references: [id])
+  assignedByUser User?   @relation("OrderDriverHistoryAssigner", fields: [assignedByUserId], references: [id])
+
+  @@index([orderId, assignedAt])
 }
