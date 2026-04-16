@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { VehicleStatusBadge, TrailerStatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExcelExport } from "@/components/shared/excel-export";
+import { ExcelImportDialog } from "@/components/shared/excel-import-dialog";
 import { OrderForm } from "@/components/orders/order-form";
 import { EntityPopover } from "@/components/shared/entity-popover";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
@@ -485,7 +486,53 @@ export function OrderTable({ category }: OrderTableProps) {
         description={`${orders.length} sipariş`}
         onAdd={() => { setEditingOrder(null); setFormOpen(true); }}
         actions={
-          <ExcelExport data={excelData as unknown as Record<string, unknown>[]} columns={excelColumns} fileName="siparisler" />
+          <div className="flex items-center gap-2">
+            <ExcelImportDialog
+              title="Siparişleri Excel'den İçe Aktar"
+              endpoint="/api/orders"
+              onSuccess={fetchData}
+              templateFileName="siparis-sablonu"
+              templateRow={{
+                "Kategori": "EXPORT",
+                "Müşteri": "Örnek Müşteri A.Ş.",
+                "Yük No": "",
+                "Sefer No": "",
+                "Güzergah": "TR → DE",
+                "Başlangıç Tarihi": "2026-05-01",
+                "Bitiş Tarihi": "2026-05-10",
+                "Durum": "PENDING",
+                "Notlar": "",
+              }}
+              columns={[
+                { headers: ["Kategori", "orderCategory", "kategori"], key: "orderCategory", label: "Kategori", required: true,
+                  transform: (v) => {
+                    const m: Record<string, string> = { ihracat: "EXPORT", export: "EXPORT", ithalat: "IMPORT", import: "IMPORT", yurtici: "DOMESTIC", domestic: "DOMESTIC" };
+                    return m[v.toLowerCase().replace(/\s/g, "")] ?? v.toUpperCase();
+                  }
+                },
+                { headers: ["Müşteri", "musteri", "customerName"], key: "customerName", label: "Müşteri" },
+                { headers: ["Yük No", "yukno", "cargoNumber"], key: "cargoNumber", label: "Yük No" },
+                { headers: ["Sefer No", "seferno", "tripNumber"], key: "tripNumber", label: "Sefer No" },
+                { headers: ["Güzergah", "guzergah", "routeText"], key: "routeText", label: "Güzergah" },
+                { headers: ["Başlangıç Tarihi", "baslangictarihi", "loadingDate"], key: "loadingDate", label: "Başlangıç Tarihi",
+                  transform: (v) => { const r = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); return r ? `${r[3]}-${r[2].padStart(2,"0")}-${r[1].padStart(2,"0")}` : (v || null); }
+                },
+                { headers: ["Bitiş Tarihi", "bitistarih", "unloadingDate"], key: "unloadingDate", label: "Bitiş Tarihi",
+                  transform: (v) => { const r = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); return r ? `${r[3]}-${r[2].padStart(2,"0")}-${r[1].padStart(2,"0")}` : (v || null); }
+                },
+                { headers: ["Durum", "status", "durum"], key: "status", label: "Durum",
+                  transform: (v) => {
+                    const m: Record<string, string> = { bekliyor: "PENDING", pending: "PENDING", planlandı: "PLANNED", planned: "PLANNED", devamediyor: "IN_PROGRESS", inprogress: "IN_PROGRESS", tamamlandı: "COMPLETED", completed: "COMPLETED", iptal: "CANCELLED", cancelled: "CANCELLED" };
+                    return m[v.toLowerCase().replace(/\s/g, "")] ?? "PENDING";
+                  }
+                },
+                { headers: ["Fatura No", "faturano", "invoiceNumber"], key: "invoiceNumber", label: "Fatura No" },
+                { headers: ["REF", "ref", "referenceNumber"], key: "referenceNumber", label: "REF" },
+                { headers: ["Notlar", "not", "notes"], key: "notes", label: "Notlar" },
+              ]}
+            />
+            <ExcelExport data={excelData as unknown as Record<string, unknown>[]} columns={excelColumns} fileName="siparisler" />
+          </div>
         }
       />
 
