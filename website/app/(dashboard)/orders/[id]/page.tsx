@@ -18,6 +18,7 @@ import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { TRAILER_ATTACHMENT_LABEL_OPTIONS } from "@/lib/document-presets";
 import type { Attachment } from "@/types";
@@ -75,6 +76,10 @@ interface TimelineResponse {
     cargoNumber: string | null;
     tripNumber: string | null;
     routeText: string | null;
+    phaseStartLocation: string | null;
+    phaseLoadLocation: string | null;
+    phaseUnloadLocation: string | null;
+    phaseDeliveryLocation: string | null;
     driver?: { id: string; fullName: string } | null;
     vehicle?: { plateNumber: string } | null;
     trailer?: { id: string; plateNumber: string } | null;
@@ -85,6 +90,7 @@ interface TimelineResponse {
       eventAt: string;
       notes: string | null;
       odometerKm: number | null;
+      phaseData: Record<string, unknown> | null;
       driver: { id: string; fullName: string };
       photos: Array<{ id: string; url: string; label: string | null }>;
     }>;
@@ -142,12 +148,21 @@ function AttachmentList({
   );
 }
 
+const PHASE_ROWS = [
+  { key: "phaseStartLocation" as const, label: "Is Baslat Konumu", eventType: "START_JOB" },
+  { key: "phaseLoadLocation" as const, label: "Yukleme Konumu", eventType: "LOAD" },
+  { key: "phaseUnloadLocation" as const, label: "Bosaltma Konumu", eventType: "UNLOAD" },
+  { key: "phaseDeliveryLocation" as const, label: "Teslim Konumu", eventType: "DELIVERY" },
+];
+
 export default function OrderOperationsDetailPage() {
   const params = useParams<{ id: string }>();
   const [data, setData] = useState<TimelineResponse | null>(null);
   const [orderAttachments, setOrderAttachments] = useState<Attachment[]>([]);
   const [trailerAttachments, setTrailerAttachments] = useState<Attachment[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(true);
+  const [phaseLocations, setPhaseLocations] = useState<Record<string, string>>({});
+  const [phaseSaving, setPhaseSaving] = useState<Record<string, boolean>>({});
 
   const loadAttachments = useCallback(async (trailerId?: string | null) => {
     setAttachmentsLoading(true);
@@ -184,6 +199,33 @@ export default function OrderOperationsDetailPage() {
     const timer = setInterval(fetchData, 12000);
     return () => clearInterval(timer);
   }, [fetchData]);
+
+  useEffect(() => {
+    if (data?.order) {
+      setPhaseLocations({
+        phaseStartLocation: data.order.phaseStartLocation ?? "",
+        phaseLoadLocation: data.order.phaseLoadLocation ?? "",
+        phaseUnloadLocation: data.order.phaseUnloadLocation ?? "",
+        phaseDeliveryLocation: data.order.phaseDeliveryLocation ?? "",
+      });
+    }
+  }, [data?.order.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function savePhaseLocation(phase: "START_JOB" | "LOAD" | "UNLOAD" | "DELIVERY", locationKey: string) {
+    const location = phaseLocations[locationKey];
+    if (!location?.trim()) return;
+    setPhaseSaving((prev) => ({ ...prev, [locationKey]: true }));
+    try {
+      const res = await fetch(`/api/orders/${params.id}/phase-location`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phase, location }),
+      });
+      if (res.ok) void fetchData();
+    } finally {
+      setPhaseSaving((prev) => ({ ...prev, [locationKey]: false }));
+    }
+  }
 
   if (!data) return <p className="text-sm text-muted-foreground">Yukleniyor...</p>;
 
@@ -337,6 +379,43 @@ export default function OrderOperationsDetailPage() {
         </Card>
       )}
 
+      {/* Faz Yönetimi */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <MapPin className="h-4 w-4" /> Faz Konumlari
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Surucuya her faz icin konum/adres bilgisi gonderin.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {PHASE_ROWS.map((row) => (
+              <div key={row.key} className="flex items-center gap-2">
+                <div className="w-36 shrink-0">
+                  <p className="text-xs font-medium">{row.label}</p>
+                  {order[row.key] && <p className="text-[10px] text-emerald-600 mt-0.5">Kaydedildi</p>}
+                </div>
+                <Input
+                  className="h-8 text-sm flex-1"
+                  placeholder="Adres veya konum girin..."
+                  value={phaseLocations[row.key] ?? ""}
+                  onChange={(e) => setPhaseLocations((prev) => ({ ...prev, [row.key]: e.target.value }))}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 shrink-0"
+                  disabled={phaseSaving[row.key] || !phaseLocations[row.key]?.trim()}
+                  onClick={() => savePhaseLocation(row.eventType as "START_JOB" | "LOAD" | "UNLOAD" | "DELIVERY", row.key)}
+                >
+                  {phaseSaving[row.key] ? "..." : "Kaydet"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Event Timeline */}
       <Card>
         <CardHeader>
@@ -368,6 +447,13 @@ export default function OrderOperationsDetailPage() {
                     </div>
                     {event.odometerKm && <p className="text-xs text-muted-foreground mt-0.5">Km: {event.odometerKm}</p>}
                     {event.notes && <p className="mt-1 text-muted-foreground">{event.notes}</p>}
+                    {event.phaseData && Object.keys(event.phaseData).length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                        {Object.entries(event.phaseData).map(([k, v]) => (
+                          <span key={k} className="text-xs text-muted-foreground"><span className="font-medium">{k.replace(/_/g, " ")}:</span> {String(v)}</span>
+                        ))}
+                      </div>
+                    )}
                     {event.photos.length > 0 && (
                       <div className="mt-2 grid grid-cols-4 gap-2 lg:grid-cols-6">
                         {event.photos.map((photo) => (

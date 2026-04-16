@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
       odometerKm: payload.odometerKm ?? null,
       latitude: payload.latitude ?? null,
       longitude: payload.longitude ?? null,
+      phaseData: payload.phaseData ?? undefined,
       eventAt: payload.eventAt ? new Date(payload.eventAt) : new Date(),
     },
   });

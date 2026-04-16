@@ -25,6 +25,8 @@ export const createDriverEventSchema = z.object({
   latitude: z.number().min(-90).max(90).optional().nullable(),
   longitude: z.number().min(-180).max(180).optional().nullable(),
   eventAt: z.string().datetime().optional().nullable(),
+  // Phase-specific structured data from driver
+  phaseData: z.record(z.unknown()).optional().nullable(),
 });
 
 export const driverConfirmationTypeSchema = z.enum([

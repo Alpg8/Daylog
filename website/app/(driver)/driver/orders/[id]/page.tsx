@@ -85,6 +85,18 @@ type ConfirmationType = (typeof CONFIRMATION_TYPES)[number];
 
 /* ─── Operation flow steps ───────────────────────────────────── */
 
+interface PhotoInputDef {
+  key: string;
+  label: string;
+  required?: boolean;
+}
+
+interface DataFieldDef {
+  key: string;
+  label: string;
+  type: "number" | "text";
+}
+
 interface FlowStep {
   eventType: EventType;
   label: string;
@@ -92,20 +104,77 @@ interface FlowStep {
   confirmationType?: ConfirmationType;
   confirmLabel?: string;
   requiresPhoto: boolean;
+  photoLabels?: PhotoInputDef[];
+  dataFields?: DataFieldDef[];
+  phaseLocationKey?: "phaseStartLocation" | "phaseLoadLocation" | "phaseUnloadLocation" | "phaseDeliveryLocation";
 }
 
 const LOADING_FLOW: FlowStep[] = [
-  { eventType: "START_JOB", label: "Isi Baslat", icon: Play, confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum", requiresPhoto: false },
-  { eventType: "LOAD", label: "Yukleme", icon: PackageOpen, confirmationType: "LOADING_CONFIRMED", confirmLabel: "Yuklemeyi onayliyorum", requiresPhoto: true },
-  { eventType: "DELIVERY", label: "Teslim", icon: PackageCheck, confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Teslimi gerceklestirdim", requiresPhoto: true },
-  { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: true },
+  {
+    eventType: "START_JOB", label: "Isi Baslat", icon: Play,
+    confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum",
+    requiresPhoto: true, phaseLocationKey: "phaseStartLocation",
+    photoLabels: [{ key: "genel", label: "Genel Foto", required: true }],
+  },
+  {
+    eventType: "LOAD", label: "Yukleme", icon: PackageOpen,
+    confirmationType: "LOADING_CONFIRMED", confirmLabel: "Yuklemeyi onayliyorum",
+    requiresPhoto: true, phaseLocationKey: "phaseLoadLocation",
+    photoLabels: [
+      { key: "kantar_fisi", label: "Kantar Fisi", required: true },
+      { key: "genel", label: "Genel Foto", required: true },
+    ],
+    dataFields: [
+      { key: "spanzet_count", label: "Spanzet Sayisi", type: "number" },
+      { key: "stanga_count", label: "Stanga Sayisi", type: "number" },
+      { key: "cita_count", label: "Cita Sayisi", type: "number" },
+      { key: "equipment_note", label: "Ekipman Notu", type: "text" },
+    ],
+  },
+  {
+    eventType: "DELIVERY", label: "Teslim", icon: PackageCheck,
+    confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Teslimi gerceklestirdim",
+    requiresPhoto: true, phaseLocationKey: "phaseDeliveryLocation",
+    photoLabels: [
+      { key: "teslim", label: "Teslim Foto", required: true },
+      { key: "masraf_fisi_1", label: "Masraf Fisi 1", required: false },
+      { key: "masraf_fisi_2", label: "Masraf Fisi 2", required: false },
+    ],
+  },
+  { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: false },
 ];
 
 const UNLOADING_FLOW: FlowStep[] = [
-  { eventType: "START_JOB", label: "Isi Baslat", icon: Play, confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum", requiresPhoto: false },
-  { eventType: "UNLOAD", label: "Bosaltma", icon: PackageCheck, confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Bosaltmayi onayliyorum", requiresPhoto: true },
-  { eventType: "DELIVERY", label: "Teslim", icon: Flag, requiresPhoto: true },
-  { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: true },
+  {
+    eventType: "START_JOB", label: "Isi Baslat", icon: Play,
+    confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum",
+    requiresPhoto: true, phaseLocationKey: "phaseStartLocation",
+    photoLabels: [{ key: "genel", label: "Genel Foto", required: true }],
+  },
+  {
+    eventType: "UNLOAD", label: "Bosaltma", icon: PackageCheck,
+    confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Bosaltmayi onayliyorum",
+    requiresPhoto: true, phaseLocationKey: "phaseUnloadLocation",
+    photoLabels: [
+      { key: "smr", label: "SMR Foto", required: true },
+      { key: "bosaltma_ani", label: "Bosaltma Ani Foto", required: true },
+    ],
+    dataFields: [
+      { key: "outgoing_spanzet", label: "Cikan Spanzet Sayisi", type: "number" },
+      { key: "tension_rod_count", label: "Gergi Cubugu Sayisi", type: "number" },
+    ],
+  },
+  {
+    eventType: "DELIVERY", label: "Teslim", icon: Flag,
+    confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Teslimi gerceklestirdim",
+    requiresPhoto: true, phaseLocationKey: "phaseDeliveryLocation",
+    photoLabels: [
+      { key: "teslim", label: "Teslim Foto", required: true },
+      { key: "masraf_fisi_1", label: "Masraf Fisi 1", required: false },
+      { key: "masraf_fisi_2", label: "Masraf Fisi 2", required: false },
+    ],
+  },
+  { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: false },
 ];
 
 /* ─── Types ──────────────────────────────────────────────────── */
@@ -120,6 +189,10 @@ interface TimelineResponse {
     routeText: string | null;
     loadingAddress: string | null;
     deliveryAddress: string | null;
+    phaseStartLocation: string | null;
+    phaseLoadLocation: string | null;
+    phaseUnloadLocation: string | null;
+    phaseDeliveryLocation: string | null;
     vehicle?: { plateNumber: string } | null;
     trailer?: { plateNumber: string; type: string | null } | null;
     driver?: { id: string; fullName: string; phoneNumber: string | null } | null;
@@ -130,6 +203,7 @@ interface TimelineResponse {
       eventAt: string;
       notes: string | null;
       odometerKm: number | null;
+      phaseData: Record<string, unknown> | null;
       driver: { id: string; fullName: string };
       photos: Array<{ id: string; url: string; label: string | null }>;
     }>;
@@ -183,6 +257,10 @@ export default function DriverOrderDetailPage() {
   const [confirmationStatement, setConfirmationStatement] = useState("Onayliyorum");
   const [confirmationEventId, setConfirmationEventId] = useState("");
 
+  const [phasePhotos, setPhasePhotos] = useState<Record<string, File | null>>({});
+  const [phaseInputs, setPhaseInputs] = useState<Record<string, string>>({});
+  const [phaseFormKey, setPhaseFormKey] = useState(0);
+
   /* ─── Data fetching ────────────────────────────────────── */
 
   const fetchTimeline = useCallback(async () => {
@@ -234,10 +312,25 @@ export default function DriverOrderDetailPage() {
   /* ─── Actions ──────────────────────────────────────────── */
 
   async function executeFlowStep(step: FlowStep) {
-    if (!uploadFile) {
+    // Validate required photos
+    if (step.requiresPhoto && step.photoLabels) {
+      const missingRequired = step.photoLabels.filter((p) => p.required && !phasePhotos[p.key]);
+      if (missingRequired.length > 0) {
+        toast.error(`Zorunlu foto eksik: ${missingRequired.map((p) => p.label).join(", ")}`);
+        return;
+      }
+    } else if (step.requiresPhoto && !phasePhotos["genel"]) {
       toast.error("Bu islem icin gorsel yuklemeniz gerekli");
-      setActiveSection("photo");
       return;
+    }
+
+    // Build phaseData from inputs
+    const builtPhaseData: Record<string, string | number> = {};
+    if (step.dataFields) {
+      for (const field of step.dataFields) {
+        const val = phaseInputs[field.key];
+        if (val) builtPhaseData[field.key] = field.type === "number" ? Number(val) : val;
+      }
     }
 
     setSubmitting(true);
@@ -245,35 +338,38 @@ export default function DriverOrderDetailPage() {
       const eventRes = await fetch("/api/driver/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, type: step.eventType, notes: eventNotes || null, odometerKm: eventKm ? Number(eventKm) : null }),
+        body: JSON.stringify({
+          orderId,
+          type: step.eventType,
+          notes: eventNotes || null,
+          odometerKm: eventKm ? Number(eventKm) : null,
+          phaseData: Object.keys(builtPhaseData).length > 0 ? builtPhaseData : undefined,
+        }),
       });
       if (!eventRes.ok) { toast.error("Aksiyon kaydedilemedi"); return; }
       const eventData = await eventRes.json();
       const newEventId = eventData.event?.id as string | undefined;
+      if (!newEventId) { toast.error("Event olusturuldu ancak kayit ID alinamadi"); return; }
 
-      if (!newEventId) {
-        toast.error("Event olusturuldu ancak kayit ID alinamadi");
-        return;
-      }
+      // Upload all required and optional photos that were provided
+      const photosToUpload = step.photoLabels
+        ? step.photoLabels.filter((p) => phasePhotos[p.key])
+        : phasePhotos["genel"] ? [{ key: "genel", label: "Genel Foto" }] : [];
 
-      const photoForm = new FormData();
-      photoForm.append("file", uploadFile);
-      if (uploadLabel) photoForm.append("label", uploadLabel);
-      const photoRes = await fetch(`/api/driver/events/${newEventId}/photos`, {
-        method: "POST",
-        body: photoForm,
-      });
-
-      if (!photoRes.ok) {
-        toast.error("Aksiyon kaydedildi fakat gorsel yuklenemedi");
-        return;
+      for (const photoInput of photosToUpload) {
+        const file = phasePhotos[photoInput.key];
+        if (!file) continue;
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("label", photoInput.key);
+        await fetch(`/api/driver/events/${newEventId}/photos`, { method: "POST", body: formData });
       }
 
       toast.success(`${step.label} kaydedildi`);
       setUploadEventId(newEventId);
-      setUploadFile(null);
-      setUploadLabel("");
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setPhasePhotos({});
+      setPhaseInputs({});
+      setPhaseFormKey((k) => k + 1);
 
       if (step.confirmationType && step.confirmLabel) {
         await fetch("/api/driver/confirmations", {
@@ -514,16 +610,84 @@ export default function DriverOrderDetailPage() {
                         </div>
                       )}
                     </div>
-                    {isNext && !isCompleted && <Button size="sm" className="h-8 text-xs" onClick={() => executeFlowStep(step)} disabled={submitting}>{submitting ? "..." : step.label}</Button>}
+                    {isNext && !isCompleted && <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Aktif</span>}
                   </div>
                 </div>
               );
             })}
           </div>
           {nextStep && !isCompleted && (
-            <div className="mt-3 space-y-2 border-t pt-3">
+            <div className="mt-3 space-y-2.5 border-t pt-3" key={phaseFormKey}>
+              {/* Office-provided phase location */}
+              {nextStep.phaseLocationKey && order[nextStep.phaseLocationKey] && (
+                <div className="flex items-start gap-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-2.5">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-300" />
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">Ofis Konumu</p>
+                    <p className="text-xs text-foreground">{order[nextStep.phaseLocationKey]}</p>
+                  </div>
+                </div>
+              )}
+              {/* Photo inputs */}
+              {nextStep.photoLabels ? (
+                <div className="space-y-2">
+                  {nextStep.photoLabels.map((p) => (
+                    <div key={p.key}>
+                      <Label className="text-xs mb-1 block">{p.label}{p.required ? " *" : " (opsiyonel)"}</Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="h-9 text-xs"
+                        onChange={(e) => setPhasePhotos((prev) => ({ ...prev, [p.key]: e.target.files?.[0] ?? null }))}
+                      />
+                      {phasePhotos[p.key] && <p className="text-[10px] text-emerald-600 mt-0.5">{phasePhotos[p.key]!.name} ({(phasePhotos[p.key]!.size / 1024).toFixed(0)} KB)</p>}
+                    </div>
+                  ))}
+                </div>
+              ) : nextStep.requiresPhoto && (
+                <div>
+                  <Label className="text-xs mb-1 block">Fotoğraf *</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="h-9 text-xs"
+                    onChange={(e) => setPhasePhotos((prev) => ({ ...prev, genel: e.target.files?.[0] ?? null }))}
+                  />
+                </div>
+              )}
+              {/* Structured data fields */}
+              {nextStep.dataFields && nextStep.dataFields.length > 0 && (
+                <div className="space-y-2">
+                  {nextStep.dataFields.map((f) => (
+                    <div key={f.key}>
+                      <Label className="text-xs mb-1 block">{f.label}</Label>
+                      {f.type === "text" ? (
+                        <Textarea
+                          placeholder={f.label}
+                          value={phaseInputs[f.key] ?? ""}
+                          onChange={(e) => setPhaseInputs((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                          className="min-h-[60px] text-sm"
+                        />
+                      ) : (
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={phaseInputs[f.key] ?? ""}
+                          onChange={(e) => setPhaseInputs((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                          className="h-9 text-sm"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               <Input placeholder="Kilometre (opsiyonel)" type="number" value={eventKm} onChange={(e) => setEventKm(e.target.value)} className="h-9 text-sm" />
-              <Textarea placeholder="Not (opsiyonel)" value={eventNotes} onChange={(e) => setEventNotes(e.target.value)} className="min-h-[60px] text-sm" />
+              <Textarea placeholder="Genel not (opsiyonel)" value={eventNotes} onChange={(e) => setEventNotes(e.target.value)} className="min-h-[60px] text-sm" />
+              <Button className="w-full h-9 text-sm" onClick={() => executeFlowStep(nextStep)} disabled={submitting}>
+                {submitting ? "Kaydediliyor..." : nextStep.label}
+              </Button>
             </div>
           )}
         </CardContent>

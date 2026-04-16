@@ -256,6 +256,12 @@ model Order {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  // ── Faz konumları (ofis tarafından girilir, şoföre gösterilir) ────────────
+  phaseStartLocation    String? // İş Başlat fazı için konum
+  phaseLoadLocation     String? // Yükleme fazı için konum
+  phaseUnloadLocation   String? // Boşaltma fazı için konum
+  phaseDeliveryLocation String? // Teslim fazı için konum
+
   // ── Ortak yeni alanlar ──────────────────────
   jobType   JobType @default(LOADING) // Is tipi: Yukleme veya Bosaltma
   sender    String? // Gönderici
@@ -437,6 +443,7 @@ model DriverEvent {
   odometerKm  Int?
   latitude    Float?
   longitude   Float?
+  phaseData   Json?   // Structured per-phase driver input (spanzet counts etc.)
   eventAt     DateTime            @default(now())
   createdAt   DateTime            @default(now())
 
