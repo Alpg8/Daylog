@@ -376,7 +376,7 @@ export function DataTable<TData, TValue>({
       {/* Table */}
       <div className="glass glass-highlight overflow-auto rounded-2xl max-h-[calc(100vh-280px)] ring-1 ring-white/20 dark:ring-white/10">
         <Table>
-          <TableHeader>
+          <TableHeader className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
             {/* ── Sort row ── */}
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -414,7 +414,7 @@ export function DataTable<TData, TValue>({
 
             {/* ── Inline filter row ── */}
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={`filter-${headerGroup.id}`} className="border-b border-border bg-muted/35">
+              <tr key={`filter-${headerGroup.id}`} className="border-b border-border bg-muted/50">
                 {headerGroup.headers.map((header) => {
                   const colId = header.column.id;
                   const isAccessorCol =

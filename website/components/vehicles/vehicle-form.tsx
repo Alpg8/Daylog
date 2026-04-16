@@ -21,6 +21,7 @@ const formSchema = z.object({
   model: z.string().optional(),
   capacity: z.string().optional(),
   status: z.enum(["AVAILABLE", "ON_ROUTE", "MAINTENANCE", "PASSIVE"]).default("AVAILABLE"),
+  maintenanceExpiry: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -50,6 +51,9 @@ export function VehicleForm({ open, onOpenChange, onSuccess, initialData }: Vehi
           model: initialData.model ?? "",
           capacity: initialData.capacity ?? "",
           status: initialData.status,
+          maintenanceExpiry: initialData.maintenanceExpiry
+            ? new Date(initialData.maintenanceExpiry).toISOString().split("T")[0]
+            : "",
           notes: initialData.notes ?? "",
         });
       } else {
@@ -66,6 +70,7 @@ export function VehicleForm({ open, onOpenChange, onSuccess, initialData }: Vehi
       brand: data.brand?.trim() || null,
       model: data.model?.trim() || null,
       capacity: data.capacity?.trim() || null,
+      maintenanceExpiry: data.maintenanceExpiry?.trim() || null,
       notes: data.notes?.trim() || null,
     };
 
@@ -139,6 +144,13 @@ export function VehicleForm({ open, onOpenChange, onSuccess, initialData }: Vehi
               )} />
               <FormField control={form.control} name="capacity" render={({ field }) => (
                 <FormItem><FormLabel>Kapasite</FormLabel><FormControl><Input placeholder="24 ton" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="maintenanceExpiry" render={({ field }) => (
+                <FormItem className="col-span-2">
+                  <FormLabel>Bakım SKT (Son Kullanma Tarihi)</FormLabel>
+                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
               )} />
             </div>
             <FormField control={form.control} name="notes" render={({ field }) => (

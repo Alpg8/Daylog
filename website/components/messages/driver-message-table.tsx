@@ -98,12 +98,24 @@ export function DriverMessageTable() {
 
   useEffect(() => {
     const handleLiveUpdate = () => {
-      void fetchData();
+      if (!replyMessage.trim() && !submittingReply) {
+        void fetchData();
+      }
     };
 
     window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
     return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
-  }, [fetchData]);
+  }, [fetchData, replyMessage, submittingReply]);
+
+  // Auto-refresh every 30 seconds, paused while composing a reply
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!replyMessage.trim() && !submittingReply) {
+        void fetchData();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchData, replyMessage, submittingReply]);
 
   const unreadCount = useMemo(
     () => messages.filter((item) => item.direction === "DRIVER_TO_OFFICE" && !item.isRead).length,

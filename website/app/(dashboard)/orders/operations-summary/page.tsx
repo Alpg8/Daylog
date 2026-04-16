@@ -4,12 +4,10 @@ import {
   CalendarClock,
   CarFront,
   FileText,
-  FolderOpen,
   Package,
   ShieldCheck,
   Truck,
   UserSquare2,
-  UserRound,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
@@ -259,15 +257,11 @@ export default async function OrderOperationsSummaryPage() {
 
   const aggregates = orders.reduce(
     (summary, order) => {
-      const driverDocuments = buildDriverDocuments(order.driver);
-      const vehicleDocuments = buildVehicleDocuments(order.vehicle);
-
-      summary.missingDriverDocuments += getMissingCount(driverDocuments);
-      summary.missingVehicleDocuments += getMissingCount(vehicleDocuments);
       if (order.attachments.length === 0) summary.ordersWithoutFiles += 1;
+      if (!order.vehicle) summary.ordersWithoutVehicle += 1;
       return summary;
     },
-    { missingDriverDocuments: 0, missingVehicleDocuments: 0, ordersWithoutFiles: 0 }
+    { ordersWithoutFiles: 0, ordersWithoutVehicle: 0 }
   );
 
   return (
@@ -300,8 +294,8 @@ export default async function OrderOperationsSummaryPage() {
               <UserSquare2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{aggregates.missingDriverDocuments}</p>
-              <p className="text-xs text-muted-foreground">Surucu belge uyarisi</p>
+              <p className="text-2xl font-semibold">{orders.filter((o) => !!o.driver).length}</p>
+              <p className="text-xs text-muted-foreground">Surucu atanmis siparis</p>
             </div>
           </CardContent>
         </Card>
@@ -311,8 +305,8 @@ export default async function OrderOperationsSummaryPage() {
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{aggregates.missingVehicleDocuments}</p>
-              <p className="text-xs text-muted-foreground">Arac belge uyarisi</p>
+              <p className="text-2xl font-semibold">{aggregates.ordersWithoutVehicle}</p>
+              <p className="text-xs text-muted-foreground">Arac atanmamis siparis</p>
             </div>
           </CardContent>
         </Card>
@@ -337,9 +331,6 @@ export default async function OrderOperationsSummaryPage() {
         </Card>
       ) : (
         orders.map((order) => {
-          const driverDocuments = buildDriverDocuments(order.driver);
-          const vehicleDocuments = buildVehicleDocuments(order.vehicle);
-
           return (
             <Card key={order.id} className="overflow-hidden">
               <CardHeader className="gap-3 border-b border-border/60 bg-background/40 md:flex-row md:items-start md:justify-between">
@@ -363,20 +354,14 @@ export default async function OrderOperationsSummaryPage() {
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/orders/${order.id}`}>Operasyon detayi</Link>
                   </Button>
-                  <AttachmentManager
-                    title="Siparis dosyalari"
-                    description="CMR, fatura ve operasyon evraklarini bu siparis uzerinde yonetin."
-                    entityId={order.id}
-                    endpointBase="/api/orders"
-                    triggerLabel="Siparis dosyalari"
-                  />
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4 p-5 lg:grid-cols-3">
+                {/* Operasyonu gerceklestiren ekip */}
                 <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold">Operasyon ve siparis dosyalari</h3>
+                    <Truck className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold">Operasyon Bilgileri</h3>
                   </div>
                   <div className="grid gap-2 text-sm text-muted-foreground">
                     <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
@@ -389,167 +374,91 @@ export default async function OrderOperationsSummaryPage() {
                     </div>
                     <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
                       <span>Surucu</span>
-                      <span className="font-medium text-foreground">{order.driver?.fullName || "Atanmadi"}</span>
+                      <span className="font-medium text-foreground">
+                        {order.driver ? (
+                          <Link href={`/drivers/${order.driver.id}`} className="text-primary hover:underline">
+                            {order.driver.fullName}
+                          </Link>
+                        ) : "Atanmadi"}
+                      </span>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">{order._count.driverEvents} event</Badge>
                     <Badge variant="outline">{order._count.driverConfirmations} onam</Badge>
-                    <Badge variant={order._count.attachments > 0 ? "success" : "warning"}>
-                      {order._count.attachments} siparis dosyasi
-                    </Badge>
-                    {order.trailer && (
-                      <Badge variant={order.trailer.attachments.length > 0 ? "success" : "warning"}>
-                        {order.trailer.attachments.length} dorse dosyasi
-                      </Badge>
-                    )}
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Yuklu siparis belgeleri</p>
-                    {renderAttachmentList(order.attachments, "Siparise belge yuklenmemis.")}
+                </div>
+
+                {/* Siparis evraklari */}
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold">Siparis Evraklari</h3>
+                    </div>
+                    <AttachmentManager
+                      title="Siparis dosyalari"
+                      description="CMR, fatura ve siparis belgelerini yonetin."
+                      entityId={order.id}
+                      endpointBase="/api/orders"
+                      triggerLabel="Dosya ekle"
+                      triggerClassName="h-8 gap-2"
+                    />
                   </div>
+                  <Badge variant={order._count.attachments > 0 ? "success" : "warning"}>
+                    {order._count.attachments} siparis dosyasi
+                  </Badge>
+                  {renderAttachmentList(order.attachments, "Siparise belge yuklenmemis.")}
+                </div>
+
+                {/* Operasyon evraklari (arac + dorse) */}
+                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
+                  <div className="flex items-center gap-2">
+                    <CarFront className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold">Operasyon Evraklari</h3>
+                  </div>
+                  {order.vehicle && (
+                    <div className="space-y-2 rounded-xl border border-border/50 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{order.vehicle.plateNumber}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[order.vehicle.brand, order.vehicle.model].filter(Boolean).join(" ") || "Cekici"}
+                          </p>
+                        </div>
+                        <AttachmentManager
+                          title="Arac dosyalari"
+                          description="Kasko, sigorta ve teknik belge dosyalarini yonetin."
+                          entityId={order.vehicle.id}
+                          endpointBase="/api/vehicles"
+                          triggerLabel="Dosya ekle"
+                          triggerClassName="h-8 gap-2"
+                        />
+                      </div>
+                      {renderAttachmentList(order.vehicle.attachments, "Araca bagli dosya yok.")}
+                    </div>
+                  )}
                   {order.trailer && (
                     <div className="space-y-2 rounded-xl border border-border/50 p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div>
-                          <p className="text-sm font-medium text-foreground">Dorse dosyalari</p>
-                          <p className="text-xs text-muted-foreground">{order.trailer.plateNumber} {order.trailer.type ? `· ${order.trailer.type}` : ""}</p>
+                          <p className="text-sm font-medium text-foreground">{order.trailer.plateNumber}</p>
+                          <p className="text-xs text-muted-foreground">{order.trailer.type ? `Dorse · ${order.trailer.type}` : "Dorse"}</p>
                         </div>
                         <AttachmentManager
                           title="Dorse dosyalari"
                           description="Dorseye ait ilgili operasyon dosyalarini yonetin."
                           entityId={order.trailer.id}
                           endpointBase="/api/trailers"
-                          triggerLabel="Dorse dosyalari"
+                          triggerLabel="Dosya ekle"
                           triggerClassName="h-8 gap-2"
                         />
                       </div>
                       {renderAttachmentList(order.trailer.attachments, "Dorseye bagli dosya yok.")}
                     </div>
                   )}
-                </div>
-
-                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <UserRound className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold">Surucu evraklari</h3>
-                    </div>
-                    {order.driver && (
-                      <AttachmentManager
-                        title="Surucu dosyalari"
-                        description="Pasaport, ehliyet ve diger surucu belgelerini yonetin."
-                        entityId={order.driver.id}
-                        endpointBase="/api/drivers"
-                        triggerLabel="Surucu dosyalari"
-                        triggerClassName="h-8 gap-2"
-                      />
-                    )}
-                  </div>
-                  {!order.driver ? (
-                    <p className="text-sm text-muted-foreground">Bu siparise surucu atanmamis.</p>
-                  ) : (
-                    <>
-                      <div className="rounded-xl border border-border/50 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-foreground">{order.driver.fullName}</p>
-                            <p className="text-xs text-muted-foreground">{order.driver.phoneNumber || "Telefon yok"}</p>
-                          </div>
-                          <Button asChild variant="ghost" size="sm">
-                            <Link href={`/drivers/${order.driver.id}`}>Surucu karti</Link>
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="grid gap-2">
-                        {driverDocuments.map((document) => (
-                          <div key={`${order.id}-${document.label}`} className={`rounded-xl border p-3 ${document.tone}`}>
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-medium text-foreground">{document.label}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {document.expiryDate ? `${formatDate(document.expiryDate)} · ${document.meta || ""}` : document.meta}
-                                </p>
-                              </div>
-                              <Badge variant={document.variant}>{document.statusLabel}</Badge>
-                            </div>
-                            {document.attachment && (
-                              <a
-                                href={document.attachment.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 inline-flex items-center gap-2 text-xs text-primary hover:underline"
-                              >
-                                <FolderOpen className="h-3.5 w-3.5" />
-                                {document.attachment.label || `${document.label} dosyasi`}
-                              </a>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Truck className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold">Arac evraklari</h3>
-                    </div>
-                    {order.vehicle && (
-                      <AttachmentManager
-                        title="Arac dosyalari"
-                        description="Kasko, sigorta ve teknik belge dosyalarini yonetin."
-                        entityId={order.vehicle.id}
-                        endpointBase="/api/vehicles"
-                        triggerLabel="Arac dosyalari"
-                        triggerClassName="h-8 gap-2"
-                      />
-                    )}
-                  </div>
-                  {!order.vehicle ? (
-                    <p className="text-sm text-muted-foreground">Bu siparise arac atanmamis.</p>
-                  ) : (
-                    <>
-                      <div className="rounded-xl border border-border/50 p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                            <CarFront className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{order.vehicle.plateNumber}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {[order.vehicle.brand, order.vehicle.model].filter(Boolean).join(" ") || "Marka/model yok"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid gap-2">
-                        {vehicleDocuments.map((document) => (
-                          <div key={`${order.id}-${document.label}`} className={`rounded-xl border p-3 ${document.tone}`}>
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-medium text-foreground">{document.label}</p>
-                                <p className="text-xs text-muted-foreground">{document.meta}</p>
-                              </div>
-                              <Badge variant={document.variant}>{document.statusLabel}</Badge>
-                            </div>
-                            {document.attachment && (
-                              <a
-                                href={document.attachment.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 inline-flex items-center gap-2 text-xs text-primary hover:underline"
-                              >
-                                <FolderOpen className="h-3.5 w-3.5" />
-                                {document.attachment.label || `${document.label} dosyasi`}
-                              </a>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </>
+                  {!order.vehicle && !order.trailer && (
+                    <p className="text-sm text-muted-foreground">Arac veya dorse atanmamis.</p>
                   )}
                 </div>
               </CardContent>
@@ -558,14 +467,6 @@ export default async function OrderOperationsSummaryPage() {
                   <span className="inline-flex items-center gap-1">
                     <CalendarClock className="h-3.5 w-3.5" />
                     Son guncelleme: {formatDate(order.updatedAt)}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <UserRound className="h-3.5 w-3.5" />
-                    Surucu belge alarmi: {getMissingCount(driverDocuments)}
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Arac belge alarmi: {getMissingCount(vehicleDocuments)}
                   </span>
                 </div>
               </div>

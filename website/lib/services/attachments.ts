@@ -43,7 +43,7 @@ export async function listAttachments(entityType: AttachmentEntityType, entityId
   });
 }
 
-export async function uploadAttachment(entityType: AttachmentEntityType, entityId: string, file: File, label?: string | null) {
+export async function uploadAttachment(entityType: AttachmentEntityType, entityId: string, file: File, label?: string | null, expiryDate?: Date | null) {
   await assertEntityExists(entityType, entityId);
 
   const storage = getStorageProvider();
@@ -56,6 +56,7 @@ export async function uploadAttachment(entityType: AttachmentEntityType, entityI
       label: label?.trim() || file.name,
       mimeType: uploaded.mimeType,
       size: uploaded.size,
+      expiryDate: expiryDate ?? undefined,
       [fieldMap[entityType]]: entityId,
     },
   });

@@ -15,6 +15,11 @@ const nullableOwnershipType = z.preprocess(
   z.enum(["OZMAL", "KIRALIK"]).optional().nullable()
 );
 
+const nullableDate = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+  z.coerce.date().optional().nullable()
+);
+
 export const createVehicleSchema = z.object({
   plateNumber: z.string().min(1, "Plaka numarası gereklidir"),
   usageType: nullableUsageType,
@@ -23,6 +28,7 @@ export const createVehicleSchema = z.object({
   model: nullableString,
   capacity: nullableString,
   status: z.enum(["AVAILABLE", "ON_ROUTE", "MAINTENANCE", "PASSIVE"]).default("AVAILABLE"),
+  maintenanceExpiry: nullableDate,
   notes: nullableString,
 });
 

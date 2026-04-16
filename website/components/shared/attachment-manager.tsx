@@ -31,6 +31,7 @@ export function AttachmentManager({
   const [open, setOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [label, setLabel] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -70,6 +71,7 @@ export function AttachmentManager({
       const formData = new FormData();
       formData.append("file", file);
       if (label.trim()) formData.append("label", label.trim());
+      if (expiryDate.trim()) formData.append("expiryDate", expiryDate.trim());
 
       const response = await fetch(`${endpointBase}/${entityId}/attachments`, {
         method: "POST",
@@ -81,6 +83,7 @@ export function AttachmentManager({
       }
 
       setLabel("");
+      setExpiryDate("");
       setFile(null);
       toast.success("Dosya yuklendi");
       await loadAttachments();
@@ -146,8 +149,22 @@ export function AttachmentManager({
             placeholder={presetOptions.length > 0 ? "Etiketi secin veya yazin" : "Dosya etiketi (opsiyonel)"}
             className={presetOptions.length === 0 ? "md:col-span-2" : undefined}
           />
-          <Input type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-          <Button onClick={handleUpload} disabled={uploading} className="gap-2">
+          <div className="md:col-span-full grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Son Kullanma Tarihi (SKT)</p>
+              <Input
+                type="date"
+                value={expiryDate}
+                onChange={(event) => setExpiryDate(event.target.value)}
+                placeholder="SKT (opsiyonel)"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Dosya</p>
+              <Input type="file" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+            </div>
+          </div>
+          <Button onClick={handleUpload} disabled={uploading} className="gap-2 md:col-span-full">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Yukle
           </Button>
@@ -171,6 +188,11 @@ export function AttachmentManager({
                   </a>
                   <div className="text-xs text-muted-foreground">
                     {attachment.mimeType || "Bilinmeyen tip"} · {(((attachment.size ?? 0) / 1024)).toFixed(1)} KB · {new Date(attachment.createdAt).toLocaleString("tr-TR")}
+                    {(attachment as Attachment & { expiryDate?: string | null }).expiryDate && (
+                      <span className="ml-2 font-medium text-amber-600">
+                        SKT: {new Date((attachment as Attachment & { expiryDate: string }).expiryDate).toLocaleDateString("tr-TR")}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <Button

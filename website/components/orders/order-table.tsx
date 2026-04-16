@@ -97,12 +97,15 @@ export function OrderTable({ category }: OrderTableProps) {
 
   useEffect(() => {
     const handleLiveUpdate = () => {
-      void fetchData();
+      // Don't refresh while a form/dialog is open to avoid losing in-progress edits
+      if (!formOpen && !assigningOrder && !deletingId) {
+        void fetchData();
+      }
     };
 
     window.addEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
     return () => window.removeEventListener(LIVE_UPDATE_EVENT, handleLiveUpdate);
-  }, [fetchData]);
+  }, [fetchData, formOpen, assigningOrder, deletingId]);
 
   const handleDelete = async () => {
     if (!deletingId) return;
@@ -304,6 +307,7 @@ export function OrderTable({ category }: OrderTableProps) {
 
   // ── EXPORT kolonları ──────────────────────────────────────────────
   const exportColumns: ColumnDef<OrderWithRelations>[] = [
+    statusCell,
     { accessorKey: "serialNumber", header: "NO", cell: ({ row }) => fmtNum(row.original.serialNumber) },
     { accessorKey: "loadingDate", header: "Yükleme Tarihi", cell: ({ row }) => fmtDate(row.original.loadingDate) },
     { accessorKey: "borderExitDate", header: "Kapıkule Çıkış", cell: ({ row }) => fmtDate((row.original as OrderWithRelations & { borderExitDate?: string | Date | null }).borderExitDate) },
@@ -325,11 +329,12 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "freightPrice", header: "Nakliye Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).freightPrice) },
     { accessorKey: "customsCost", header: "Gümrük Masrafı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).customsCost) },
     { accessorKey: "supplyPrice", header: "Tedarik Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).supplyPrice) },
-    statusCell, actionsCell,
+    actionsCell,
   ];
 
   // ── DOMESTIC kolonları ────────────────────────────────────────────
   const domesticColumns: ColumnDef<OrderWithRelations>[] = [
+    statusCell,
     { accessorKey: "serialNumber", header: "NO", cell: ({ row }) => fmtNum(row.original.serialNumber) },
     { accessorKey: "loadingDate", header: "Başlangıç", cell: ({ row }) => fmtDate(row.original.loadingDate) },
     { accessorKey: "unloadingDate", header: "Bitiş", cell: ({ row }) => fmtDate(row.original.unloadingDate) },
@@ -356,11 +361,12 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "supplierPhone", header: "Tedarikçi Cep", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).supplierPhone) },
     { accessorKey: "equipmentInfo", header: "Ekipman", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).equipmentInfo) },
     { accessorKey: "cita", header: "ÇITA", meta: { editable: true }, cell: ({ row }) => fmtNum(row.original.cita) },
-    statusCell, actionsCell,
+    actionsCell,
   ];
 
   // ── IMPORT kolonları ──────────────────────────────────────────────
   const importColumns: ColumnDef<OrderWithRelations>[] = [
+    statusCell,
     { accessorKey: "loadingDate", header: "Başlangıç Tarihi", cell: ({ row }) => fmtDate(row.original.loadingDate) },
     { accessorKey: "unloadingDate", header: "Bitiş Tarihi", cell: ({ row }) => fmtDate(row.original.unloadingDate) },
     { accessorKey: "transportType", header: "Taşıma Tipi", meta: { editable: true } },
@@ -384,11 +390,12 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "purchasePrice", header: "Alış Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).purchasePrice) },
     { accessorKey: "salePrice", header: "Satış Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).salePrice) },
     { accessorKey: "t2MrnNo", header: "T2 MRN No", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).t2MrnNo) },
-    statusCell, actionsCell,
+    actionsCell,
   ];
 
   // ── Tüm siparişler (kategori seçilmemiş) ─────────────────────────
   const allColumns: ColumnDef<OrderWithRelations>[] = [
+    statusCell,
     {
       accessorKey: "orderCategory", header: "Kategori", filterFn: "equals",
       cell: ({ row }) => {
@@ -402,7 +409,7 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "routeText", header: "Güzergah", meta: { editable: true } },
     vehicleCell, trailerCell, driverCell,
     { accessorKey: "loadingDate", header: "Yükleme", cell: ({ row }) => fmtDate(row.original.loadingDate) },
-    statusCell, actionsCell,
+    actionsCell,
   ];
 
   const columns =
