@@ -242,6 +242,20 @@ async function getOrderSummaries() {
           attachments: { orderBy: { createdAt: "desc" } },
         },
       },
+      driverEvents: {
+        where: {
+          OR: [
+            { photos: { some: {} } },
+            { notes: { not: null } },
+          ],
+        },
+        orderBy: { eventAt: "desc" },
+        take: 20,
+        include: {
+          photos: { orderBy: { createdAt: "desc" }, take: 10 },
+          driver: { select: { fullName: true } },
+        },
+      },
       _count: {
         select: {
           attachments: true,
@@ -460,6 +474,35 @@ export default async function OrderOperationsSummaryPage() {
                   )}
                   {!order.vehicle && !order.trailer && (
                     <p className="text-sm text-muted-foreground">Arac veya dorse atanmamis.</p>
+                  )}
+
+                  {/* Driver event photos and notes */}
+                  {order.driverEvents.length > 0 && (
+                    <div className="space-y-2 rounded-xl border border-border/50 p-3">
+                      <p className="text-sm font-medium text-foreground">Surucu Fotograflari ve Notlar</p>
+                      <div className="space-y-2">
+                        {order.driverEvents.map((event) => (
+                          <div key={event.id} className="rounded-lg border border-border/40 bg-background/60 p-2 text-xs">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="font-semibold text-foreground">{event.type.replace(/_/g, " ")}</span>
+                              <span className="text-muted-foreground">{new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}</span>
+                            </div>
+                            {event.notes && <p className="text-muted-foreground mb-1 italic">&ldquo;{event.notes}&rdquo;</p>}
+                            {event.photos.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {event.photos.map((photo) => (
+                                  <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
+                                    className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-2 py-0.5 text-[10px] hover:border-primary/50 hover:text-primary">
+                                    <FileText className="h-3 w-3" />
+                                    {photo.label || "foto"}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </CardContent>

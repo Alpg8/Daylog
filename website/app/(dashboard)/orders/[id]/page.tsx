@@ -73,6 +73,7 @@ interface TimelineResponse {
   order: {
     id: string;
     status: string;
+    jobType: "LOADING" | "UNLOADING" | null;
     cargoNumber: string | null;
     tripNumber: string | null;
     routeText: string | null;
@@ -148,12 +149,17 @@ function AttachmentList({
   );
 }
 
-const PHASE_ROWS = [
-  { key: "phaseStartLocation" as const, label: "Is Baslat Konumu", eventType: "START_JOB" },
-  { key: "phaseLoadLocation" as const, label: "Yukleme Konumu", eventType: "LOAD" },
-  { key: "phaseUnloadLocation" as const, label: "Bosaltma Konumu", eventType: "UNLOAD" },
-  { key: "phaseDeliveryLocation" as const, label: "Teslim Konumu", eventType: "DELIVERY" },
-];
+function getPhaseRows(jobType: "LOADING" | "UNLOADING" | null) {
+  const base = [
+    { key: "phaseStartLocation" as const, label: "Is Baslat Konumu", eventType: "START_JOB" },
+    { key: "phaseLoadLocation" as const, label: "Yukleme Konumu", eventType: "LOAD" },
+    { key: "phaseUnloadLocation" as const, label: "Bosaltma Konumu", eventType: "UNLOAD" },
+    { key: "phaseDeliveryLocation" as const, label: "Teslim Konumu", eventType: "DELIVERY" },
+  ];
+  if (jobType === "LOADING") return base.filter((r) => r.key !== "phaseUnloadLocation");
+  if (jobType === "UNLOADING") return base.filter((r) => r.key !== "phaseLoadLocation");
+  return base;
+}
 
 export default function OrderOperationsDetailPage() {
   const params = useParams<{ id: string }>();
@@ -387,7 +393,7 @@ export default function OrderOperationsDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {PHASE_ROWS.map((row) => (
+            {getPhaseRows(order.jobType).map((row) => (
               <div key={row.key} className="flex items-center gap-2">
                 <div className="w-36 shrink-0">
                   <p className="text-xs font-medium">{row.label}</p>
