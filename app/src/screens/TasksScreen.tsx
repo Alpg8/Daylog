@@ -23,10 +23,35 @@ const PHASE_DATA_FIELDS: Partial<Record<StepType, DataField[]>> = {
   ],
 };
 
+// Semantic label key used when uploading the mandatory main photo
+const MAIN_PHOTO_LABEL: Partial<Record<StepType, string>> = {
+  START_JOB: "genel",
+  LOAD:       "genel",
+  UNLOAD:     "smr",    // main photo for unload = SMR
+  DELIVERY:   "teslim",
+};
+
+// Human-readable title shown above the main photo picker per phase
+const MAIN_PHOTO_DISPLAY: Partial<Record<StepType, string>> = {
+  START_JOB: "Genel Foto *",
+  LOAD:      "Genel Foto *",
+  UNLOAD:    "SMR Foto *",
+  DELIVERY:  "Teslim Foto *",
+};
+
+// Extra labeled photos required per phase (main photo already covers the first labeled slot)
 const EXTRA_PHOTO_LABELS: Partial<Record<StepType, string[]>> = {
-  LOAD: ["kantar_fisi"],
-  UNLOAD: ["smr", "bosaltma_ani"],
-  DELIVERY: ["masraf_fisi"],
+  LOAD:     ["kantar_fisi"],
+  UNLOAD:   ["bosaltma_ani"],           // smr is now the main photo
+  DELIVERY: ["masraf_fisi_1", "masraf_fisi_2"],
+};
+
+// Display names for extra photo labels
+const EXTRA_PHOTO_DISPLAY: Record<string, string> = {
+  kantar_fisi:   "Kantar Fisi",
+  bosaltma_ani:  "Bosaltma Ani Foto",
+  masraf_fisi_1: "Masraf Fisi 1",
+  masraf_fisi_2: "Masraf Fisi 2 (opsiyonel)",
 };
 
 interface TasksScreenProps {
@@ -47,7 +72,7 @@ interface TasksScreenProps {
   onPickStepPhoto: () => void;
   onPickExtraPhoto: (label: string, onDone: (uri: string | null) => void) => void;
   onUploadJobDocument: () => void;
-  onSubmitStep: (opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }> }) => Promise<string | null>;
+  onSubmitStep: (opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }>; mainPhotoLabel?: string }) => Promise<string | null>;
 }
 
 export function TasksScreen(props: TasksScreenProps) {
@@ -97,6 +122,7 @@ export function TasksScreen(props: TasksScreenProps) {
     const err = await onSubmitStep({
       phaseData: Object.keys(phaseData).length > 0 ? phaseData : undefined,
       extraPhotos: extraPhotosList.length > 0 ? extraPhotosList : undefined,
+      mainPhotoLabel: MAIN_PHOTO_LABEL[stepType] ?? "genel",
     });
     if (err) Alert.alert("Asama Hatasi", err);
     else Alert.alert("Basarili", `${STEP_LABELS[stepType]} kaydedildi`);
@@ -159,14 +185,14 @@ export function TasksScreen(props: TasksScreenProps) {
               <Text style={[local.locationText, c && { color: "#bae6fd" }]}>{officeLocation}</Text>
             </View>
           ) : null}
-          <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>Ana Fotograf *</Text>
+          <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{MAIN_PHOTO_DISPLAY[stepType] ?? "Ana Fotograf *"}</Text>
           <Pressable style={styles.secondaryBtn} onPress={onPickStepPhoto}>
             <Text style={styles.secondaryBtnText}>{stepPhotoUri ? "Fotografı Degistir" : "Fotograf Sec"}</Text>
           </Pressable>
           {stepPhotoUri ? <Image source={{ uri: stepPhotoUri }} style={styles.preview} /> : null}
           {(EXTRA_PHOTO_LABELS[stepType] ?? []).map((label) => (
             <View key={label} style={{ marginTop: 10 }}>
-              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{label.replace(/_/g, " ")}</Text>
+              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{EXTRA_PHOTO_DISPLAY[label] ?? label.replace(/_/g, " ")}</Text>
               <Pressable style={[styles.secondaryBtn, { marginTop: 2 }]}
                 onPress={() => onPickExtraPhoto(label, (uri) => setExtraPhotos((prev) => ({ ...prev, [label]: uri })))}>
                 <Text style={styles.secondaryBtnText}>{extraPhotos[label] ? "Degistir" : "Sec"}</Text>

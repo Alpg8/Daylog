@@ -373,7 +373,7 @@ export function useDriverApp() {
     }
   }
 
-  async function submitStepUpdate(opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }> }): Promise<string | null> {
+  async function submitStepUpdate(opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }>; mainPhotoLabel?: string }): Promise<string | null> {
     if (!token) return "Oturum bulunamadi";
     if (!selectedTaskId) return "Lutfen once bir is secin";
     if (!stepPhotoUri) return "Asama bildirimi icin fotograf zorunlu";
@@ -397,7 +397,7 @@ export function useDriverApp() {
         name: `step-${Date.now()}.jpg`,
         type: "image/jpeg",
       } as unknown as Blob);
-      formData.append("label", STEP_LABELS[stepType]);
+      formData.append("label", opts?.mainPhotoLabel ?? STEP_LABELS[stepType]);
       await apiFetchForm(`/api/driver/events/${eventRes.event.id}/photos`, token, formData);
 
       // Upload extra photos (e.g. kantar fisi, smr, etc.)
