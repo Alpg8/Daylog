@@ -299,6 +299,7 @@ export default function OrderOperationsDetailPage() {
               )}
             </div>
           </div>
+        </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-start justify-between">
