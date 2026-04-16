@@ -125,10 +125,32 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const driverProfile = await prisma.driverProfile.findUnique({
+    where: { id: driverId },
+    select: { fullName: true },
+  });
+  const orderInfo = await prisma.order.findUnique({
+    where: { id: event.orderId },
+    select: { cargoNumber: true, tripNumber: true },
+  });
+
+  const EVENT_LABELS_TR: Record<string, string> = {
+    START_JOB: "İş Başlattı",
+    LOAD: "Yükleme Yaptı",
+    UNLOAD: "Boşaltma Yaptı",
+    DELIVERY: "Teslim Etti",
+    END_JOB: "İşi Bitirdi",
+    WAITING: "Bekleme Bildirdi",
+    ISSUE: "Sorun Bildirdi",
+  };
+  const actionLabel = EVENT_LABELS_TR[event.type] ?? event.type;
+  const orderRef = orderInfo?.cargoNumber ?? orderInfo?.tripNumber ?? event.orderId.slice(0, 8);
+  const driverName = driverProfile?.fullName ?? "Sürücü";
+
   await createOpsNotificationForDriverAndOps({
     driverId,
-    title: "Saha aksiyonu kaydedildi",
-    message: `${event.type} - Order ${payload.orderId.slice(0, 8)}`,
+    title: `${driverName} — ${actionLabel}`,
+    message: `${orderRef} numaralı iş için ${actionLabel.toLowerCase()}${event.notes ? `: ${event.notes.slice(0, 80)}` : ""}`,
   });
 
   await recordActivity({

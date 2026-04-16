@@ -420,6 +420,50 @@ export default function OrderOperationsDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Sürücü Fotoğrafları Gallery */}
+      {totalPhotos > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Camera className="h-4 w-4" /> Sürücü Fotoğrafları ({totalPhotos})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {order.driverEvents
+              .filter((e) => e.photos.length > 0)
+              .map((event) => (
+                <div key={event.id} className="mb-4 last:mb-0">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{EVENT_LABELS[event.type] ?? event.type}</Badge>
+                    <span className="text-xs text-muted-foreground">{event.driver.fullName}</span>
+                    <span className="text-xs text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{new Date(event.eventAt).toLocaleString("tr-TR")}</span>
+                    {event.notes && (
+                      <>
+                        <span className="text-xs text-muted-foreground">·</span>
+                        <span className="text-xs text-muted-foreground italic truncate max-w-xs">{event.notes}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                    {event.photos.map((photo) => (
+                      <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
+                        className="group relative block overflow-hidden rounded-lg border bg-muted aspect-square">
+                        <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                        {photo.label && (
+                          <span className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[10px] text-white truncate text-center">
+                            {photo.label}
+                          </span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Event Timeline */}
       <Card>
         <CardHeader>
