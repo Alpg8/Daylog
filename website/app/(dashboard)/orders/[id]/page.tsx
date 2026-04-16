@@ -386,10 +386,12 @@ export default function OrderOperationsDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
-            <CardTitle>Operasyon Detayi</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {order.cargoNumber || "Yuk No Yok"}{order.tripNumber ? ` / Sefer: ${order.tripNumber}` : ""}
-            </p>
+            <CardTitle className="flex items-center gap-2">
+              Operasyon Detayi
+              <span className="text-sm font-normal text-muted-foreground">
+                {order.cargoNumber || "Yuk No Yok"}{order.tripNumber ? ` / Sefer: ${order.tripNumber}` : ""}
+              </span>
+            </CardTitle>
           </div>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="gap-2" onClick={openAssignDialog}>
