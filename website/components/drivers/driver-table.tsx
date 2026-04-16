@@ -9,6 +9,7 @@ import { DataTable, type FilterConfig } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExcelExport } from "@/components/shared/excel-export";
+import { ExcelImportDialog } from "@/components/shared/excel-import-dialog";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { DriverForm } from "./driver-form";
 import { Button } from "@/components/ui/button";
@@ -163,7 +164,39 @@ export function DriverTable() {
   return (
     <div className="space-y-4">
       <PageHeader title="Sürücüler" onAdd={() => { setEditing(null); setFormOpen(true); }}
-        actions={<ExcelExport data={exportData} fileName="suruculer" label="Excel İndir" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <ExcelImportDialog
+              title="Sürücüleri Excel'den İçe Aktar"
+              endpoint="/api/drivers"
+              onSuccess={fetchData}
+              templateFileName="surucu-sablonu"
+              templateRow={{
+                "Ad Soyad": "Ali Yılmaz",
+                "Telefon": "+90 555 123 4567",
+                "TC Kimlik": "12345678901",
+                "Kullanım Tipi": "YURTDISI",
+                "Mülkiyet": "OZMAL",
+                "Pasaport SKT": "2028-06-15",
+                "Ehliyet SKT": "2027-03-20",
+                "Psikoteknik SKT": "2026-09-10",
+                "Notlar": "",
+              }}
+              columns={[
+                { headers: ["Ad Soyad", "adsoyad", "fullname", "isim"], key: "fullName", label: "Ad Soyad", required: true },
+                { headers: ["Telefon", "tel", "phone"], key: "phoneNumber", label: "Telefon" },
+                { headers: ["TC Kimlik", "tc", "nationalid"], key: "nationalId", label: "TC Kimlik" },
+                { headers: ["Kullanım Tipi", "kullanim", "usagetype"], key: "usageType", label: "Kullanım" },
+                { headers: ["Mülkiyet", "mulkiyet", "ownershiptype"], key: "ownershipType", label: "Mülkiyet" },
+                { headers: ["Pasaport SKT", "pasaportskt", "passportexpiry"], key: "passportExpiryDate", label: "Pasaport SKT", transform: (v) => { const r = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); return r ? `${r[3]}-${r[2].padStart(2,"0")}-${r[1].padStart(2,"0")}` : (v || null); } },
+                { headers: ["Ehliyet SKT", "ehliyetskt", "licenseexpiry"], key: "licenseExpiryDate", label: "Ehliyet SKT", transform: (v) => { const r = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); return r ? `${r[3]}-${r[2].padStart(2,"0")}-${r[1].padStart(2,"0")}` : (v || null); } },
+                { headers: ["Psikoteknik SKT", "psikoteknisk", "psychotechnicexpiry"], key: "psychotechnicExpiryDate", label: "Psikoteknik SKT", transform: (v) => { const r = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); return r ? `${r[3]}-${r[2].padStart(2,"0")}-${r[1].padStart(2,"0")}` : (v || null); } },
+                { headers: ["Notlar", "not", "notes"], key: "notes", label: "Notlar" },
+              ]}
+            />
+            <ExcelExport data={exportData} fileName="suruculer" label="Excel İndir" />
+          </div>
+        }
       />
       {loading ? <p className="text-muted-foreground/60">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchPlaceholder="Isim, telefon veya arac ara..." filters={driverFilters} onCellEdit={async (rowIndex, columnId, value) => {
         const d = data[rowIndex];

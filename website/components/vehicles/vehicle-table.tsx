@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { VehicleStatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExcelExport } from "@/components/shared/excel-export";
+import { ExcelImportDialog } from "@/components/shared/excel-import-dialog";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { VehicleForm } from "@/components/vehicles/vehicle-form";
 import { Button } from "@/components/ui/button";
@@ -140,7 +141,39 @@ export function VehicleTable() {
     <div className="space-y-4">
       <PageHeader title="Araçlar (Çekici)" description={`${vehicles.length} araç`}
         onAdd={() => { setEditing(null); setFormOpen(true); }}
-        actions={<ExcelExport data={vehicles as unknown as Record<string, unknown>[]} columns={exportCols} fileName="araclar" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <ExcelImportDialog
+              title="Araçları Excel'den İçe Aktar"
+              endpoint="/api/vehicles"
+              onSuccess={fetchVehicles}
+              templateFileName="arac-sablonu"
+              templateRow={{
+                "Plaka": "34 XX 0000",
+                "Marka": "Mercedes",
+                "Model": "Actros 1851",
+                "Kapasite": "24000 kg",
+                "Kullanım Tipi": "YURTDISI",
+                "Mülkiyet": "OZMAL",
+                "Durum": "AVAILABLE",
+                "Muayene SKT": "2026-11-15",
+                "Notlar": "",
+              }}
+              columns={[
+                { headers: ["Plaka", "plaka", "plate", "platenumber"], key: "plateNumber", label: "Plaka", required: true },
+                { headers: ["Marka", "brand"], key: "brand", label: "Marka" },
+                { headers: ["Model", "model"], key: "model", label: "Model" },
+                { headers: ["Kapasite", "capacity"], key: "capacity", label: "Kapasite" },
+                { headers: ["Kullanım Tipi", "kullanim", "usagetype"], key: "usageType", label: "Kullanım" },
+                { headers: ["Mülkiyet", "mulkiyet", "ownershiptype"], key: "ownershipType", label: "Mülkiyet" },
+                { headers: ["Durum", "status"], key: "status", label: "Durum" },
+                { headers: ["Muayene SKT", "muayeneskt", "maintenanceexpiry"], key: "maintenanceExpiry", label: "Muayene SKT", transform: (v) => { const r = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); return r ? `${r[3]}-${r[2].padStart(2,"0")}-${r[1].padStart(2,"0")}` : (v || null); } },
+                { headers: ["Notlar", "not", "notes"], key: "notes", label: "Notlar" },
+              ]}
+            />
+            <ExcelExport data={vehicles as unknown as Record<string, unknown>[]} columns={exportCols} fileName="araclar" />
+          </div>
+        }
       />
       <DataTable columns={columns} data={vehicles} loading={loading} searchPlaceholder="Plaka, marka ara..." filters={vehicleFilters} onCellEdit={async (rowIndex, columnId, value) => {
         const v = vehicles[rowIndex];

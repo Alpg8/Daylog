@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TrailerStatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ExcelExport } from "@/components/shared/excel-export";
+import { ExcelImportDialog } from "@/components/shared/excel-import-dialog";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { TRAILER_ATTACHMENT_LABEL_OPTIONS } from "@/lib/document-presets";
 import { TrailerForm } from "./trailer-form";
@@ -123,7 +124,29 @@ export function TrailerTable() {
   return (
     <div className="space-y-4">
       <PageHeader title="Dorseler" onAdd={() => { setEditing(null); setFormOpen(true); }}
-        actions={<ExcelExport data={exportData} fileName="dorseler" label="Excel İndir" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <ExcelImportDialog
+              title="Dorseleri Excel'den İçe Aktar"
+              endpoint="/api/trailers"
+              onSuccess={fetchData}
+              templateFileName="dorse-sablonu"
+              templateRow={{
+                "Plaka": "34 XX 0000",
+                "Tip": "Tenteli",
+                "Durum": "AVAILABLE",
+                "Notlar": "",
+              }}
+              columns={[
+                { headers: ["Plaka", "plaka", "plate", "platenumber"], key: "plateNumber", label: "Plaka", required: true },
+                { headers: ["Tip", "type", "dorse tipi"], key: "type", label: "Tip" },
+                { headers: ["Durum", "status"], key: "status", label: "Durum" },
+                { headers: ["Notlar", "not", "notes"], key: "notes", label: "Notlar" },
+              ]}
+            />
+            <ExcelExport data={exportData} fileName="dorseler" label="Excel İndir" />
+          </div>
+        }
       />
       {loading ? <p className="text-white/40">Yükleniyor...</p> : <DataTable columns={columns} data={data} searchPlaceholder="Plaka ara..." filters={trailerFilters} />}
       <TrailerForm open={formOpen} onOpenChange={setFormOpen} onSuccess={fetchData} initialData={editing} />
