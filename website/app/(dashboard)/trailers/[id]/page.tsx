@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import { InlineNotesEditor } from "@/components/shared/inline-notes-editor";
+import { TrailerEditDialog } from "@/components/trailers/trailer-edit-dialog";
 import {
   buildDocumentStatuses,
   formatDocumentDate,
@@ -40,8 +41,7 @@ export default async function TrailerDetailPage({ params }: { params: { id: stri
         title="Dorse Detay"
         description="Dorseye ait evraklari ve son operasyon baglantilarini yonetin."
         actions={
-          <div className="flex items-center gap-2">
-            <AttachmentManager
+          <div className="flex items-center gap-2">            <TrailerEditDialog trailer={trailer} />            <AttachmentManager
               title={`${trailer.plateNumber} Dosyalari`}
               description="Dorse evraklarini hazir etiketlerden secerek veya ozel adla yukleyin."
               entityId={trailer.id}

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import { InlineNotesEditor } from "@/components/shared/inline-notes-editor";
+import { VehicleEditDialog } from "@/components/vehicles/vehicle-edit-dialog";
 import {
   buildDocumentStatuses,
   formatDocumentDate,
@@ -42,8 +43,7 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
         title="Arac Detay"
         description="Araca ait evraklari ve aktif kullanim baglantilarini tek ekranda yonetin."
         actions={
-          <div className="flex items-center gap-2">
-            <AttachmentManager
+          <div className="flex items-center gap-2">            <VehicleEditDialog vehicle={vehicle} />            <AttachmentManager
               title={`${vehicle.plateNumber} Dosyalari`}
               description="Arac evraklarini hazir etiketlerden secerek veya ozel adla yukleyin."
               entityId={vehicle.id}

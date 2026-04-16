@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 import { InlineNotesEditor } from "@/components/shared/inline-notes-editor";
+import { DriverEditDialog } from "@/components/drivers/driver-edit-dialog";
 import {
   buildDocumentStatuses,
   DRIVER_ATTACHMENT_LABEL_OPTIONS,
@@ -45,8 +46,7 @@ export default async function DriverDetailPage({ params }: { params: { id: strin
         title="Surucu Detay"
         description="Surucuye ait kimlik, yetki ve operasyon dosyalarini buradan yonetin."
         actions={
-          <div className="flex items-center gap-2">
-            <AttachmentManager
+          <div className="flex items-center gap-2">            <DriverEditDialog driver={driver} />            <AttachmentManager
               title={`${driver.fullName} Dosyalari`}
               description="Surucu belgelerini secilebilir veya ozel etiketlerle yukleyin."
               entityId={driver.id}
