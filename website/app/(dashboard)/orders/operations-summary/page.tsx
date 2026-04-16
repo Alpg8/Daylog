@@ -517,12 +517,16 @@ export default async function OrderOperationsSummaryPage() {
                                         <p className="text-muted-foreground mb-1.5 italic">&ldquo;{event.notes}&rdquo;</p>
                                       )}
                                       {event.photos.length > 0 && (
-                                        <div className="flex flex-wrap gap-1.5">
+                                        <div className="grid grid-cols-3 gap-1.5 mt-1">
                                           {event.photos.map((photo) => (
                                             <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
-                                              className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/60 px-2 py-0.5 text-[10px] hover:border-primary/50 hover:text-primary">
-                                              <FileText className="h-3 w-3" />
-                                              {photo.label || "foto"}
+                                              className="group relative block overflow-hidden rounded-lg border border-border/50 bg-muted aspect-square">
+                                              <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                                              {photo.label && (
+                                                <span className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[9px] text-white truncate text-center leading-tight">
+                                                  {photo.label}
+                                                </span>
+                                              )}
                                             </a>
                                           ))}
                                         </div>
