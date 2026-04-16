@@ -136,19 +136,14 @@ export function Sidebar() {
         )}
       >
         {!collapsed && (
-          <div className="flex items-center gap-2">
-            <Image
-              src="/logo.png"
-              alt="Daylog"
-              width={120}
-              height={32}
-              className="dark:brightness-0 dark:invert"
-              priority
-            />
-            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-700 dark:text-cyan-300">
-              CRM
-            </span>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Daylog"
+            width={120}
+            height={32}
+            className="dark:brightness-0 dark:invert"
+            priority
+          />
         )}
         <button
           onClick={() => setCollapsed((v) => !v)}
