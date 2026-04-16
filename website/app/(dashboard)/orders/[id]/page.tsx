@@ -10,18 +10,23 @@ import {
   CheckCircle2,
   Clock,
   ImageIcon,
+  Loader2,
   MapPin,
   Pencil,
   RefreshCw,
   Truck,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { TRAILER_ATTACHMENT_LABEL_OPTIONS } from "@/lib/document-presets";
 import type { Attachment } from "@/types";
@@ -85,7 +90,7 @@ interface TimelineResponse {
     phaseUnloadLocation: string | null;
     phaseDeliveryLocation: string | null;
     driver?: { id: string; fullName: string } | null;
-    vehicle?: { plateNumber: string } | null;
+    vehicle?: { id: string; plateNumber: string } | null;
     trailer?: { id: string; plateNumber: string } | null;
     driverEvents: Array<{
       id: string;
@@ -176,6 +181,14 @@ export default function OrderOperationsDetailPage() {
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [notesSaving, startNotesSaving] = useTransition();
+  const [allDrivers, setAllDrivers] = useState<Array<{ id: string; fullName: string }>>([]);
+  const [allVehicles, setAllVehicles] = useState<Array<{ id: string; plateNumber: string }>>([]);
+  const [allTrailers, setAllTrailers] = useState<Array<{ id: string; plateNumber: string }>>([]);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignDriverId, setAssignDriverId] = useState("__none__");
+  const [assignVehicleId, setAssignVehicleId] = useState("__none__");
+  const [assignTrailerId, setAssignTrailerId] = useState("__none__");
+  const [assignLoading, setAssignLoading] = useState(false);
 
   const loadAttachments = useCallback(async (trailerId?: string | null) => {
     setAttachmentsLoading(true);
@@ -214,6 +227,20 @@ export default function OrderOperationsDetailPage() {
   }, [fetchData]);
 
   useEffect(() => {
+    async function loadLists() {
+      const [dRes, vRes, tRes] = await Promise.all([
+        fetch("/api/drivers?pageSize=500"),
+        fetch("/api/vehicles?pageSize=500"),
+        fetch("/api/trailers?pageSize=500"),
+      ]);
+      if (dRes.ok) { const j = await dRes.json(); setAllDrivers(j.drivers ?? j.data ?? []); }
+      if (vRes.ok) { const j = await vRes.json(); setAllVehicles(j.vehicles ?? j.data ?? []); }
+      if (tRes.ok) { const j = await tRes.json(); setAllTrailers(j.trailers ?? j.data ?? []); }
+    }
+    void loadLists();
+  }, []);
+
+  useEffect(() => {
     if (data?.order) {
       setPhaseLocations({
         phaseStartLocation: data.order.phaseStartLocation ?? "",
@@ -241,12 +268,47 @@ export default function OrderOperationsDetailPage() {
     }
   }
 
+  function openAssignDialog() {
+    if (!data) return;
+    setAssignDriverId(data.order.driver?.id ?? "__none__");
+    setAssignVehicleId((data.order.vehicle as { id?: string } | null | undefined)?.id ?? "__none__");
+    setAssignTrailerId(data.order.trailer?.id ?? "__none__");
+    setAssignOpen(true);
+  }
+
+  async function handleSaveAssignment() {
+    setAssignLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          driverId: assignDriverId === "__none__" ? null : assignDriverId,
+          vehicleId: assignVehicleId === "__none__" ? null : assignVehicleId,
+          trailerId: assignTrailerId === "__none__" ? null : assignTrailerId,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? "Kaydedilemedi");
+      }
+      toast.success("Atama güncellendi");
+      setAssignOpen(false);
+      void fetchData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Hata oluştu");
+    } finally {
+      setAssignLoading(false);
+    }
+  }
+
   if (!data) return <p className="text-sm text-muted-foreground">Yukleniyor...</p>;
 
   const order = data.order;
   const totalPhotos = order.driverEvents.reduce((n, e) => n + e.photos.length, 0);
 
   return (
+    <>
     <div className="space-y-4">
       <Card>
         <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
@@ -323,7 +385,13 @@ export default function OrderOperationsDetailPage() {
               {order.cargoNumber || "Yuk No Yok"}{order.tripNumber ? ` / Sefer: ${order.tripNumber}` : ""}
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={fetchData}><RefreshCw className="h-4 w-4" /></Button>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" className="gap-2" onClick={openAssignDialog}>
+              <UserPlus className="h-4 w-4" />
+              {order.driver ? "Atama Değiştir" : "Sürücü Ata"}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={fetchData}><RefreshCw className="h-4 w-4" /></Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -621,5 +689,66 @@ export default function OrderOperationsDetailPage() {
         </CardContent>
       </Card>
     </div>
+
+    {/* Sürücü / Araç / Dorse Atama Dialog */}
+    <Dialog open={assignOpen} onOpenChange={(v) => { if (!v) setAssignOpen(false); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Sürücü / Araç / Dorse Ata</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sürücü</p>
+            <Select value={assignDriverId} onValueChange={setAssignDriverId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sürücü seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Sürücü atama —</SelectItem>
+                {allDrivers.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>{d.fullName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Araç (Çekici)</p>
+            <Select value={assignVehicleId} onValueChange={setAssignVehicleId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Araç seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Araç atama —</SelectItem>
+                {allVehicles.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>{v.plateNumber}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Dorse</p>
+            <Select value={assignTrailerId} onValueChange={setAssignTrailerId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Dorse seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Dorse atama —</SelectItem>
+                {allTrailers.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.plateNumber}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={assignLoading}>Vazgeç</Button>
+          <Button onClick={handleSaveAssignment} disabled={assignLoading} className="gap-2">
+            {assignLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+            Kaydet
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }
