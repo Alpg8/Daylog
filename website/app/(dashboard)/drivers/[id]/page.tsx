@@ -93,6 +93,9 @@ export default async function DriverDetailPage({ params }: { params: { id: strin
         title="Surucu Evraklari"
         description="Pasaport, ehliyet, psikoteknik, SRC ve vize durumunu izleyin."
         items={documents}
+        entityId={driver.id}
+        endpointBase="/api/drivers"
+        labelOptions={DRIVER_ATTACHMENT_LABEL_OPTIONS}
       />
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">

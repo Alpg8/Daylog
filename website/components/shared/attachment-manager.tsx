@@ -17,6 +17,7 @@ interface AttachmentManagerProps {
   triggerLabel?: string;
   triggerClassName?: string;
   labelOptions?: string[];
+  defaultLabel?: string;
 }
 
 export function AttachmentManager({
@@ -27,10 +28,11 @@ export function AttachmentManager({
   triggerLabel = "Dosyalar",
   triggerClassName,
   labelOptions,
+  defaultLabel,
 }: AttachmentManagerProps) {
   const [open, setOpen] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [label, setLabel] = useState("");
+  const [label, setLabel] = useState(defaultLabel ?? "");
   const [expiryDate, setExpiryDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,7 +84,7 @@ export function AttachmentManager({
         throw new Error(data.error ?? "Dosya yuklenemedi");
       }
 
-      setLabel("");
+      setLabel(defaultLabel ?? "");
       setExpiryDate("");
       setFile(null);
       toast.success("Dosya yuklendi");

@@ -79,6 +79,9 @@ export default async function TrailerDetailPage({ params }: { params: { id: stri
         title="Dorse Evraklari"
         description="Ruhsat, muayene, sigorta ve diger dorse belgelerini takip edin."
         items={documents}
+        entityId={trailer.id}
+        endpointBase="/api/trailers"
+        labelOptions={TRAILER_ATTACHMENT_LABEL_OPTIONS}
       />
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">

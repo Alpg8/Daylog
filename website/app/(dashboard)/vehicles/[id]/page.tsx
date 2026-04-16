@@ -85,6 +85,9 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
         title="Arac Evraklari"
         description="Kasko, muayene, roder, trafik sigortasi, tako ve egzoz durumunu takip edin."
         items={documents}
+        entityId={vehicle.id}
+        endpointBase="/api/vehicles"
+        labelOptions={VEHICLE_ATTACHMENT_LABEL_OPTIONS}
       />
 
       <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">

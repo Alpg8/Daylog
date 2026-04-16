@@ -30,11 +30,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -375,8 +373,8 @@ export function DataTable<TData, TValue>({
 
       {/* Table */}
       <div className="glass glass-highlight overflow-auto rounded-2xl max-h-[calc(100vh-280px)] ring-1 ring-white/20 dark:ring-white/10">
-        <Table>
-          <TableHeader className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
+          <thead className="sticky top-0 z-20 bg-background border-b border-border [&_tr]:border-b [&_tr]:border-border">
             {/* ── Sort row ── */}
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -414,7 +412,7 @@ export function DataTable<TData, TValue>({
 
             {/* ── Inline filter row ── */}
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={`filter-${headerGroup.id}`} className="border-b border-border bg-muted/50">
+              <tr key={`filter-${headerGroup.id}`} className="border-b border-border bg-muted">
                 {headerGroup.headers.map((header) => {
                   const colId = header.column.id;
                   const isAccessorCol =
@@ -437,7 +435,7 @@ export function DataTable<TData, TValue>({
                 })}
               </tr>
             ))}
-          </TableHeader>
+          </thead>
 
           <TableBody>
             {table.getRowModel().rows?.length ? (
@@ -467,7 +465,7 @@ export function DataTable<TData, TValue>({
               </TableRow>
             )}
           </TableBody>
-        </Table>
+        </table>
       </div>
 
       {/* Pagination */}
