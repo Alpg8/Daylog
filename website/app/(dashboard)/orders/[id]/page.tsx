@@ -1,18 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   AlertTriangle,
   Camera,
+  Check,
   CheckCircle2,
   Clock,
   ImageIcon,
   MapPin,
+  Pencil,
   RefreshCw,
   Truck,
   Users,
+  X,
 } from "lucide-react";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Badge } from "@/components/ui/badge";
@@ -110,6 +113,7 @@ interface TimelineResponse {
       fromDriver: { fullName: string };
       toDriver: { fullName: string } | null;
     }>;
+    notes: string | null;
   };
   warnings: Array<{ code: string; message: string }>;
 }
@@ -169,6 +173,9 @@ export default function OrderOperationsDetailPage() {
   const [attachmentsLoading, setAttachmentsLoading] = useState(true);
   const [phaseLocations, setPhaseLocations] = useState<Record<string, string>>({});
   const [phaseSaving, setPhaseSaving] = useState<Record<string, boolean>>({});
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [notesValue, setNotesValue] = useState("");
+  const [notesSaving, startNotesSaving] = useTransition();
 
   const loadAttachments = useCallback(async (trailerId?: string | null) => {
     setAttachmentsLoading(true);
@@ -214,6 +221,7 @@ export default function OrderOperationsDetailPage() {
         phaseUnloadLocation: data.order.phaseUnloadLocation ?? "",
         phaseDeliveryLocation: data.order.phaseDeliveryLocation ?? "",
       });
+      if (!notesEditing) setNotesValue(data.order.notes ?? "");
     }
   }, [data?.order.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -358,6 +366,44 @@ export default function OrderOperationsDetailPage() {
               <p className="text-lg font-bold">{order.handovers.length}</p>
               <p className="text-[10px] text-muted-foreground">Devir</p>
             </div>
+          </div>
+          {/* Notes inline editor */}
+          <div className="mt-4 rounded-xl border border-border/60 p-4">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notlar</p>
+              {!notesEditing && (
+                <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" onClick={() => { setNotesValue(order.notes ?? ""); setNotesEditing(true); }}>
+                  <Pencil className="h-3.5 w-3.5" /> Düzenle
+                </Button>
+              )}
+            </div>
+            {notesEditing ? (
+              <div className="space-y-2">
+                <textarea
+                  value={notesValue}
+                  onChange={(e) => setNotesValue(e.target.value)}
+                  rows={3}
+                  className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 gap-1.5 text-xs" disabled={notesSaving} onClick={() => {
+                    startNotesSaving(async () => {
+                      await fetch(`/api/orders/${order.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notes: notesValue }) });
+                      setNotesEditing(false);
+                      void fetchData();
+                    });
+                  }}>
+                    <Check className="h-3.5 w-3.5" /> Kaydet
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setNotesEditing(false)}>
+                    <X className="h-3.5 w-3.5" /> İptal
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{order.notes || "Henüz not girilmemiş."}</p>
+            )}
           </div>
         </CardContent>
       </Card>

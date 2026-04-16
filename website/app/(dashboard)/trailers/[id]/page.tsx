@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
+import { InlineNotesEditor } from "@/components/shared/inline-notes-editor";
 import {
   buildDocumentStatuses,
   formatDocumentDate,
@@ -68,9 +69,13 @@ export default async function TrailerDetailPage({ params }: { params: { id: stri
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Durum</p>
             <div className="mt-2"><Badge variant="info">{trailer.status}</Badge></div>
           </div>
-          <div className="rounded-2xl border border-border/60 p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Notlar</p>
-            <p className="mt-2 font-medium text-foreground">{trailer.notes || "Not girilmemis"}</p>
+          <div className="rounded-2xl border border-border/60 p-4 col-span-3">
+            <InlineNotesEditor
+              entityId={trailer.id}
+              endpointBase="/api/trailers"
+              initialValue={trailer.notes}
+              placeholder="Bu dorse için henüz not girilmemiş."
+            />
           </div>
         </CardContent>
       </Card>

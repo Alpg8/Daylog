@@ -50,6 +50,48 @@ export async function PUT(
   return NextResponse.json({ trailer });
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getCurrentUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const allowed = ["notes", "type", "status"];
+    const patch: Record<string, string> = {};
+    for (const field of allowed) {
+      if (field in body && (typeof body[field] === "string" || body[field] === null)) {
+        patch[field] = body[field];
+      }
+    }
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
+    }
+    const before = await prisma.trailer.findUnique({ where: { id: params.id } });
+    const trailer = await prisma.trailer.update({ where: { id: params.id }, data: patch });
+
+    await recordEntityChange({
+      userId: session.sub,
+      role: session.role,
+      source: request.headers.get("x-client-source") === "APP" ? "APP" : "WEB",
+      action: "PATCH_TRAILER",
+      entityType: "Trailer",
+      entityId: trailer.id,
+      message: "Dorse parcali guncellendi",
+      metadata: { updatedFields: Object.keys(patch) },
+      before,
+      after: trailer,
+      notifyOps: false,
+    });
+
+    return NextResponse.json({ trailer });
+  } catch {
+    return NextResponse.json({ error: "Trailer not found" }, { status: 404 });
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

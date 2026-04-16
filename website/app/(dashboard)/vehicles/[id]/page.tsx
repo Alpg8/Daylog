@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
+import { InlineNotesEditor } from "@/components/shared/inline-notes-editor";
 import {
   buildDocumentStatuses,
   formatDocumentDate,
@@ -78,6 +79,14 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Durum</p>
             <div className="mt-2"><Badge variant="info">{vehicle.status}</Badge></div>
           </div>
+        </CardContent>
+        <CardContent className="border-t border-border/60 pt-4">
+          <InlineNotesEditor
+            entityId={vehicle.id}
+            endpointBase="/api/vehicles"
+            initialValue={vehicle.notes}
+            placeholder="Bu araç için henüz not girilmemiş."
+          />
         </CardContent>
       </Card>
 

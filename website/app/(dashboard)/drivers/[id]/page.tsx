@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
+import { InlineNotesEditor } from "@/components/shared/inline-notes-editor";
 import {
   buildDocumentStatuses,
   DRIVER_ATTACHMENT_LABEL_OPTIONS,
@@ -86,6 +87,14 @@ export default async function DriverDetailPage({ params }: { params: { id: strin
               <Badge variant={driver.isActive ? "success" : "secondary"}>{driver.isActive ? "Aktif" : "Pasif"}</Badge>
             </div>
           </div>
+        </CardContent>
+        <CardContent className="border-t border-border/60 pt-4">
+          <InlineNotesEditor
+            entityId={driver.id}
+            endpointBase="/api/drivers"
+            initialValue={driver.notes}
+            placeholder="Bu sürücü için henüz not girilmemiş."
+          />
         </CardContent>
       </Card>
 
