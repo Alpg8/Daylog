@@ -376,75 +376,49 @@ export default async function OrderOperationsSummaryPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-4 p-5 lg:grid-cols-3">
-                {/* Operasyonu gerceklestiren ekip */}
-                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
-                  <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold">Operasyon Bilgileri</h3>
-                  </div>
-                  <div className="grid gap-2 text-sm text-muted-foreground">
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
-                      <span>Cekici</span>
-                      <span className="font-medium text-foreground">{order.vehicle?.plateNumber || "Atanmadi"}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
-                      <span>Dorse</span>
-                      <span className="font-medium text-foreground">{order.trailer?.plateNumber || "Atanmadi"}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
-                      <span>Surucu</span>
-                      <span className="font-medium text-foreground">
-                        {order.driver ? (
-                          <Link href={`/drivers/${order.driver.id}`} className="text-primary hover:underline">
-                            {order.driver.fullName}
-                          </Link>
-                        ) : "Atanmadi"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">{order._count.driverEvents} event</Badge>
-                    <Badge variant="outline">{order._count.driverConfirmations} onam</Badge>
-                  </div>
-                </div>
-
-                {/* Siparis evraklari */}
-                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
-                  <div className="flex items-center justify-between gap-2">
+              <CardContent className="space-y-4 p-5">
+                {/* Row 1: Operasyon Bilgileri + Arac/Dorse evraklari */}
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold">Siparis Evraklari</h3>
+                      <Truck className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold">Operasyon Bilgileri</h3>
                     </div>
-                    <AttachmentManager
-                      title="Siparis dosyalari"
-                      description="CMR, fatura ve siparis belgelerini yonetin."
-                      entityId={order.id}
-                      endpointBase="/api/orders"
-                      triggerLabel="Dosya ekle"
-                      triggerClassName="h-8 gap-2"
-                    />
+                    <div className="grid gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
+                        <span>Cekici</span>
+                        <span className="font-medium text-foreground">{order.vehicle?.plateNumber || "Atanmadi"}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
+                        <span>Dorse</span>
+                        <span className="font-medium text-foreground">{order.trailer?.plateNumber || "Atanmadi"}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
+                        <span>Surucu</span>
+                        <span className="font-medium text-foreground">
+                          {order.driver ? (
+                            <Link href={`/drivers/${order.driver.id}`} className="text-primary hover:underline">
+                              {order.driver.fullName}
+                            </Link>
+                          ) : "Atanmadi"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">{order._count.driverEvents} event</Badge>
+                      <Badge variant="outline">{order._count.driverConfirmations} onam</Badge>
+                    </div>
                   </div>
-                  <Badge variant={order._count.attachments > 0 ? "success" : "warning"}>
-                    {order._count.attachments} siparis dosyasi
-                  </Badge>
-                  {renderAttachmentList(order.attachments, "Siparise belge yuklenmemis.")}
-                </div>
 
-                {/* Operasyon evraklari (arac + dorse) */}
-                <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
-                  <div className="flex items-center gap-2">
-                    <CarFront className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold">Operasyon Evraklari</h3>
-                  </div>
                   {order.vehicle && (
-                    <div className="space-y-2 rounded-xl border border-border/50 p-3">
+                    <div className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{order.vehicle.plateNumber}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {[order.vehicle.brand, order.vehicle.model].filter(Boolean).join(" ") || "Cekici"}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <CarFront className="h-4 w-4 text-primary" />
+                          <div>
+                            <p className="font-semibold">{order.vehicle.plateNumber}</p>
+                            <p className="text-xs text-muted-foreground">{[order.vehicle.brand, order.vehicle.model].filter(Boolean).join(" ") || "Cekici"}</p>
+                          </div>
                         </div>
                         <AttachmentManager
                           title="Arac dosyalari"
@@ -458,12 +432,16 @@ export default async function OrderOperationsSummaryPage() {
                       {renderAttachmentList(order.vehicle.attachments, "Araca bagli dosya yok.")}
                     </div>
                   )}
+
                   {order.trailer && (
-                    <div className="space-y-2 rounded-xl border border-border/50 p-3">
+                    <div className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4">
                       <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{order.trailer.plateNumber}</p>
-                          <p className="text-xs text-muted-foreground">{order.trailer.type ? `Dorse · ${order.trailer.type}` : "Dorse"}</p>
+                        <div className="flex items-center gap-2">
+                          <CarFront className="h-4 w-4 text-primary" />
+                          <div>
+                            <p className="font-semibold">{order.trailer.plateNumber}</p>
+                            <p className="text-xs text-muted-foreground">{order.trailer.type ? `Dorse · ${order.trailer.type}` : "Dorse"}</p>
+                          </div>
                         </div>
                         <AttachmentManager
                           title="Dorse dosyalari"
@@ -477,74 +455,155 @@ export default async function OrderOperationsSummaryPage() {
                       {renderAttachmentList(order.trailer.attachments, "Dorseye bagli dosya yok.")}
                     </div>
                   )}
-                  {!order.vehicle && !order.trailer && (
-                    <p className="text-sm text-muted-foreground">Arac veya dorse atanmamis.</p>
-                  )}
 
-                  {/* Driver event photos and notes — grouped by 3 phases */}
-                  {(() => {
-                    type EvType = typeof order.driverEvents[number];
-                    const PHASES: Array<{ label: string; icon: React.ReactNode; types: string[] }> = [
-                      { label: "Baslama", icon: <Play className="h-3.5 w-3.5" />, types: ["START_JOB"] },
-                      { label: "Yukleme / Bosaltma", icon: <PackageOpen className="h-3.5 w-3.5" />, types: ["LOAD", "UNLOAD"] },
-                      { label: "Bitirme", icon: <CheckCircle2 className="h-3.5 w-3.5" />, types: ["DELIVERY", "END_JOB"] },
-                    ];
-                    const grouped = PHASES.map((phase) => ({
-                      ...phase,
-                      events: order.driverEvents.filter((e) => phase.types.includes(e.type)),
-                    }));
-                    return (
-                      <div className="space-y-2 rounded-xl border border-border/50 p-3">
-                        <p className="text-sm font-medium text-foreground">Is Asamalari</p>
-                        <div className="space-y-3">
-                          {grouped.map((group) => (
-                            <div key={group.label}>
-                              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-primary">
-                                {group.icon}
-                                {group.label}
-                              </div>
-                              <div className="space-y-1.5 pl-1">
-                                {group.events.length === 0 ? (
-                                  <p className="text-xs text-muted-foreground italic">Henuz kayit yok</p>
-                                ) : (
-                                  group.events.map((event: EvType) => (
-                                    <div key={event.id} className="rounded-lg border border-border/40 bg-background/60 p-2 text-xs">
-                                      <div className="flex items-center justify-between gap-2 mb-1">
-                                        <span className="font-medium text-foreground/80">{event.driver.fullName}</span>
-                                        <span className="text-muted-foreground">{new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}</span>
-                                      </div>
-                                      {event.notes && (
-                                        <p className="text-muted-foreground mb-1.5 italic">&ldquo;{event.notes}&rdquo;</p>
-                                      )}
-                                      {event.photos.length > 0 && (
-                                        <div className="grid grid-cols-3 gap-1.5 mt-1">
-                                          {event.photos.map((photo) => (
-                                            <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
-                                              className="group relative block overflow-hidden rounded-lg border border-border/50 bg-muted aspect-square">
-                                              <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                                              {photo.label && (
-                                                <span className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[9px] text-white truncate text-center leading-tight">
-                                                  {photo.label}
-                                                </span>
-                                              )}
-                                            </a>
-                                          ))}
-                                        </div>
-                                      )}
-                                      {!event.notes && event.photos.length === 0 && (
-                                        <p className="text-muted-foreground">Foto veya not yok</p>
-                                      )}
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  {!order.vehicle && !order.trailer && (
+                    <div className="col-span-2 flex items-center rounded-2xl border border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
+                      Arac veya dorse atanmamis.
+                    </div>
+                  )}
                 </div>
+
+                {/* Row 2: 3-phase document + event grid */}
+                {(() => {
+                  type EvType = typeof order.driverEvents[number];
+                  type PhaseKey = "START" | "LOAD" | "DELIVERY";
+                  const PHASES: Array<{ key: PhaseKey; label: string; icon: React.ReactNode; types: string[] }> = [
+                    { key: "START", label: "Baslangic", icon: <Play className="h-4 w-4" />, types: ["START_JOB"] },
+                    { key: "LOAD", label: "Yukleme / Bosaltma", icon: <PackageOpen className="h-4 w-4" />, types: ["LOAD", "UNLOAD"] },
+                    { key: "DELIVERY", label: "Teslim / Bitis", icon: <PackageCheck className="h-4 w-4" />, types: ["DELIVERY", "END_JOB"] },
+                  ];
+
+                  const matchedIds = new Set<string>();
+                  const phaseAttachments = Object.fromEntries(
+                    PHASES.map((phase) => {
+                      const hits = order.attachments.filter((a) =>
+                        PHASE_ATTACHMENT_KEYWORDS[phase.key].some((kw) =>
+                          normalizeText(a.label).includes(normalizeText(kw))
+                        )
+                      );
+                      hits.forEach((a) => matchedIds.add(a.id));
+                      return [phase.key, hits];
+                    })
+                  ) as Record<PhaseKey, typeof order.attachments>;
+                  const otherAttachments = order.attachments.filter((a) => !matchedIds.has(a.id));
+
+                  return (
+                    <div className="grid gap-3 lg:grid-cols-3">
+                      {PHASES.map((phase) => {
+                        const events = order.driverEvents.filter((e) => phase.types.includes(e.type));
+                        const attachments = phaseAttachments[phase.key];
+                        const isEmpty = events.length === 0 && attachments.length === 0;
+                        return (
+                          <div key={phase.key} className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 font-semibold">
+                                <span className="text-primary">{phase.icon}</span>
+                                {phase.label}
+                              </div>
+                              {phase.key === "START" && (
+                                <AttachmentManager
+                                  title="Siparis dosyalari"
+                                  description="CMR, fatura ve siparis belgelerini yonetin."
+                                  entityId={order.id}
+                                  endpointBase="/api/orders"
+                                  triggerLabel="Dosya ekle"
+                                  triggerClassName="h-7 gap-1.5 text-xs"
+                                />
+                              )}
+                            </div>
+
+                            {/* Phase-matched order attachments */}
+                            {attachments.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Evraklar</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {attachments.map((attachment) => (
+                                    <a
+                                      key={attachment.id}
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-xs text-foreground/85 transition-colors hover:border-primary/40 hover:text-primary"
+                                    >
+                                      <FolderOpen className="h-3 w-3" />
+                                      {attachment.label || "Etiketsiz dosya"}
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Driver events for this phase */}
+                            {events.length > 0 && (
+                              <div className="space-y-1.5">
+                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Surucu Kayitlari</p>
+                                {events.map((event: EvType) => (
+                                  <div key={event.id} className="rounded-xl border border-border/40 bg-background/60 p-2.5 text-xs">
+                                    <div className="mb-1 flex items-center justify-between gap-2">
+                                      <span className="font-medium text-foreground/80">{event.driver.fullName}</span>
+                                      <span className="text-muted-foreground">
+                                        {new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}
+                                      </span>
+                                    </div>
+                                    {event.notes && (
+                                      <p className="mb-2 italic text-muted-foreground">&ldquo;{event.notes}&rdquo;</p>
+                                    )}
+                                    {event.photos.length > 0 && (
+                                      <div className="grid grid-cols-3 gap-1.5">
+                                        {event.photos.map((photo) => (
+                                          <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
+                                            className="group relative block overflow-hidden rounded-lg border border-border/50 bg-muted aspect-square">
+                                            <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                                            {photo.label && (
+                                              <span className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[9px] text-white truncate text-center leading-tight">
+                                                {photo.label}
+                                              </span>
+                                            )}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {isEmpty && (
+                              <p className="text-xs italic text-muted-foreground">Henuz kayit veya evrak yok</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Unmatched / other attachments */}
+                {(() => {
+                  const matchedIds2 = new Set<string>();
+                  PHASE_ATTACHMENT_KEYWORDS.START.concat(PHASE_ATTACHMENT_KEYWORDS.LOAD, PHASE_ATTACHMENT_KEYWORDS.DELIVERY);
+                  const allPhaseKw = [
+                    ...PHASE_ATTACHMENT_KEYWORDS.START,
+                    ...PHASE_ATTACHMENT_KEYWORDS.LOAD,
+                    ...PHASE_ATTACHMENT_KEYWORDS.DELIVERY,
+                  ];
+                  order.attachments.forEach((a) => {
+                    if (allPhaseKw.some((kw) => normalizeText(a.label).includes(normalizeText(kw)))) {
+                      matchedIds2.add(a.id);
+                    }
+                  });
+                  const other = order.attachments.filter((a) => !matchedIds2.has(a.id));
+                  if (other.length === 0) return null;
+                  return (
+                    <div className="rounded-2xl border border-border/60 bg-background/30 p-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <h3 className="font-semibold">Diger Evraklar</h3>
+                      </div>
+                      {renderAttachmentList(other, "")}
+                    </div>
+                  );
+                })()}
               </CardContent>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-5 py-4 text-xs text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-3">
