@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -265,13 +264,12 @@ export function ExcelImportDialog<T extends Record<string, unknown>>({
   const errorCount = rows.filter((r) => r.errors.length > 0).length;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <FileSpreadsheet className="h-4 w-4" />
-          İçe Aktar
-        </Button>
-      </DialogTrigger>
+    <>
+      <Button variant="outline" size="sm" className="gap-2" onClick={() => setOpen(true)}>
+        <FileSpreadsheet className="h-4 w-4" />
+        İçe Aktar
+      </Button>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogContent className="max-h-[90vh] sm:max-w-2xl flex flex-col gap-0 p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
           <DialogTitle>{title}</DialogTitle>
@@ -475,5 +473,6 @@ export function ExcelImportDialog<T extends Record<string, unknown>>({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
