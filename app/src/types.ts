@@ -20,6 +20,11 @@ export interface DriverTask {
   loadingDate?: string | null;
   unloadingDate?: string | null;
   updatedAt?: string;
+  jobType?: "LOADING" | "UNLOADING" | null;
+  phaseStartLocation?: string | null;
+  phaseLoadLocation?: string | null;
+  phaseUnloadLocation?: string | null;
+  phaseDeliveryLocation?: string | null;
   vehicle?: { plateNumber: string } | null;
   driverEvents?: Array<{ type: string; eventAt: string }>;
 }

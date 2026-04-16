@@ -226,6 +226,12 @@ export default function App() {
               if (result?.startsWith("/")) setStepPhotoUri(result);
               else if (result) Alert.alert("Fotograf", result);
             }}
+            onPickExtraPhoto={(label, onDone) => {
+              pickImage().then((uri) => {
+                if (uri?.startsWith("/")) onDone(uri);
+                else onDone(null);
+              });
+            }}
             onUploadJobDocument={async () => {
               const err = await uploadCurrentTaskDocument(selectedTask?.cargoNumber ?? selectedTask?.tripNumber ?? undefined);
               if (err) Alert.alert("Is Dokumani", err);

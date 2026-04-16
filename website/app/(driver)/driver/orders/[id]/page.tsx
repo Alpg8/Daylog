@@ -141,7 +141,6 @@ const LOADING_FLOW: FlowStep[] = [
       { key: "masraf_fisi_2", label: "Masraf Fisi 2", required: false },
     ],
   },
-  { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: false },
 ];
 
 const UNLOADING_FLOW: FlowStep[] = [
@@ -174,7 +173,6 @@ const UNLOADING_FLOW: FlowStep[] = [
       { key: "masraf_fisi_2", label: "Masraf Fisi 2", required: false },
     ],
   },
-  { eventType: "END_JOB", label: "Isi Bitir", icon: Flag, requiresPhoto: false },
 ];
 
 /* ─── Types ──────────────────────────────────────────────────── */
@@ -382,7 +380,8 @@ export default function DriverOrderDetailPage() {
       if (step.eventType === "START_JOB" && timeline?.order.status === "PLANNED") {
         await fetch("/api/driver/update-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, status: "IN_PROGRESS" }) });
       }
-      if (step.eventType === "END_JOB") {
+      if (step.eventType === "DELIVERY") {
+        await fetch("/api/driver/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, type: "END_JOB", notes: "Otomatik kapaniş" }) });
         await fetch("/api/driver/update-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, status: "COMPLETED" }) });
       }
 

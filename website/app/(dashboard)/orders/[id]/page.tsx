@@ -234,9 +234,6 @@ export default function OrderOperationsDetailPage() {
 
   return (
     <div className="space-y-4">
-      {/* Header card */}
-      <Card>
-
       <Card>
         <CardHeader className="gap-3 md:flex-row md:items-start md:justify-between">
           <div>
@@ -302,8 +299,8 @@ export default function OrderOperationsDetailPage() {
               )}
             </div>
           </div>
-        </CardContent>
       </Card>
+      <Card>
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle>Operasyon Detayi</CardTitle>

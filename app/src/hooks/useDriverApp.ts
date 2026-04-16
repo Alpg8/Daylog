@@ -373,7 +373,7 @@ export function useDriverApp() {
     }
   }
 
-  async function submitStepUpdate(): Promise<string | null> {
+  async function submitStepUpdate(opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }> }): Promise<string | null> {
     if (!token) return "Oturum bulunamadi";
     if (!selectedTaskId) return "Lutfen once bir is secin";
     if (!stepPhotoUri) return "Asama bildirimi icin fotograf zorunlu";
@@ -386,9 +386,11 @@ export function useDriverApp() {
           type: stepType,
           notes: stepNotes || null,
           odometerKm: stepKm ? Number(stepKm) : null,
+          phaseData: opts?.phaseData ?? undefined,
         }),
       });
 
+      // Upload main photo
       const formData = new FormData();
       formData.append("file", {
         uri: stepPhotoUri,
@@ -396,8 +398,21 @@ export function useDriverApp() {
         type: "image/jpeg",
       } as unknown as Blob);
       formData.append("label", STEP_LABELS[stepType]);
-
       await apiFetchForm(`/api/driver/events/${eventRes.event.id}/photos`, token, formData);
+
+      // Upload extra photos (e.g. kantar fisi, smr, etc.)
+      if (opts?.extraPhotos) {
+        for (const extra of opts.extraPhotos) {
+          const fd = new FormData();
+          fd.append("file", {
+            uri: extra.uri,
+            name: `${extra.label}-${Date.now()}.jpg`,
+            type: "image/jpeg",
+          } as unknown as Blob);
+          fd.append("label", extra.label);
+          await apiFetchForm(`/api/driver/events/${eventRes.event.id}/photos`, token, fd);
+        }
+      }
 
       if (stepType === "START_JOB") {
         await apiFetch("/api/driver/update-status", token, {
@@ -405,7 +420,22 @@ export function useDriverApp() {
           body: JSON.stringify({ orderId: selectedTaskId, status: "IN_PROGRESS" }),
         });
       }
-      if (stepType === "END_JOB") {
+
+      // On DELIVERY, also send END_JOB event and mark completed
+      if (stepType === "DELIVERY") {
+        const endRes = await apiFetch<{ event: { id: string } }>("/api/driver/events", token, {
+          method: "POST",
+          body: JSON.stringify({ orderId: selectedTaskId, type: "END_JOB", notes: "Teslim tamamlandi" }),
+        });
+        // attach same photo to END_JOB event too
+        const fd2 = new FormData();
+        fd2.append("file", {
+          uri: stepPhotoUri,
+          name: `end-${Date.now()}.jpg`,
+          type: "image/jpeg",
+        } as unknown as Blob);
+        fd2.append("label", "Teslim");
+        await apiFetchForm(`/api/driver/events/${endRes.event.id}/photos`, token, fd2);
         await apiFetch("/api/driver/update-status", token, {
           method: "POST",
           body: JSON.stringify({ orderId: selectedTaskId, status: "COMPLETED" }),
