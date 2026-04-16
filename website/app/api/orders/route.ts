@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const search = searchParams.get("search");
   const page = parseInt(searchParams.get("page") ?? "1");
-  const pageSize = parseInt(searchParams.get("pageSize") ?? "50");
+  const pageSize = Math.min(parseInt(searchParams.get("pageSize") ?? "50"), 200);
 
   const where: Record<string, unknown> = {};
   if (category) where.orderCategory = category;

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const vehicleId = searchParams.get("vehicleId");
   const driverId = searchParams.get("driverId");
   const page = parseInt(searchParams.get("page") ?? "1");
-  const pageSize = parseInt(searchParams.get("pageSize") ?? "50");
+  const pageSize = Math.min(parseInt(searchParams.get("pageSize") ?? "50"), 200);
 
   const where: Record<string, unknown> = {};
   if (vehicleId) where.vehicleId = vehicleId;

@@ -322,6 +322,8 @@ model Order {
   @@index([vehicleId, status])
   @@index([trailerId, status])
   @@index([createdByUserId, createdAt])
+  @@index([operationDate])
+  @@index([orderCategory, status])
 }
 
 model FuelRecord {
@@ -455,6 +457,7 @@ model DriverEvent {
 
   @@index([orderId, eventAt])
   @@index([driverId, eventAt])
+  @@index([orderId, driverId])
 }
 
 model DriverEventPhoto {

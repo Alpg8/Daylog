@@ -28,25 +28,39 @@ async function parseResponseJson(res: Response): Promise<JsonObject> {
   }
 }
 
-async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestJson<T>(path: string, init?: RequestInit, retries = 2): Promise<T> {
   const headerMap = toHeaders(init?.headers);
   const hasContentType = Object.keys(headerMap).some((key) => key.toLowerCase() === "content-type");
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      ...(hasContentType ? {} : { "Content-Type": "application/json" }),
-      "x-client-source": "APP",
-      ...headerMap,
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
-  const json = await parseResponseJson(res);
-  if (!res.ok) {
-    throw new Error((json.error as string | undefined) ?? `Istek basarisiz (${res.status})`);
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        ...(hasContentType ? {} : { "Content-Type": "application/json" }),
+        "x-client-source": "APP",
+        ...headerMap,
+      },
+    });
+
+    const json = await parseResponseJson(res);
+    if (!res.ok) {
+      throw new Error((json.error as string | undefined) ?? `Istek basarisiz (${res.status})`);
+    }
+
+    return json as T;
+  } catch (err) {
+    if (retries > 0 && !(err instanceof Error && err.name === "AbortError")) {
+      await new Promise((resolve) => setTimeout(resolve, Math.pow(2, 2 - retries) * 1000));
+      return requestJson<T>(path, init, retries - 1);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return json as T;
 }
 
 export async function apiFetch<T>(path: string, token: string, init?: RequestInit): Promise<T> {
