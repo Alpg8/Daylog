@@ -8,27 +8,27 @@ const STATUS_TR: Record<string, string> = {
   PLANNED: "Planli", IN_PROGRESS: "Devam Ediyor", COMPLETED: "Tamamlandi", CANCELLED: "Iptal",
 };
 
-interface DataField { key: string; label: string; numeric?: boolean }
+interface DataField { key: string; label: string; numeric?: boolean; required?: boolean }
 
 const PHASE_DATA_FIELDS: Partial<Record<StepType, DataField[]>> = {
   LOAD: [
-    { key: "spanzet_count", label: "Spanzet Sayisi", numeric: true },
-    { key: "stanga_count",  label: "Stanga Sayisi",  numeric: true },
-    { key: "cita_count",    label: "Cita Sayisi",    numeric: true },
-    { key: "equipment_note", label: "Ekipman Notu" },
+    { key: "spanzet_count",  label: "Spanzet Sayisi",  numeric: true,  required: true },
+    { key: "stanga_count",   label: "Stanga Sayisi",   numeric: true,  required: true },
+    { key: "cita_count",     label: "Cita Sayisi",     numeric: true,  required: false },
+    { key: "equipment_note", label: "Ekipman Notu",                    required: false },
   ],
   UNLOAD: [
-    { key: "outgoing_spanzet",  label: "Cikan Spanzet",    numeric: true },
-    { key: "tension_rod_count", label: "Gergi Cubugu Say.", numeric: true },
+    { key: "outgoing_spanzet",  label: "Cikan Spanzet",       numeric: true, required: true },
+    { key: "tension_rod_count", label: "Gergi Cubugu Sayisi", numeric: true, required: false },
   ],
 };
 
 // Semantic label key used when uploading the mandatory main photo
 const MAIN_PHOTO_LABEL: Partial<Record<StepType, string>> = {
   START_JOB: "genel",
-  LOAD:       "genel",
-  UNLOAD:     "smr",    // main photo for unload = SMR
-  DELIVERY:   "teslim",
+  LOAD:      "genel",
+  UNLOAD:    "smr",
+  DELIVERY:  "teslim",
 };
 
 // Human-readable title shown above the main photo picker per phase
@@ -39,19 +39,15 @@ const MAIN_PHOTO_DISPLAY: Partial<Record<StepType, string>> = {
   DELIVERY:  "Teslim Foto *",
 };
 
-// Extra labeled photos required per phase (main photo already covers the first labeled slot)
-const EXTRA_PHOTO_LABELS: Partial<Record<StepType, string[]>> = {
-  LOAD:     ["kantar_fisi"],
-  UNLOAD:   ["bosaltma_ani"],           // smr is now the main photo
-  DELIVERY: ["masraf_fisi_1", "masraf_fisi_2"],
-};
-
-// Display names for extra photo labels
-const EXTRA_PHOTO_DISPLAY: Record<string, string> = {
-  kantar_fisi:   "Kantar Fisi",
-  bosaltma_ani:  "Bosaltma Ani Foto",
-  masraf_fisi_1: "Masraf Fisi 1",
-  masraf_fisi_2: "Masraf Fisi 2 (opsiyonel)",
+// Extra labeled photos per phase — key = upload label, value = display name, required flag
+interface ExtraPhotoConfig { label: string; display: string; required: boolean }
+const EXTRA_PHOTO_CONFIGS: Partial<Record<StepType, ExtraPhotoConfig[]>> = {
+  LOAD:     [{ label: "kantar_fisi",  display: "Kantar Fisi *",           required: true }],
+  UNLOAD:   [{ label: "bosaltma_ani", display: "Bosaltma Ani Foto *",     required: true }],
+  DELIVERY: [
+    { label: "masraf_fisi_1", display: "Masraf Fisi 1",              required: false },
+    { label: "masraf_fisi_2", display: "Masraf Fisi 2",              required: false },
+  ],
 };
 
 interface TasksScreenProps {
@@ -108,7 +104,25 @@ export function TasksScreen(props: TasksScreenProps) {
   const locationKey = activePhase?.locationKey as keyof DriverTask | undefined;
   const officeLocation = locationKey ? (currentTask?.[locationKey] as string | null | undefined) : null;
 
+  // Compute whether all required fields for the current phase are filled
+  const canSubmit = useMemo(() => {
+    if (!stepPhotoUri) return false;
+    const requiredExtras = (EXTRA_PHOTO_CONFIGS[stepType] ?? []).filter((e) => e.required);
+    for (const extra of requiredExtras) {
+      if (!extraPhotos[extra.label]) return false;
+    }
+    const requiredDataFields = (PHASE_DATA_FIELDS[stepType] ?? []).filter((f) => f.required);
+    for (const f of requiredDataFields) {
+      if (!phaseInputs[f.key]?.trim()) return false;
+    }
+    return true;
+  }, [stepPhotoUri, extraPhotos, phaseInputs, stepType]);
+
   async function handleSubmit() {
+    if (!canSubmit) {
+      Alert.alert("Eksik Bilgi", "Lutfen zorunlu fotografları ve alanları doldurun.");
+      return;
+    }
     const fields = PHASE_DATA_FIELDS[stepType] ?? [];
     const phaseData: Record<string, string | number> = {};
     for (const f of fields) {
@@ -116,8 +130,9 @@ export function TasksScreen(props: TasksScreenProps) {
       if (val) phaseData[f.key] = f.numeric ? Number(val) : val;
     }
     const extraPhotosList: Array<{ uri: string; label: string }> = [];
-    for (const [label, uri] of Object.entries(extraPhotos)) {
-      if (uri) extraPhotosList.push({ uri, label });
+    for (const cfg of (EXTRA_PHOTO_CONFIGS[stepType] ?? [])) {
+      const uri = extraPhotos[cfg.label];
+      if (uri) extraPhotosList.push({ uri, label: cfg.label });
     }
     const err = await onSubmitStep({
       phaseData: Object.keys(phaseData).length > 0 ? phaseData : undefined,
@@ -179,32 +194,46 @@ export function TasksScreen(props: TasksScreenProps) {
       {currentTask && activePhase ? (
         <View style={[styles.card, c && styles.cardDark]}>
           <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Asama: {activePhase.label}</Text>
+
+          {/* Location sent from office */}
           {officeLocation ? (
             <View style={local.locationBox}>
-              <Text style={local.locationLabel}>Ofis Konumu</Text>
+              <Text style={local.locationLabel}>📍 Konum (Ofisten)</Text>
               <Text style={[local.locationText, c && { color: "#bae6fd" }]}>{officeLocation}</Text>
             </View>
-          ) : null}
+          ) : (
+            <View style={[local.locationBox, { borderColor: "#94a3b830" }]}>
+              <Text style={[local.locationLabel, { color: "#94a3b8" }]}>📍 Konum henüz girilmedi</Text>
+            </View>
+          )}
+
+          {/* Main required photo */}
           <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{MAIN_PHOTO_DISPLAY[stepType] ?? "Ana Fotograf *"}</Text>
-          <Pressable style={styles.secondaryBtn} onPress={onPickStepPhoto}>
-            <Text style={styles.secondaryBtnText}>{stepPhotoUri ? "Fotografı Degistir" : "Fotograf Sec"}</Text>
+          <Pressable style={[styles.secondaryBtn, stepPhotoUri ? local.btnDone : null]} onPress={onPickStepPhoto}>
+            <Text style={styles.secondaryBtnText}>{stepPhotoUri ? "✓ Fotograf Secildi — Degistir" : "Fotograf Sec"}</Text>
           </Pressable>
           {stepPhotoUri ? <Image source={{ uri: stepPhotoUri }} style={styles.preview} /> : null}
-          {(EXTRA_PHOTO_LABELS[stepType] ?? []).map((label) => (
-            <View key={label} style={{ marginTop: 10 }}>
-              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{EXTRA_PHOTO_DISPLAY[label] ?? label.replace(/_/g, " ")}</Text>
-              <Pressable style={[styles.secondaryBtn, { marginTop: 2 }]}
-                onPress={() => onPickExtraPhoto(label, (uri) => setExtraPhotos((prev) => ({ ...prev, [label]: uri })))}>
-                <Text style={styles.secondaryBtnText}>{extraPhotos[label] ? "Degistir" : "Sec"}</Text>
+
+          {/* Extra labeled photos */}
+          {(EXTRA_PHOTO_CONFIGS[stepType] ?? []).map((cfg) => (
+            <View key={cfg.label} style={{ marginTop: 10 }}>
+              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{cfg.display}</Text>
+              <Pressable
+                style={[styles.secondaryBtn, { marginTop: 2 }, extraPhotos[cfg.label] ? local.btnDone : null]}
+                onPress={() => onPickExtraPhoto(cfg.label, (uri) => setExtraPhotos((prev) => ({ ...prev, [cfg.label]: uri })))}>
+                <Text style={styles.secondaryBtnText}>{extraPhotos[cfg.label] ? "✓ Secildi — Degistir" : "Sec"}</Text>
               </Pressable>
-              {extraPhotos[label] ? <Image source={{ uri: extraPhotos[label]! }} style={[styles.preview, { height: 80 }]} /> : null}
+              {extraPhotos[cfg.label] ? <Image source={{ uri: extraPhotos[cfg.label]! }} style={[styles.preview, { height: 80 }]} /> : null}
             </View>
           ))}
+
+          {/* Phase data fields */}
           {(PHASE_DATA_FIELDS[stepType] ?? []).map((f) => (
             <View key={f.key} style={{ marginTop: 10 }}>
-              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{f.label}</Text>
+              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{f.label}{f.required ? " *" : ""}</Text>
               <TextInput
-                style={[styles.input, c && styles.inputDark]}
+                style={[styles.input, c && styles.inputDark,
+                  f.required && !phaseInputs[f.key]?.trim() ? local.inputRequired : null]}
                 value={phaseInputs[f.key] ?? ""}
                 onChangeText={(v) => setPhaseInputs((prev) => ({ ...prev, [f.key]: v }))}
                 placeholder={f.label}
@@ -213,13 +242,23 @@ export function TasksScreen(props: TasksScreenProps) {
               />
             </View>
           ))}
+
           <TextInput style={[styles.input, c && styles.inputDark, { marginTop: 10 }]} value={stepKm} onChangeText={onStepKmChange}
             placeholder="Kilometre (opsiyonel)" placeholderTextColor={c ? "#94a3b8" : "#64748b"} keyboardType="numeric" />
           <TextInput style={[styles.input, styles.textArea, c && styles.inputDark]} value={stepNotes} onChangeText={onStepNotesChange}
             placeholder="Aciklama (opsiyonel)" placeholderTextColor={c ? "#94a3b8" : "#64748b"} multiline />
-          <Pressable style={styles.primaryBtn} onPress={handleSubmit}>
+
+          {/* Submit — disabled until all required fields filled */}
+          <Pressable
+            style={[styles.primaryBtn, !canSubmit && local.btnDisabled]}
+            onPress={handleSubmit}
+            disabled={false}
+          >
             <Text style={styles.primaryBtnText}>{activePhase.label} Kaydet</Text>
           </Pressable>
+          {!canSubmit && (
+            <Text style={local.validationHint}>Zorunlu (*) alanları doldurun</Text>
+          )}
         </View>
       ) : null}
 
@@ -273,7 +312,11 @@ const local = StyleSheet.create({
   phaseActiveLabel: { color: "#0ea5e9", fontWeight: "700" },
   phaseWaitLabel: { color: "#94a3b8" },
   locationBox: { backgroundColor: "#0ea5e910", borderRadius: 8, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: "#0ea5e930" },
-  locationLabel: { fontSize: 10, fontWeight: "700", color: "#0ea5e9", marginBottom: 2 },
+  locationLabel: { fontSize: 11, fontWeight: "700", color: "#0ea5e9", marginBottom: 2 },
   locationText: { fontSize: 13, color: "#0f172a" },
   fieldLabel: { fontSize: 12, fontWeight: "600", marginBottom: 2, color: "#475569" },
+  btnDone: { backgroundColor: "#22c55e20", borderColor: "#22c55e", borderWidth: 1 },
+  btnDisabled: { backgroundColor: "#94a3b830", opacity: 0.6 },
+  inputRequired: { borderColor: "#f97316", borderWidth: 1.5 },
+  validationHint: { fontSize: 11, color: "#f97316", textAlign: "center", marginTop: 6 },
 });
