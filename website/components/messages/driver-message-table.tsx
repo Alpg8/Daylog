@@ -5,8 +5,10 @@ import {
   CheckCheck,
   Mail,
   MessageSquareReply,
+  PenSquare,
   Search,
   ShieldCheck,
+  Users,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,12 +17,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { DriverMessageWithRelations } from "@/types";
+
+interface DriverOption {
+  id: string;
+  fullName: string;
+  phoneNumber: string | null;
+}
 
 const LIVE_UPDATE_EVENT = "daylog:live-update";
 
@@ -73,6 +83,14 @@ export function DriverMessageTable() {
   const [submittingReply, setSubmittingReply] = useState(false);
   const [markingReadId, setMarkingReadId] = useState<string | null>(null);
 
+  // New message dialog
+  const [showNewMessage, setShowNewMessage] = useState(false);
+  const [allDrivers, setAllDrivers] = useState<DriverOption[]>([]);
+  const [newMsgDriverId, setNewMsgDriverId] = useState<"ALL" | string>("ALL");
+  const [newMsgSubject, setNewMsgSubject] = useState("");
+  const [newMsgBody, setNewMsgBody] = useState("");
+  const [sendingNew, setSendingNew] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const res = await fetch("/api/driver-messages?take=500", { cache: "no-store" });
@@ -95,6 +113,44 @@ export function DriverMessageTable() {
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!showNewMessage || allDrivers.length > 0) return;
+    fetch("/api/drivers?take=200", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((json: { drivers?: DriverOption[] }) => setAllDrivers(json.drivers ?? []))
+      .catch(() => toast.error("Soforler yuklenemedi"));
+  }, [showNewMessage, allDrivers.length]);
+
+  async function sendNewMessage() {
+    if (!newMsgBody.trim()) { toast.error("Mesaj bos olamaz"); return; }
+    const targets = newMsgDriverId === "ALL" ? allDrivers.map((d) => d.id) : [newMsgDriverId];
+    if (targets.length === 0) { toast.error("En az bir sofor secin"); return; }
+    setSendingNew(true);
+    try {
+      for (const id of targets) {
+        const res = await fetch("/api/driver-messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ driverId: id, subject: newMsgSubject || "Ofis Mesaji", message: newMsgBody }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error((err as { error?: string }).error ?? "Gonderilemedi");
+        }
+      }
+      toast.success(targets.length > 1 ? `Mesaj ${targets.length} soforee gonderildi` : "Mesaj gonderildi");
+      setShowNewMessage(false);
+      setNewMsgSubject("");
+      setNewMsgBody("");
+      setNewMsgDriverId("ALL");
+      await fetchData();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gonderilemedi");
+    } finally {
+      setSendingNew(false);
+    }
+  }
 
   useEffect(() => {
     const handleLiveUpdate = () => {
@@ -244,9 +300,97 @@ export function DriverMessageTable() {
               <Mail className="mr-2 h-4 w-4" />
               {showUnreadOnly ? "Tum konusmalar" : "Sadece okunmamis"}
             </Button>
+            <Button size="sm" onClick={() => setShowNewMessage(true)}>
+              <PenSquare className="mr-2 h-4 w-4" />
+              Yeni Mesaj
+            </Button>
           </div>
         }
       />
+
+      <Dialog open={showNewMessage} onOpenChange={setShowNewMessage}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Yeni Mesaj Gonder</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Alici</Label>
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewMsgDriverId("ALL")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition-colors",
+                    newMsgDriverId === "ALL"
+                      ? "border-primary/50 bg-primary/10 text-primary font-medium"
+                      : "border-border/60 hover:border-primary/30 hover:bg-muted/40"
+                  )}
+                >
+                  <Users className="h-4 w-4" />
+                  Tüm Ekip ({allDrivers.length > 0 ? allDrivers.length : "…"} sürücü)
+                </button>
+                <ScrollArea className="h-40 rounded-xl border border-border/60 p-2">
+                  <div className="space-y-1">
+                    {allDrivers.length === 0 && (
+                      <p className="p-2 text-xs text-muted-foreground">Yukleniyor...</p>
+                    )}
+                    {allDrivers.map((driver) => (
+                      <button
+                        key={driver.id}
+                        type="button"
+                        onClick={() => setNewMsgDriverId(driver.id)}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                          newMsgDriverId === driver.id
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "hover:bg-muted/50"
+                        )}
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-[10px] font-bold text-white">
+                            {initialsFromName(driver.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="flex-1 truncate text-left">{driver.fullName}</span>
+                        {driver.phoneNumber && (
+                          <span className="text-xs text-muted-foreground">{driver.phoneNumber}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-subject">Konu</Label>
+              <Input
+                id="new-subject"
+                value={newMsgSubject}
+                onChange={(e) => setNewMsgSubject(e.target.value)}
+                placeholder="Ofis Mesaji"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="new-body">Mesaj</Label>
+              <Textarea
+                id="new-body"
+                value={newMsgBody}
+                onChange={(e) => setNewMsgBody(e.target.value)}
+                placeholder="Mesajinizi yazin..."
+                rows={5}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewMessage(false)}>Vazgec</Button>
+            <Button onClick={() => void sendNewMessage()} disabled={sendingNew || !newMsgBody.trim()}>
+              <MessageSquareReply className="mr-2 h-4 w-4" />
+              {sendingNew ? "Gonderiliyor..." : newMsgDriverId === "ALL" ? `Tum Ekibe Gonder` : "Gonder"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {loading ? (
         <p className="text-muted-foreground">Yukleniyor...</p>

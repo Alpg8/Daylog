@@ -500,16 +500,14 @@ export default async function OrderOperationsSummaryPage() {
                                 <span className="text-primary">{phase.icon}</span>
                                 {phase.label}
                               </div>
-                              {phase.key === "START" && (
-                                <AttachmentManager
-                                  title="Siparis dosyalari"
-                                  description="CMR, fatura ve siparis belgelerini yonetin."
-                                  entityId={order.id}
-                                  endpointBase="/api/orders"
-                                  triggerLabel="Dosya ekle"
-                                  triggerClassName="h-7 gap-1.5 text-xs"
-                                />
-                              )}
+                              <AttachmentManager
+                                title="Siparis dosyalari"
+                                description="CMR, fatura ve siparis belgelerini yonetin."
+                                entityId={order.id}
+                                endpointBase="/api/orders"
+                                triggerLabel="Dosya ekle"
+                                triggerClassName="h-7 gap-1.5 text-xs"
+                              />
                             </div>
 
                             {/* Phase-matched order attachments */}
