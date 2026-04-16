@@ -48,7 +48,6 @@ export function DocumentChecklistSection({
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {items.map((item) => {
-              const isMissing = item.variant === "destructive" || item.variant === "warning";
               return (
                 <div key={item.label} className={`rounded-2xl border p-4 ${item.toneClassName}`}>
                   <div className="flex items-start justify-between gap-3">
@@ -69,14 +68,14 @@ export function DocumentChecklistSection({
                       {item.attachment.label || `${item.label} dosyasi`}
                     </a>
                   ) : null}
-                  {canUpload && isMissing ? (
+                  {canUpload ? (
                     <div className="mt-3">
                       <AttachmentManager
                         title={`${item.label} Yukle`}
                         description={`${item.label} belgesini yukleyin.`}
                         entityId={entityId!}
                         endpointBase={endpointBase!}
-                        triggerLabel="Ekle"
+                        triggerLabel={item.attachment ? "Guncelle" : "Ekle"}
                         triggerClassName="h-7 gap-1.5 text-xs px-2 border-current/30"
                         labelOptions={labelOptions}
                         defaultLabel={item.label}
