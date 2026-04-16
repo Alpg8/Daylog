@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useTransition } from "react";
 import * as XLSX from "xlsx";
-import { Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle2, XCircle, AlertTriangle, Loader2, ClipboardPaste } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,59 @@ function parseDate(raw: string | number | null | undefined): string | null {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// ─── TSV (clipboard) parser ───────────────────────────────────────────────────
+
+function parseTsvToRows<T>(
+  tsv: string,
+  columns: ColumnMapping<T>[],
+): ParsedRow<T>[] {
+  const lines = tsv.trim().split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length === 0) return [];
+
+  // Check if first row looks like a header row (contains at least one matching column label)
+  const candidateHeader = lines[0].split("\t");
+  const hasHeader = candidateHeader.some((cell) =>
+    columns.some((col) => matchHeader(cell, col.headers))
+  );
+
+  let headers: string[];
+  let dataLines: string[];
+
+  if (hasHeader) {
+    headers = candidateHeader;
+    dataLines = lines.slice(1);
+  } else {
+    // No header row — use column order from `columns` definition
+    headers = columns.map((c) => c.headers[0]);
+    dataLines = lines;
+  }
+
+  return dataLines.map((line, idx) => {
+    const cells = line.split("\t");
+    const data: Partial<T> = {};
+    const errors: string[] = [];
+
+    for (const col of columns) {
+      const colIdx = headers.findIndex((h) => matchHeader(h, col.headers));
+      const rawValue = colIdx >= 0 ? (cells[colIdx] ?? "").trim() : "";
+
+      if (col.required && !rawValue) {
+        errors.push(`${col.label} zorunludur`);
+        continue;
+      }
+      if (rawValue) {
+        (data as Record<string, unknown>)[col.key as string] = col.transform
+          ? col.transform(rawValue)
+          : rawValue;
+      }
+    }
+
+    return { index: idx + 1, data, errors };
+  });
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function ExcelImportDialog<T extends Record<string, unknown>>({
   title,
   endpoint,
@@ -87,16 +141,27 @@ export function ExcelImportDialog<T extends Record<string, unknown>>({
 }: ExcelImportDialogProps<T>) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"file" | "paste">("file");
   const [rows, setRows] = useState<ParsedRow<T>[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [pasteText, setPasteText] = useState("");
   const [importing, startImporting] = useTransition();
   const [results, setResults] = useState<{ ok: number; fail: number } | null>(null);
 
   function reset() {
     setRows([]);
     setFileName(null);
+    setPasteText("");
     setResults(null);
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function handlePasteTextChange(value: string) {
+    setPasteText(value);
+    setResults(null);
+    if (!value.trim()) { setRows([]); return; }
+    const parsed = parseTsvToRows<T>(value, columns);
+    setRows(parsed);
   }
 
   function downloadTemplate() {
@@ -202,64 +267,101 @@ export function ExcelImportDialog<T extends Record<string, unknown>>({
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2">
           <FileSpreadsheet className="h-4 w-4" />
-          Excel İçe Aktar
+          İçe Aktar
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] sm:max-w-2xl flex flex-col gap-0 p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
           <DialogTitle>{title}</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Excel veya CSV dosyasından toplu kayıt oluşturun.
+            Dosya yükleyin veya Excel'den kopyaladığınız hücreleri yapıştırın.
           </p>
         </DialogHeader>
 
+        {/* Tabs */}
+        <div className="flex border-b border-border/60">
+          <button
+            className={`px-5 py-2.5 text-sm font-medium transition-colors ${activeTab === "file" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => { setActiveTab("file"); setRows([]); setPasteText(""); setResults(null); }}
+          >
+            <span className="flex items-center gap-2"><FileSpreadsheet className="h-3.5 w-3.5" />Dosya Yükle</span>
+          </button>
+          <button
+            className={`px-5 py-2.5 text-sm font-medium transition-colors ${activeTab === "paste" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => { setActiveTab("paste"); setRows([]); setFileName(null); setResults(null); }}
+          >
+            <span className="flex items-center gap-2"><ClipboardPaste className="h-3.5 w-3.5" />Yapıştır</span>
+          </button>
+        </div>
+
         <ScrollArea className="flex-1 px-6 py-4">
           <div className="space-y-4">
-            {/* Upload area */}
-            <div
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/60 bg-muted/30 p-8 transition-colors hover:border-primary/40 hover:bg-muted/50"
-              onClick={() => fileRef.current?.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                const file = e.dataTransfer.files[0];
-                if (file) handleFile(file);
-              }}
-            >
-              <Upload className="h-8 w-8 text-muted-foreground" />
-              <div className="text-center">
-                <p className="text-sm font-medium">
-                  {fileName ?? "Dosya seçin veya buraya sürükleyin"}
-                </p>
-                <p className="text-xs text-muted-foreground">.xlsx, .xls, .csv desteklenir</p>
-              </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFile(file);
-                }}
-              />
-            </div>
+            {activeTab === "file" ? (
+              <>
+                {/* Upload area */}
+                <div
+                  className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border/60 bg-muted/30 p-8 transition-colors hover:border-primary/40 hover:bg-muted/50"
+                  onClick={() => fileRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files[0];
+                    if (file) handleFile(file);
+                  }}
+                >
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium">
+                      {fileName ?? "Dosya seçin veya buraya sürükleyin"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">.xlsx, .xls, .csv desteklenir</p>
+                  </div>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFile(file);
+                    }}
+                  />
+                </div>
 
-            {/* Template download */}
-            <div className="flex items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium">Örnek şablon</p>
-                <p className="text-xs text-muted-foreground">
-                  Beklenen sütunları içeren boş şablonu indirin.
-                </p>
+                {/* Template download */}
+                <div className="flex items-center justify-between rounded-xl border border-border/50 bg-background/50 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">Örnek şablon</p>
+                    <p className="text-xs text-muted-foreground">
+                      Beklenen sütunları içeren boş şablonu indirin.
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="gap-2 text-xs" onClick={downloadTemplate}>
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                    İndir
+                  </Button>
+                </div>
+              </>
+            ) : (
+              /* Paste tab */
+              <div className="space-y-3">
+                <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+                  <p className="text-sm font-medium mb-1">Excel'den yapıştırın</p>
+                  <p className="text-xs text-muted-foreground">
+                    Excel'de hücreleri seçin (<kbd className="rounded border px-1 text-[10px]">Ctrl+C</kbd>), ardından aşağıya yapıştırın (<kbd className="rounded border px-1 text-[10px]">Ctrl+V</kbd>).<br />
+                    İlk satır başlık içeriyorsa otomatik algılanır. Sütun sırası: <span className="font-medium">{columns.map(c => c.headers[0]).join(" → ")}</span>
+                  </p>
+                </div>
+                <Textarea
+                  placeholder="Excel'den kopyaladığınız hücreleri buraya yapıştırın…"
+                  className="min-h-[160px] font-mono text-xs resize-y"
+                  value={pasteText}
+                  onChange={(e) => handlePasteTextChange(e.target.value)}
+                />
               </div>
-              <Button variant="ghost" size="sm" className="gap-2 text-xs" onClick={downloadTemplate}>
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                İndir
-              </Button>
-            </div>
+            )}
 
             {/* Column info */}
             <div className="rounded-xl border border-border/50 bg-background/50 p-4">
