@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const driverProfile = await prisma.driverProfile.findUnique({
+  const driverProfile = await prisma.driver.findUnique({
     where: { id: driverId },
     select: { fullName: true },
   });

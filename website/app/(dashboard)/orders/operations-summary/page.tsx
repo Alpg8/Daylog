@@ -13,7 +13,6 @@ import {
   Play,
   ShieldCheck,
   Truck,
-  UserSquare2,
 } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
@@ -21,8 +20,11 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationsSummaryFilters } from "@/components/orders/operations-summary-filters";
 
 export const dynamic = "force-dynamic";
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   PENDING: "Beklemede",
@@ -40,37 +42,32 @@ const ORDER_STATUS_VARIANTS: Record<string, "warning" | "info" | "default" | "su
   CANCELLED: "destructive",
 };
 
-const DRIVER_DOCUMENTS = [
-  { key: "passport", label: "Pasaport", keywords: ["pasaport", "passport"], dateField: "passportExpiryDate" },
-  { key: "license", label: "Ehliyet", keywords: ["ehliyet", "license", "licence", "surucu belgesi"], dateField: "licenseExpiryDate" },
-  { key: "psychotechnic", label: "Psikoteknik", keywords: ["psikoteknik", "psychotechnic"], dateField: "psychotechnicExpiryDate" },
-  { key: "src", label: "SRC", keywords: ["src"] },
-  { key: "visa", label: "Vize", keywords: ["vize", "visa"] },
-] as const;
+const PHASE_ATTACHMENT_KEYWORDS = {
+  START: ["baslangic", "baslama", "start", "cikis", "hareket"],
+  LOAD: ["yukleme", "load", "cmr", "kantar", "yuklenme", "bosaltma", "unload", "smr"],
+  DELIVERY: ["teslim", "delivery", "fatura", "invoice", "bitis", "son", "masraf"],
+} as const;
 
-const VEHICLE_DOCUMENTS = [
-  { key: "kasko", label: "Kasko", keywords: ["kasko", "casko"] },
-  { key: "inspection", label: "Muayene", keywords: ["muayene", "inspection"] },
-  { key: "roder", label: "Roder", keywords: ["roder", "ro-ro", "roro"] },
-  { key: "trafficInsurance", label: "Trafik Sigortasi", keywords: ["trafik sigortasi", "traffic insurance", "zorunlu trafik"] },
-  { key: "tako", label: "Tako", keywords: ["tako", "takograf", "tachograph"] },
-  { key: "exhaust", label: "Egzoz", keywords: ["egzoz", "emisyon", "exhaust"] },
-] as const;
+type PhaseKey = "START" | "LOAD" | "DELIVERY";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type OrderSummary = Awaited<ReturnType<typeof getOrderSummaries>>[number];
 type AttachmentItem = OrderSummary["attachments"][number];
 type DriverRecord = NonNullable<OrderSummary["driver"]>;
 type VehicleRecord = NonNullable<OrderSummary["vehicle"]>;
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 function normalizeText(value: string | null | undefined) {
   return (value ?? "")
     .toLocaleLowerCase("tr-TR")
-    .replace(/ı/g, "i")
-    .replace(/ğ/g, "g")
-    .replace(/ü/g, "u")
-    .replace(/ş/g, "s")
-    .replace(/ö/g, "o")
-    .replace(/ç/g, "c");
+    .replace(/\u0131/g, "i")
+    .replace(/\u011f/g, "g")
+    .replace(/\xfc/g, "u")
+    .replace(/\u015f/g, "s")
+    .replace(/\xf6/g, "o")
+    .replace(/\xe7/g, "c");
 }
 
 function formatDate(value: Date | null | undefined) {
@@ -84,124 +81,81 @@ function getRelativeDayLabel(value: Date | null | undefined) {
   const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const target = new Date(value.getFullYear(), value.getMonth(), value.getDate());
   const diffInDays = Math.ceil((target.getTime() - current.getTime()) / 86400000);
-
   if (diffInDays < 0) return `${Math.abs(diffInDays)} gun gecmis`;
   if (diffInDays === 0) return "Bugun son gun";
   return `${diffInDays} gun kaldi`;
 }
 
 function findMatchingAttachment(attachments: AttachmentItem[], keywords: readonly string[]) {
-  return attachments.find((attachment) => {
-    const haystack = normalizeText([attachment.label, attachment.key, attachment.url].filter(Boolean).join(" "));
-    return keywords.some((keyword) => haystack.includes(normalizeText(keyword)));
-  }) ?? null;
+  return (
+    attachments.find((attachment) => {
+      const haystack = normalizeText([attachment.label, attachment.key, attachment.url].filter(Boolean).join(" "));
+      return keywords.some((keyword) => haystack.includes(normalizeText(keyword)));
+    }) ?? null
+  );
 }
 
 function summarizeDocument(label: string, attachment: AttachmentItem | null, expiryDate?: Date | null) {
   const relativeLabel = getRelativeDayLabel(expiryDate);
-
   if (expiryDate && expiryDate.getTime() < Date.now()) {
-    return {
-      label,
-      attachment,
-      expiryDate,
-      statusLabel: "Suresi doldu",
-      variant: "destructive" as const,
-      tone: "border-red-500/20 bg-red-500/5",
-      meta: relativeLabel,
-    };
+    return { label, attachment, expiryDate, statusLabel: "Suresi doldu", variant: "destructive" as const, tone: "border-red-500/20 bg-red-500/5", meta: relativeLabel };
   }
-
   if (expiryDate && relativeLabel) {
     const distance = Math.ceil((expiryDate.getTime() - Date.now()) / 86400000);
     if (distance <= 30) {
-      return {
-        label,
-        attachment,
-        expiryDate,
-        statusLabel: attachment ? "Yenileme yaklasti" : "Dosya eksik",
-        variant: "warning" as const,
-        tone: "border-amber-500/20 bg-amber-500/5",
-        meta: relativeLabel,
-      };
+      return { label, attachment, expiryDate, statusLabel: attachment ? "Yenileme yaklasti" : "Dosya eksik", variant: "warning" as const, tone: "border-amber-500/20 bg-amber-500/5", meta: relativeLabel };
     }
   }
-
   if (!attachment && expiryDate) {
-    return {
-      label,
-      attachment,
-      expiryDate,
-      statusLabel: "Dosya yok",
-      variant: "warning" as const,
-      tone: "border-amber-500/20 bg-amber-500/5",
-      meta: relativeLabel,
-    };
+    return { label, attachment, expiryDate, statusLabel: "Dosya yok", variant: "warning" as const, tone: "border-amber-500/20 bg-amber-500/5", meta: relativeLabel };
   }
-
   if (attachment && expiryDate) {
-    return {
-      label,
-      attachment,
-      expiryDate,
-      statusLabel: "Hazir",
-      variant: "success" as const,
-      tone: "border-emerald-500/20 bg-emerald-500/5",
-      meta: relativeLabel,
-    };
+    return { label, attachment, expiryDate, statusLabel: "Hazir", variant: "success" as const, tone: "border-emerald-500/20 bg-emerald-500/5", meta: relativeLabel };
   }
-
   if (attachment) {
-    return {
-      label,
-      attachment,
-      expiryDate,
-      statusLabel: "Dosya var",
-      variant: "success" as const,
-      tone: "border-emerald-500/20 bg-emerald-500/5",
-      meta: attachment.label ?? "Etiket yok",
-    };
+    return { label, attachment, expiryDate, statusLabel: "Dosya var", variant: "success" as const, tone: "border-emerald-500/20 bg-emerald-500/5", meta: attachment.label ?? "Etiket yok" };
   }
-
-  return {
-    label,
-    attachment,
-    expiryDate,
-    statusLabel: "Eksik",
-    variant: "destructive" as const,
-    tone: "border-red-500/20 bg-red-500/5",
-    meta: "Dosya yuklenmemis",
-  };
+  return { label, attachment, expiryDate, statusLabel: "Eksik", variant: "destructive" as const, tone: "border-red-500/20 bg-red-500/5", meta: "Dosya yuklenmemis" };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildDriverDocuments(driver: DriverRecord | null) {
   if (!driver) return [];
-
-  return DRIVER_DOCUMENTS.map((document) => {
+  const docs = [
+    { label: "Pasaport", keywords: ["pasaport", "passport"], dateField: "passportExpiryDate" as const },
+    { label: "Ehliyet", keywords: ["ehliyet", "license", "licence"], dateField: "licenseExpiryDate" as const },
+    { label: "Psikoteknik", keywords: ["psikoteknik", "psychotechnic"], dateField: "psychotechnicExpiryDate" as const },
+    { label: "SRC", keywords: ["src"] },
+    { label: "Vize", keywords: ["vize", "visa"] },
+  ];
+  return docs.map((document) => {
     const attachment = findMatchingAttachment(driver.attachments, document.keywords);
-    const expiryDate = "dateField" in document ? driver[document.dateField] : null;
+    const expiryDate = "dateField" in document ? driver[document.dateField as "passportExpiryDate" | "licenseExpiryDate" | "psychotechnicExpiryDate"] : null;
     return summarizeDocument(document.label, attachment, expiryDate);
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function buildVehicleDocuments(vehicle: VehicleRecord | null) {
   if (!vehicle) return [];
-
-  return VEHICLE_DOCUMENTS.map((document) => {
+  const docs = [
+    { label: "Kasko", keywords: ["kasko", "casko"] },
+    { label: "Muayene", keywords: ["muayene", "inspection"] },
+    { label: "Roder", keywords: ["roder", "ro-ro", "roro"] },
+    { label: "Trafik Sigortasi", keywords: ["trafik sigortasi", "traffic insurance"] },
+    { label: "Tako", keywords: ["tako", "takograf", "tachograph"] },
+    { label: "Egzoz", keywords: ["egzoz", "emisyon", "exhaust"] },
+  ];
+  return docs.map((document) => {
     const attachment = findMatchingAttachment(vehicle.attachments, document.keywords);
     return summarizeDocument(document.label, attachment, null);
   });
-}
-
-function getMissingCount(items: Array<{ variant: string }>) {
-  return items.filter((item) => item.variant === "destructive" || item.variant === "warning").length;
 }
 
 function renderAttachmentList(attachments: AttachmentItem[], emptyLabel: string) {
   if (attachments.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
   }
-
   return (
     <div className="flex flex-wrap gap-2">
       {attachments.slice(0, 6).map((attachment) => (
@@ -221,39 +175,43 @@ function renderAttachmentList(attachments: AttachmentItem[], emptyLabel: string)
   );
 }
 
-async function getOrderSummaries() {
+// ─── Data fetching ────────────────────────────────────────────────────────────
+
+interface Filters {
+  month: string;
+  status?: string;
+  category?: string;
+  driverId?: string;
+  vehicleId?: string;
+}
+
+async function getOrderSummaries(filters: Filters) {
+  const [year, mon] = filters.month.split("-").map(Number);
+  const monthStart = new Date(year, mon - 1, 1);
+  const monthEnd = new Date(year, mon, 1);
+
+  const where: Record<string, unknown> = {
+    OR: [
+      { operationDate: { gte: monthStart, lt: monthEnd } },
+      { loadingDate: { gte: monthStart, lt: monthEnd } },
+    ],
+  };
+
+  if (filters.status && filters.status !== "ALL") where.status = filters.status;
+  if (filters.category && filters.category !== "ALL") where.orderCategory = filters.category;
+  if (filters.driverId && filters.driverId !== "ALL") where.driverId = filters.driverId;
+  if (filters.vehicleId && filters.vehicleId !== "ALL") where.vehicleId = filters.vehicleId;
+
   return prisma.order.findMany({
-    where: {
-      status: {
-        in: ["PENDING", "PLANNED", "IN_PROGRESS"],
-      },
-    },
-    orderBy: [{ operationDate: "desc" }, { updatedAt: "desc" }],
-    take: 12,
+    where,
+    orderBy: [{ operationDate: "desc" }, { loadingDate: "desc" }, { updatedAt: "desc" }],
     include: {
       attachments: { orderBy: { createdAt: "desc" } },
-      vehicle: {
-        include: {
-          attachments: { orderBy: { createdAt: "desc" } },
-        },
-      },
-      trailer: {
-        include: {
-          attachments: { orderBy: { createdAt: "desc" } },
-        },
-      },
-      driver: {
-        include: {
-          attachments: { orderBy: { createdAt: "desc" } },
-        },
-      },
+      vehicle: { include: { attachments: { orderBy: { createdAt: "desc" } } } },
+      trailer: { include: { attachments: { orderBy: { createdAt: "desc" } } } },
+      driver: { include: { attachments: { orderBy: { createdAt: "desc" } } } },
       driverEvents: {
-        where: {
-          OR: [
-            { photos: { some: {} } },
-            { notes: { not: null } },
-          ],
-        },
+        where: { OR: [{ photos: { some: {} } }, { notes: { not: null } }] },
         orderBy: { eventAt: "desc" },
         take: 20,
         include: {
@@ -261,25 +219,50 @@ async function getOrderSummaries() {
           driver: { select: { fullName: true } },
         },
       },
-      _count: {
-        select: {
-          attachments: true,
-          driverEvents: true,
-          driverConfirmations: true,
-        },
-      },
+      _count: { select: { attachments: true, driverEvents: true, driverConfirmations: true } },
     },
   });
 }
 
-export default async function OrderOperationsSummaryPage() {
-  const orders = await getOrderSummaries();
+async function getFilterOptions() {
+  const [drivers, vehicles] = await Promise.all([
+    prisma.driver.findMany({ where: { isActive: true }, select: { id: true, fullName: true }, orderBy: { fullName: "asc" } }),
+    prisma.vehicle.findMany({ where: { status: { not: "PASSIVE" } }, select: { id: true, plateNumber: true }, orderBy: { plateNumber: "asc" } }),
+  ]);
+  return { drivers, vehicles };
+}
+
+function defaultMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default async function OrderOperationsSummaryPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const params = await searchParams;
+  const filters: Filters = {
+    month: params.month ?? defaultMonth(),
+    status: params.status,
+    category: params.category,
+    driverId: params.driverId,
+    vehicleId: params.vehicleId,
+  };
+
+  const [orders, { drivers, vehicles }] = await Promise.all([
+    getOrderSummaries(filters),
+    getFilterOptions(),
+  ]);
 
   const aggregates = orders.reduce(
-    (summary, order) => {
-      if (order.attachments.length === 0) summary.ordersWithoutFiles += 1;
-      if (!order.vehicle) summary.ordersWithoutVehicle += 1;
-      return summary;
+    (s, order) => {
+      if (order.attachments.length === 0) s.ordersWithoutFiles += 1;
+      if (!order.vehicle) s.ordersWithoutVehicle += 1;
+      return s;
     },
     { ordersWithoutFiles: 0, ordersWithoutVehicle: 0 }
   );
@@ -288,13 +271,15 @@ export default async function OrderOperationsSummaryPage() {
     <div className="space-y-5">
       <PageHeader
         title="Operasyon Evrak Ozeti"
-        description="Aktif siparislerde operasyon akisini, surucu evraklarini ve arac dosyalarini tek ekranda takip edin."
+        description="Siparislerde operasyon akisini, surucu evraklarini ve arac dosyalarini tek ekranda takip edin."
         actions={
           <Button asChild variant="outline">
             <Link href="/orders">Tum siparislere don</Link>
           </Button>
         }
       />
+
+      <OperationsSummaryFilters drivers={drivers} vehicles={vehicles} defaultMonth={defaultMonth()} />
 
       <div className="grid gap-3 md:grid-cols-4">
         <Card>
@@ -304,18 +289,18 @@ export default async function OrderOperationsSummaryPage() {
             </div>
             <div>
               <p className="text-2xl font-semibold">{orders.length}</p>
-              <p className="text-xs text-muted-foreground">Takip edilen aktif siparis</p>
+              <p className="text-xs text-muted-foreground">Toplam siparis</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-5">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-              <UserSquare2 className="h-5 w-5" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600">
+              <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{orders.filter((o) => !!o.driver).length}</p>
-              <p className="text-xs text-muted-foreground">Surucu atanmis siparis</p>
+              <p className="text-2xl font-semibold">{orders.filter((o) => o.status === "IN_PROGRESS").length}</p>
+              <p className="text-xs text-muted-foreground">Devam eden</p>
             </div>
           </CardContent>
         </Card>
@@ -326,7 +311,7 @@ export default async function OrderOperationsSummaryPage() {
             </div>
             <div>
               <p className="text-2xl font-semibold">{aggregates.ordersWithoutVehicle}</p>
-              <p className="text-xs text-muted-foreground">Arac atanmamis siparis</p>
+              <p className="text-xs text-muted-foreground">Arac atanmamis</p>
             </div>
           </CardContent>
         </Card>
@@ -337,7 +322,7 @@ export default async function OrderOperationsSummaryPage() {
             </div>
             <div>
               <p className="text-2xl font-semibold">{aggregates.ordersWithoutFiles}</p>
-              <p className="text-xs text-muted-foreground">Siparis dosyasi eksik kayit</p>
+              <p className="text-xs text-muted-foreground">Dosya eksik</p>
             </div>
           </CardContent>
         </Card>
@@ -346,17 +331,45 @@ export default async function OrderOperationsSummaryPage() {
       {orders.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-sm text-muted-foreground">
-            Su anda aktif siparis bulunmuyor. Yeni siparis planlandiginda bu ekranda otomatik gorunecek.
+            Secilen filtrelerde siparis bulunamadi.
           </CardContent>
         </Card>
       ) : (
         orders.map((order) => {
+          type EvType = typeof order.driverEvents[number];
+
+          const PHASES: Array<{ key: PhaseKey; label: string; icon: React.ReactNode; types: string[] }> = [
+            { key: "START",    label: "Baslangic",          icon: <Play className="h-4 w-4" />,         types: ["START_JOB"] },
+            { key: "LOAD",     label: "Yukleme / Bosaltma", icon: <PackageOpen className="h-4 w-4" />,  types: ["LOAD", "UNLOAD"] },
+            { key: "DELIVERY", label: "Teslim / Bitis",     icon: <PackageCheck className="h-4 w-4" />, types: ["DELIVERY", "END_JOB"] },
+          ];
+
+          const matchedIds = new Set<string>();
+          const phaseAttachments = Object.fromEntries(
+            PHASES.map((phase) => {
+              const hits = order.attachments.filter((a) =>
+                PHASE_ATTACHMENT_KEYWORDS[phase.key].some((kw) =>
+                  normalizeText(a.label).includes(normalizeText(kw))
+                )
+              );
+              hits.forEach((a) => matchedIds.add(a.id));
+              return [phase.key, hits];
+            })
+          ) as Record<PhaseKey, typeof order.attachments>;
+
+          const allPhaseKws = [...PHASE_ATTACHMENT_KEYWORDS.START, ...PHASE_ATTACHMENT_KEYWORDS.LOAD, ...PHASE_ATTACHMENT_KEYWORDS.DELIVERY];
+          const otherAttachments = order.attachments.filter(
+            (a) => !allPhaseKws.some((kw) => normalizeText(a.label).includes(normalizeText(kw)))
+          );
+
           return (
             <Card key={order.id} className="overflow-hidden">
               <CardHeader className="gap-3 border-b border-border/60 bg-background/40 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className="text-xl">{order.cargoNumber || order.tripNumber || "Numarasiz Siparis"}</CardTitle>
+                    <CardTitle className="text-xl">
+                      {order.cargoNumber || order.tripNumber || order.referenceNumber || "Numarasiz Siparis"}
+                    </CardTitle>
                     <Badge variant={ORDER_STATUS_VARIANTS[order.status] ?? "outline"}>
                       {ORDER_STATUS_LABELS[order.status] ?? order.status}
                     </Badge>
@@ -364,20 +377,18 @@ export default async function OrderOperationsSummaryPage() {
                   </div>
                   <CardDescription>{order.routeText || "Guzergah girilmemis"}</CardDescription>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    <span>Musteri: {order.customerName || "—"}</span>
+                    <span>Musteri: {order.customerName || "\u2014"}</span>
                     <span>Yukleme: {formatDate(order.loadingDate)}</span>
                     <span>Bosaltma: {formatDate(order.unloadingDate)}</span>
                     <span>Operasyon: {formatDate(order.operationDate)}</span>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/orders/${order.id}`}>Operasyon detayi</Link>
-                  </Button>
-                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/orders/${order.id}`}>Operasyon detayi</Link>
+                </Button>
               </CardHeader>
+
               <CardContent className="space-y-4 p-5">
-                {/* Row 1: Operasyon Bilgileri + Arac/Dorse evraklari */}
                 <div className="grid gap-3 lg:grid-cols-3">
                   <div className="space-y-4 rounded-2xl border border-border/60 bg-background/30 p-4">
                     <div className="flex items-center gap-2">
@@ -410,7 +421,7 @@ export default async function OrderOperationsSummaryPage() {
                     </div>
                   </div>
 
-                  {order.vehicle && (
+                  {order.vehicle ? (
                     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -420,41 +431,29 @@ export default async function OrderOperationsSummaryPage() {
                             <p className="text-xs text-muted-foreground">{[order.vehicle.brand, order.vehicle.model].filter(Boolean).join(" ") || "Cekici"}</p>
                           </div>
                         </div>
-                        <AttachmentManager
-                          title="Arac dosyalari"
-                          description="Kasko, sigorta ve teknik belge dosyalarini yonetin."
-                          entityId={order.vehicle.id}
-                          endpointBase="/api/vehicles"
-                          triggerLabel="Dosya ekle"
-                          triggerClassName="h-8 gap-2"
-                        />
+                        <AttachmentManager title="Arac dosyalari" description="Kasko, sigorta ve teknik belge dosyalarini yonetin."
+                          entityId={order.vehicle.id} endpointBase="/api/vehicles" triggerLabel="Dosya ekle" triggerClassName="h-8 gap-2" />
                       </div>
                       {renderAttachmentList(order.vehicle.attachments, "Araca bagli dosya yok.")}
                     </div>
-                  )}
+                  ) : null}
 
-                  {order.trailer && (
+                  {order.trailer ? (
                     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <CarFront className="h-4 w-4 text-primary" />
                           <div>
                             <p className="font-semibold">{order.trailer.plateNumber}</p>
-                            <p className="text-xs text-muted-foreground">{order.trailer.type ? `Dorse · ${order.trailer.type}` : "Dorse"}</p>
+                            <p className="text-xs text-muted-foreground">{order.trailer.type ? `Dorse \u00b7 ${order.trailer.type}` : "Dorse"}</p>
                           </div>
                         </div>
-                        <AttachmentManager
-                          title="Dorse dosyalari"
-                          description="Dorseye ait ilgili operasyon dosyalarini yonetin."
-                          entityId={order.trailer.id}
-                          endpointBase="/api/trailers"
-                          triggerLabel="Dosya ekle"
-                          triggerClassName="h-8 gap-2"
-                        />
+                        <AttachmentManager title="Dorse dosyalari" description="Dorseye ait ilgili operasyon dosyalarini yonetin."
+                          entityId={order.trailer.id} endpointBase="/api/trailers" triggerLabel="Dosya ekle" triggerClassName="h-8 gap-2" />
                       </div>
                       {renderAttachmentList(order.trailer.attachments, "Dorseye bagli dosya yok.")}
                     </div>
-                  )}
+                  ) : null}
 
                   {!order.vehicle && !order.trailer && (
                     <div className="col-span-2 flex items-center rounded-2xl border border-border/60 bg-background/30 p-4 text-sm text-muted-foreground">
@@ -463,153 +462,89 @@ export default async function OrderOperationsSummaryPage() {
                   )}
                 </div>
 
-                {/* Row 2: 3-phase document + event grid */}
-                {(() => {
-                  type EvType = typeof order.driverEvents[number];
-                  type PhaseKey = "START" | "LOAD" | "DELIVERY";
-                  const PHASES: Array<{ key: PhaseKey; label: string; icon: React.ReactNode; types: string[] }> = [
-                    { key: "START", label: "Baslangic", icon: <Play className="h-4 w-4" />, types: ["START_JOB"] },
-                    { key: "LOAD", label: "Yukleme / Bosaltma", icon: <PackageOpen className="h-4 w-4" />, types: ["LOAD", "UNLOAD"] },
-                    { key: "DELIVERY", label: "Teslim / Bitis", icon: <PackageCheck className="h-4 w-4" />, types: ["DELIVERY", "END_JOB"] },
-                  ];
-
-                  const matchedIds = new Set<string>();
-                  const phaseAttachments = Object.fromEntries(
-                    PHASES.map((phase) => {
-                      const hits = order.attachments.filter((a) =>
-                        PHASE_ATTACHMENT_KEYWORDS[phase.key].some((kw) =>
-                          normalizeText(a.label).includes(normalizeText(kw))
-                        )
-                      );
-                      hits.forEach((a) => matchedIds.add(a.id));
-                      return [phase.key, hits];
-                    })
-                  ) as Record<PhaseKey, typeof order.attachments>;
-                  const otherAttachments = order.attachments.filter((a) => !matchedIds.has(a.id));
-
-                  return (
-                    <div className="grid gap-3 lg:grid-cols-3">
-                      {PHASES.map((phase) => {
-                        const events = order.driverEvents.filter((e) => phase.types.includes(e.type));
-                        const attachments = phaseAttachments[phase.key];
-                        const isEmpty = events.length === 0 && attachments.length === 0;
-                        return (
-                          <div key={phase.key} className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 font-semibold">
-                                <span className="text-primary">{phase.icon}</span>
-                                {phase.label}
-                              </div>
-                              <AttachmentManager
-                                title="Siparis dosyalari"
-                                description="CMR, fatura ve siparis belgelerini yonetin."
-                                entityId={order.id}
-                                endpointBase="/api/orders"
-                                triggerLabel="Dosya ekle"
-                                triggerClassName="h-7 gap-1.5 text-xs"
-                              />
-                            </div>
-
-                            {/* Phase-matched order attachments */}
-                            {attachments.length > 0 && (
-                              <div className="space-y-1">
-                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Evraklar</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {attachments.map((attachment) => (
-                                    <a
-                                      key={attachment.id}
-                                      href={attachment.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-xs text-foreground/85 transition-colors hover:border-primary/40 hover:text-primary"
-                                    >
-                                      <FolderOpen className="h-3 w-3" />
-                                      {attachment.label || "Etiketsiz dosya"}
-                                    </a>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Driver events for this phase */}
-                            {events.length > 0 && (
-                              <div className="space-y-1.5">
-                                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Surucu Kayitlari</p>
-                                {events.map((event: EvType) => (
-                                  <div key={event.id} className="rounded-xl border border-border/40 bg-background/60 p-2.5 text-xs">
-                                    <div className="mb-1 flex items-center justify-between gap-2">
-                                      <span className="font-medium text-foreground/80">{event.driver.fullName}</span>
-                                      <span className="text-muted-foreground">
-                                        {new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}
-                                      </span>
-                                    </div>
-                                    {event.notes && (
-                                      <p className="mb-2 italic text-muted-foreground">&ldquo;{event.notes}&rdquo;</p>
-                                    )}
-                                    {event.photos.length > 0 && (
-                                      <div className="grid grid-cols-3 gap-1.5">
-                                        {event.photos.map((photo) => (
-                                          <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
-                                            className="group relative block overflow-hidden rounded-lg border border-border/50 bg-muted aspect-square">
-                                            <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                                            {photo.label && (
-                                              <span className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[9px] text-white truncate text-center leading-tight">
-                                                {photo.label}
-                                              </span>
-                                            )}
-                                          </a>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {isEmpty && (
-                              <p className="text-xs italic text-muted-foreground">Henuz kayit veya evrak yok</p>
-                            )}
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {PHASES.map((phase) => {
+                    const events = order.driverEvents.filter((e) => phase.types.includes(e.type));
+                    const attachments = phaseAttachments[phase.key];
+                    const isEmpty = events.length === 0 && attachments.length === 0;
+                    return (
+                      <div key={phase.key} className="space-y-3 rounded-2xl border border-border/60 bg-background/30 p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 font-semibold">
+                            <span className="text-primary">{phase.icon}</span>
+                            {phase.label}
                           </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                          <AttachmentManager title="Siparis dosyalari" description="CMR, fatura ve siparis belgelerini yonetin."
+                            entityId={order.id} endpointBase="/api/orders" triggerLabel="Dosya ekle" triggerClassName="h-7 gap-1.5 text-xs" />
+                        </div>
 
-                {/* Unmatched / other attachments */}
-                {(() => {
-                  const matchedIds2 = new Set<string>();
-                  PHASE_ATTACHMENT_KEYWORDS.START.concat(PHASE_ATTACHMENT_KEYWORDS.LOAD, PHASE_ATTACHMENT_KEYWORDS.DELIVERY);
-                  const allPhaseKw = [
-                    ...PHASE_ATTACHMENT_KEYWORDS.START,
-                    ...PHASE_ATTACHMENT_KEYWORDS.LOAD,
-                    ...PHASE_ATTACHMENT_KEYWORDS.DELIVERY,
-                  ];
-                  order.attachments.forEach((a) => {
-                    if (allPhaseKw.some((kw) => normalizeText(a.label).includes(normalizeText(kw)))) {
-                      matchedIds2.add(a.id);
-                    }
-                  });
-                  const other = order.attachments.filter((a) => !matchedIds2.has(a.id));
-                  if (other.length === 0) return null;
-                  return (
-                    <div className="rounded-2xl border border-border/60 bg-background/30 p-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-primary" />
-                        <h3 className="font-semibold">Diger Evraklar</h3>
+                        {attachments.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Evraklar</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {attachments.map((attachment) => (
+                                <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-xs text-foreground/85 transition-colors hover:border-primary/40 hover:text-primary">
+                                  <FolderOpen className="h-3 w-3" />
+                                  {attachment.label || "Etiketsiz dosya"}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {events.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Surucu Kayitlari</p>
+                            {events.map((event: EvType) => (
+                              <div key={event.id} className="rounded-xl border border-border/40 bg-background/60 p-2.5 text-xs">
+                                <div className="mb-1 flex items-center justify-between gap-2">
+                                  <span className="font-medium text-foreground/80">{event.driver.fullName}</span>
+                                  <span className="text-muted-foreground">
+                                    {new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}
+                                  </span>
+                                </div>
+                                {event.notes && <p className="mb-2 italic text-muted-foreground">&ldquo;{event.notes}&rdquo;</p>}
+                                {event.photos.length > 0 && (
+                                  <div className="grid grid-cols-3 gap-1.5">
+                                    {event.photos.map((photo) => (
+                                      <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
+                                        className="group relative block aspect-square overflow-hidden rounded-lg border border-border/50 bg-muted">
+                                        <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                                        {photo.label && (
+                                          <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-center text-[9px] leading-tight text-white">
+                                            {photo.label}
+                                          </span>
+                                        )}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {isEmpty && <p className="text-xs italic text-muted-foreground">Henuz kayit veya evrak yok</p>}
                       </div>
-                      {renderAttachmentList(other, "")}
-                    </div>
-                  );
-                })()}
-              </CardContent>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-5 py-4 text-xs text-muted-foreground">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarClock className="h-3.5 w-3.5" />
-                    Son guncelleme: {formatDate(order.updatedAt)}
-                  </span>
+                    );
+                  })}
                 </div>
+
+                {otherAttachments.length > 0 && (
+                  <div className="rounded-2xl border border-border/60 bg-background/30 p-4">
+                    <div className="mb-2 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold">Diger Evraklar</h3>
+                    </div>
+                    {renderAttachmentList(otherAttachments, "")}
+                  </div>
+                )}
+              </CardContent>
+
+              <div className="flex items-center gap-3 border-t border-border/60 px-5 py-4 text-xs text-muted-foreground">
+                <CalendarClock className="h-3.5 w-3.5" />
+                Son guncelleme: {formatDate(order.updatedAt)}
               </div>
             </Card>
           );
