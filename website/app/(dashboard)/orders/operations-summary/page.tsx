@@ -178,7 +178,7 @@ function renderAttachmentList(attachments: AttachmentItem[], emptyLabel: string)
 // ─── Data fetching ────────────────────────────────────────────────────────────
 
 interface Filters {
-  month: string;
+  month?: string; // YYYY-MM or undefined = all time
   status?: string;
   category?: string;
   driverId?: string;
@@ -186,16 +186,17 @@ interface Filters {
 }
 
 async function getOrderSummaries(filters: Filters) {
-  const [year, mon] = filters.month.split("-").map(Number);
-  const monthStart = new Date(year, mon - 1, 1);
-  const monthEnd = new Date(year, mon, 1);
+  const where: Record<string, unknown> = {};
 
-  const where: Record<string, unknown> = {
-    OR: [
+  if (filters.month && filters.month !== "ALL") {
+    const [year, mon] = filters.month.split("-").map(Number);
+    const monthStart = new Date(year, mon - 1, 1);
+    const monthEnd = new Date(year, mon, 1);
+    where.OR = [
       { operationDate: { gte: monthStart, lt: monthEnd } },
       { loadingDate: { gte: monthStart, lt: monthEnd } },
-    ],
-  };
+    ];
+  }
 
   if (filters.status && filters.status !== "ALL") where.status = filters.status;
   if (filters.category && filters.category !== "ALL") where.orderCategory = filters.category;
@@ -246,7 +247,7 @@ export default async function OrderOperationsSummaryPage({
 }) {
   const params = await searchParams;
   const filters: Filters = {
-    month: params.month ?? defaultMonth(),
+    month: params.month, // undefined = all time (no month filter)
     status: params.status,
     category: params.category,
     driverId: params.driverId,

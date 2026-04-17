@@ -50,7 +50,7 @@ export function OperationsSummaryFilters({ drivers, vehicles, defaultMonth }: Op
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  const month = searchParams.get("month") ?? defaultMonth;
+  const month = searchParams.get("month") ?? "ALL";
   const driverId = searchParams.get("driverId") ?? "ALL";
   const vehicleId = searchParams.get("vehicleId") ?? "ALL";
   const status = searchParams.get("status") ?? "ALL";
@@ -74,6 +74,7 @@ export function OperationsSummaryFilters({ drivers, vehicles, defaultMonth }: Op
   );
 
   const hasFilters =
+    searchParams.has("month") ||
     searchParams.has("driverId") ||
     searchParams.has("vehicleId") ||
     searchParams.has("status") ||
@@ -81,7 +82,7 @@ export function OperationsSummaryFilters({ drivers, vehicles, defaultMonth }: Op
 
   const clearFilters = () => {
     startTransition(() => {
-      router.push(`${pathname}?month=${month}`);
+      router.push(pathname);
     });
   };
 
@@ -92,9 +93,10 @@ export function OperationsSummaryFilters({ drivers, vehicles, defaultMonth }: Op
       {/* Month */}
       <Select value={month} onValueChange={(v) => push({ month: v })}>
         <SelectTrigger className="h-8 w-44 text-xs">
-          <SelectValue />
+          <SelectValue placeholder="Tüm Zamanlar" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="ALL" className="text-xs">Tüm Zamanlar</SelectItem>
           {months.map((m) => (
             <SelectItem key={m.value} value={m.value} className="text-xs">
               {m.label}
