@@ -157,6 +157,26 @@ export function TasksScreen(props: TasksScreenProps) {
       contentContainerStyle={{ paddingBottom: 24 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); }} />}
     >
+      {tasks.length > 1 && (
+        <View style={[styles.card, c && styles.cardDark]}>
+          <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Isler ({tasks.filter(t => t.status === "PLANNED" || t.status === "IN_PROGRESS").length})</Text>
+          {tasks.filter(t => t.status === "PLANNED" || t.status === "IN_PROGRESS").map((t) => (
+            <Pressable
+              key={t.id}
+              onPress={() => onSelectTask(t.id)}
+              style={[local.taskRow, (currentTask?.id === t.id) && local.taskRowSelected]}
+            >
+              <Text style={[local.taskRowText, c && local.taskRowTextDark]} numberOfLines={1}>
+                {t.cargoNumber ?? t.tripNumber ?? t.id.slice(0, 8)}
+              </Text>
+              <View style={[local.badge, t.status === "IN_PROGRESS" ? local.badgeActive : local.badgePlanned]}>
+                <Text style={local.badgeText}>{STATUS_TR[t.status] ?? t.status}</Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       <View style={[styles.card, c && styles.cardDark]}>
         <View style={local.rowBetween}>
           <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>
@@ -356,4 +376,8 @@ const local = StyleSheet.create({
   inputRequired: { borderColor: "#f97316", borderWidth: 1.5 },
   validationHint: { fontSize: 11, color: "#f97316", textAlign: "center", marginTop: 6 },
   photoLarge: { width: "100%", height: 240, borderRadius: 8, marginTop: 8, resizeMode: "cover" } as const,
+  taskRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 6, borderRadius: 8, marginTop: 4 },
+  taskRowSelected: { backgroundColor: "#0ea5e915", borderWidth: 1, borderColor: "#0ea5e940" },
+  taskRowText: { fontSize: 13, fontWeight: "600", color: "#0f172a", flex: 1, marginRight: 8 },
+  taskRowTextDark: { color: "#f1f5f9" },
 });

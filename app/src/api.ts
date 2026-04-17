@@ -78,13 +78,29 @@ export async function apiFetchPublic<T>(path: string, init?: RequestInit): Promi
 }
 
 export async function apiFetchForm<T>(path: string, token: string, formData: FormData): Promise<T> {
-  return requestJson<T>(path, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-client-source": "APP",
+        // Do NOT set Content-Type — let fetch set multipart/form-data with boundary automatically
+      },
+      body: formData,
+    });
+    const text = await res.text();
+    let json: Record<string, unknown> = {};
+    try { json = text ? (JSON.parse(text) as Record<string, unknown>) : {}; } catch { /* ignore */ }
+    if (!res.ok) {
+      throw new Error((json.error as string | undefined) ?? `Istek basarisiz (${res.status})`);
+    }
+    return json as T;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export function resolveAppUrl(pathOrUrl: string): string {
