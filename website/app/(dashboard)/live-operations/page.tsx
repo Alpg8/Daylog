@@ -52,9 +52,6 @@ interface LiveSummary {
     activeDrivers: number;
     unresolvedIssues: number;
     recentEventCount: number;
-    missingPhotoOrders: number;
-    missingConfirmationOrders: number;
-    missingCloseoutOrders: number;
     openTaskCount: number;
   };
   tracking: Array<{
@@ -66,8 +63,7 @@ interface LiveSummary {
     lastActionType: string | null;
     lastActionAt: string | null;
     hasPhotoOnLastAction: boolean;
-    warnings: Array<{ code: string; message: string }>;
-    warningCount: number;
+
   }>;
 }
 
@@ -162,33 +158,7 @@ export default function LiveOperationsPage() {
         </Card>
       </div>
 
-      {/* Eksik/Acik row */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-        <Card className={data.cards.missingPhotoOrders > 0 ? "border-amber-500/30" : ""}>
-          <CardContent className="flex items-center gap-3 p-4">
-            <ImageOff className={`h-5 w-5 ${data.cards.missingPhotoOrders > 0 ? "text-amber-600" : "text-muted-foreground"}`} />
-            <div><p className="text-2xl font-bold">{data.cards.missingPhotoOrders}</p><p className="text-xs text-muted-foreground">Eksik Fotograf</p></div>
-          </CardContent>
-        </Card>
-        <Card className={data.cards.missingConfirmationOrders > 0 ? "border-amber-500/30" : ""}>
-          <CardContent className="flex items-center gap-3 p-4">
-            <CheckCircle2 className={`h-5 w-5 ${data.cards.missingConfirmationOrders > 0 ? "text-amber-600" : "text-muted-foreground"}`} />
-            <div><p className="text-2xl font-bold">{data.cards.missingConfirmationOrders}</p><p className="text-xs text-muted-foreground">Eksik Onam</p></div>
-          </CardContent>
-        </Card>
-        <Card className={data.cards.missingCloseoutOrders > 0 ? "border-amber-500/30" : ""}>
-          <CardContent className="flex items-center gap-3 p-4">
-            <Camera className={`h-5 w-5 ${data.cards.missingCloseoutOrders > 0 ? "text-amber-600" : "text-muted-foreground"}`} />
-            <div><p className="text-2xl font-bold">{data.cards.missingCloseoutOrders}</p><p className="text-xs text-muted-foreground">Eksik Kapanis</p></div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <ClipboardList className="h-5 w-5 text-muted-foreground" />
-            <div><p className="text-2xl font-bold">{data.cards.openTaskCount}</p><p className="text-xs text-muted-foreground">Acik Gorev</p></div>
-          </CardContent>
-        </Card>
-      </div>
+
 
       {/* Tracking grid */}
       <Card>
@@ -200,7 +170,7 @@ export default function LiveOperationsPage() {
         <CardContent className="space-y-2">
           {data.tracking.length === 0 && <p className="text-sm text-muted-foreground">Eslesen kayit yok.</p>}
           {data.tracking.map((row) => (
-            <div key={row.orderId} className={`rounded-lg border p-3 text-sm ${row.warningCount > 0 ? "border-amber-500/20" : ""}`}>
+            <div key={row.orderId} className="rounded-lg border p-3 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className={STATUS_COLORS[row.orderStatus] ?? ""}>
@@ -226,17 +196,7 @@ export default function LiveOperationsPage() {
                   {row.hasPhotoOnLastAction ? "Var" : "Yok"}
                 </p>
               </div>
-              {row.warningCount > 0 && (
-                <div className="mt-2 space-y-1 rounded border border-amber-500/30 bg-amber-500/5 p-2">
-                  {row.warnings.slice(0, 2).map((warning, idx) => (
-                    <p key={`${warning.code}-${idx}`} className="text-xs text-amber-700 dark:text-amber-300">
-                      <Badge variant="outline" className="mr-1 text-[10px] px-1 py-0">{warning.code.replace("MISSING_", "")}</Badge>
-                      {warning.message}
-                    </p>
-                  ))}
-                  {row.warningCount > 2 && <p className="text-xs text-muted-foreground">+{row.warningCount - 2} ek uyari</p>}
-                </div>
-              )}
+
             </div>
           ))}
         </CardContent>

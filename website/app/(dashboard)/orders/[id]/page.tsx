@@ -145,7 +145,6 @@ interface TimelineResponse {
     }>;
     notes: string | null;
   };
-  warnings: Array<{ code: string; message: string }>;
 }
 
 function AttachmentList({

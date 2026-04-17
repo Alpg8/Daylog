@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import type { OrderStatus } from "@/lib/db/prisma-client";
 import { getCurrentUser } from "@/lib/auth/session";
-import { buildTimelineWarnings } from "@/lib/services/driver-operations";
 import { syncOperationTasksForOrder } from "@/lib/services/operation-task-queue";
 
 export async function GET(request: NextRequest) {
@@ -74,33 +73,17 @@ export async function GET(request: NextRequest) {
                 photos: { select: { id: true } },
               },
             },
-            driverConfirmations: {
-              select: { type: true },
-            },
           },
         }),
       ])
     : [[], []];
 
-  const timelineWarningsByOrder = new Map<string, ReturnType<typeof buildTimelineWarnings>>();
   for (const row of timelineRows) {
-    const warnings = buildTimelineWarnings({
-      eventTypes: row.driverEvents.map((event) => event.type),
-      eventTypesWithPhoto: row.driverEvents
-        .filter((event) => event.photos.length > 0)
-        .map((event) => event.type),
-      confirmationTypes: row.driverConfirmations.map((item) => item.type),
-      hasEndJob: row.driverEvents.some((event) => event.type === "END_JOB"),
-      orderStatus: row.status,
-    });
-
     await syncOperationTasksForOrder({
       orderId: row.id,
       driverId: activeOrderRows.find((order) => order.id === row.id)?.driver?.id ?? null,
-      warnings,
+      warnings: [],
     });
-
-    timelineWarningsByOrder.set(row.id, warnings);
   }
 
   const latestByOrder = new Map<string, (typeof latestEvents)[number]>();
@@ -112,7 +95,6 @@ export async function GET(request: NextRequest) {
 
   const tracking = activeOrderRows.map((order) => {
     const latest = latestByOrder.get(order.id);
-    const warnings = timelineWarningsByOrder.get(order.id) ?? [];
 
     return {
       orderId: order.id,
@@ -123,22 +105,8 @@ export async function GET(request: NextRequest) {
       lastActionType: latest?.type ?? null,
       lastActionAt: latest?.eventAt ?? null,
       hasPhotoOnLastAction: latest ? latest.photos.length > 0 : false,
-      warnings,
-      warningCount: warnings.length,
     };
   });
-
-  const missingPhotoOrders = Array.from(timelineWarningsByOrder.values()).filter((warnings) =>
-    warnings.some((warning) => warning.code === "MISSING_PHOTO")
-  ).length;
-
-  const missingConfirmationOrders = Array.from(timelineWarningsByOrder.values()).filter((warnings) =>
-    warnings.some((warning) => warning.code === "MISSING_CONFIRMATION")
-  ).length;
-
-  const missingCloseoutOrders = Array.from(timelineWarningsByOrder.values()).filter((warnings) =>
-    warnings.some((warning) => warning.code === "MISSING_CLOSEOUT")
-  ).length;
 
   const openTaskCount = await prisma.operationTask.count({
     where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -150,9 +118,6 @@ export async function GET(request: NextRequest) {
       activeDrivers,
       unresolvedIssues,
       recentEventCount: recentEvents.length,
-      missingPhotoOrders,
-      missingConfirmationOrders,
-      missingCloseoutOrders,
       openTaskCount,
     },
     recentEvents,
