@@ -67,6 +67,9 @@ export async function POST(request: NextRequest) {
         unloadingDate: data.unloadingDate ? new Date(data.unloadingDate) : null,
         operationDate: data.operationDate ? new Date(data.operationDate) : null,
         createdByUserId: session.sub,
+        // Auto-populate phase locations from loading/delivery addresses if not explicitly provided
+        phaseLoadLocation: data.phaseLoadLocation ?? data.loadingAddress ?? null,
+        phaseDeliveryLocation: data.phaseDeliveryLocation ?? data.deliveryAddress ?? null,
       },
       include: {
         vehicle: { select: { id: true, plateNumber: true, brand: true, model: true, status: true, usageType: true, ownershipType: true } },

@@ -116,6 +116,8 @@ interface TimelineResponse {
       eventAt: string;
       notes: string | null;
       odometerKm: number | null;
+      latitude: number | null;
+      longitude: number | null;
       phaseData: Record<string, unknown> | null;
       driver: { id: string; fullName: string };
       photos: Array<{ id: string; url: string; label: string | null }>;
@@ -536,6 +538,44 @@ export default function OrderOperationsDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Son Bilinen Konum */}
+      {(() => {
+        const lastWithLocation = [...order.driverEvents]
+          .reverse()
+          .find((e) => e.latitude != null && e.longitude != null);
+        if (!lastWithLocation) return null;
+        const mapsUrl = `https://www.google.com/maps?q=${lastWithLocation.latitude},${lastWithLocation.longitude}`;
+        return (
+          <Card className="border-blue-500/40 bg-blue-500/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                <MapPin className="h-4 w-4" /> Son Bilinen Konum
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm">
+                  <span className="font-medium">{EVENT_LABELS[lastWithLocation.type] ?? lastWithLocation.type}</span>
+                  <span className="text-muted-foreground ml-2">·</span>
+                  <span className="text-muted-foreground ml-2">{new Date(lastWithLocation.eventAt).toLocaleString("tr-TR")}</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lastWithLocation.latitude?.toFixed(5)}, {lastWithLocation.longitude?.toFixed(5)}
+                  </p>
+                </div>
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                >
+                  <MapPin className="h-3.5 w-3.5" /> Haritada Gör
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Faz Yönetimi */}
       <Card>

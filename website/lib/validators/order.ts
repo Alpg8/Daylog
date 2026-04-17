@@ -35,6 +35,10 @@ export const createOrderSchema = z.object({
   customs: z.string().optional().nullable(),
   loadingAddress: z.string().optional().nullable(),
   deliveryAddress: z.string().optional().nullable(),
+  phaseStartLocation: z.string().optional().nullable(),
+  phaseLoadLocation: z.string().optional().nullable(),
+  phaseUnloadLocation: z.string().optional().nullable(),
+  phaseDeliveryLocation: z.string().optional().nullable(),
 
   // EXPORT
   borderExitDate: z.string().optional().nullable(),

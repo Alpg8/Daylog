@@ -5,6 +5,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
+import * as Location from "expo-location";
 import { apiFetch, apiFetchForm, apiFetchPublic } from "../api";
 import { API_BASE_URL } from "../config";
 import { STEP_LABELS, TOKEN_KEY, USER_KEY, type StepType } from "../constants";
@@ -417,6 +418,22 @@ export function useDriverApp() {
     if (!stepPhotoUri) return "Asama bildirimi icin fotograf zorunlu";
 
     try {
+      // Try to get GPS location before creating the event
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          latitude = loc.coords.latitude;
+          longitude = loc.coords.longitude;
+        }
+      } catch {
+        // Location unavailable — proceed without it
+      }
+
       const eventRes = await apiFetch<{ event: { id: string } }>("/api/driver/events", token, {
         method: "POST",
         body: JSON.stringify({
@@ -425,6 +442,8 @@ export function useDriverApp() {
           notes: stepNotes || null,
           odometerKm: stepKm ? Number(stepKm) : null,
           phaseData: opts?.phaseData ?? undefined,
+          latitude,
+          longitude,
         }),
       });
 

@@ -15,7 +15,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Daylog Driver, teslimat ve yakit belgeleri icin fotograf yuklemenizi ister.",
-        "NSCameraUsageDescription": "Daylog Driver, teslimat ve yakit belgeleri icin fotograf cekmenizi ister."
+        "NSCameraUsageDescription": "Daylog Driver, teslimat ve yakit belgeleri icin fotograf cekmenizi ister.",
+        "NSLocationWhenInUseUsageDescription": "Daylog Driver, is asamalarinda konumunuzu kaydetmek icin konum erisimi ister."
       }
     },
     "android": {
@@ -23,7 +24,9 @@
       "versionCode": 1,
       "permissions": [
         "READ_MEDIA_IMAGES",
-        "CAMERA"
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO"
@@ -42,6 +45,12 @@
         {
           "icon": "./assets/icon.png",
           "sounds": []
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Daylog Driver, is asamalarinda konumunuzu kaydetmek icin konum erisimi ister."
         }
       ]
     ],

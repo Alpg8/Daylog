@@ -52,6 +52,13 @@ export async function PUT(
         loadingDate: data.loadingDate ? new Date(data.loadingDate) : undefined,
         unloadingDate: data.unloadingDate ? new Date(data.unloadingDate) : undefined,
         operationDate: data.operationDate ? new Date(data.operationDate) : undefined,
+        // If loadingAddress is being updated but phaseLoadLocation is not explicitly set, sync it
+        ...(data.loadingAddress !== undefined && data.phaseLoadLocation === undefined
+          ? { phaseLoadLocation: data.loadingAddress ?? null }
+          : {}),
+        ...(data.deliveryAddress !== undefined && data.phaseDeliveryLocation === undefined
+          ? { phaseDeliveryLocation: data.deliveryAddress ?? null }
+          : {}),
       },
       include: {
         vehicle: { select: { id: true, plateNumber: true, brand: true, model: true, status: true, usageType: true, ownershipType: true } },
@@ -132,6 +139,9 @@ export async function PATCH(
       "rental", "containerTrailerNo", "containerPickupAddress", "loadUnloadLocation",
       "containerDropAddress", "deliveryCustomer", "supplierInfo", "supplierPhone",
       "equipmentInfo", "cita", "spanzetStanga",
+      // Addresses + phase locations
+      "loadingAddress", "deliveryAddress",
+      "phaseStartLocation", "phaseLoadLocation", "phaseUnloadLocation", "phaseDeliveryLocation",
     ];
     const numberFields = [
       "waitingPrice", "freightPrice", "customsCost", "supplyPrice",
@@ -161,6 +171,15 @@ export async function PATCH(
     if (Object.keys(patch).length === 0) {
       return NextResponse.json({ error: "No patchable fields" }, { status: 400 });
     }
+
+    // Sync phase locations from addresses if not explicitly patching phase locations
+    if ("loadingAddress" in patch && !("phaseLoadLocation" in patch)) {
+      patch.phaseLoadLocation = patch.loadingAddress;
+    }
+    if ("deliveryAddress" in patch && !("phaseDeliveryLocation" in patch)) {
+      patch.phaseDeliveryLocation = patch.deliveryAddress;
+    }
+
     const before = await prisma.order.findUnique({ where: { id: params.id } });
     const order = await prisma.order.update({ where: { id: params.id }, data: patch });
 
