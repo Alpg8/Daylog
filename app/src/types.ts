@@ -20,7 +20,7 @@ export interface DriverTask {
   loadingDate?: string | null;
   unloadingDate?: string | null;
   updatedAt?: string;
-  jobType?: "LOADING" | "UNLOADING" | null;
+  jobType?: "LOADING" | "UNLOADING" | "FULL" | null;
   phaseStartLocation?: string | null;
   phaseLoadLocation?: string | null;
   phaseUnloadLocation?: string | null;

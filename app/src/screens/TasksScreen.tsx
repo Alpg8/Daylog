@@ -1,6 +1,6 @@
-import { ActivityIndicator, Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useEffect, useMemo, useState } from "react";
-import { LOADING_PHASES, STEP_LABELS, UNLOADING_PHASES, type PhaseStep, type StepType } from "../constants";
+import { FULL_PHASES, LOADING_PHASES, SIMPLE_PHASES, UNLOADING_PHASES, STEP_LABELS, type PhaseStep, type StepType } from "../constants";
 import { styles } from "../styles";
 import type { AttachmentItem, DriverTask } from "../types";
 import { API_BASE_URL } from "../config";
@@ -14,6 +14,7 @@ const PHASE_ICONS: Partial<Record<StepType, string>> = {
   LOAD:      "📦",
   UNLOAD:    "🔄",
   DELIVERY:  "📬",
+  END_JOB:   "🏁",
 };
 
 interface DataField { key: string; label: string; numeric?: boolean; required?: boolean }
@@ -36,19 +37,21 @@ const MAIN_PHOTO_LABEL: Partial<Record<StepType, string>> = {
   LOAD:      "genel",
   UNLOAD:    "smr",
   DELIVERY:  "teslim",
+  END_JOB:   "bitis",
 };
 
 const MAIN_PHOTO_DISPLAY: Partial<Record<StepType, string>> = {
-  START_JOB: "Genel Foto *",
-  LOAD:      "Genel Foto *",
-  UNLOAD:    "SMR Foto *",
-  DELIVERY:  "Teslim Foto *",
+  START_JOB: "Genel Foto",
+  LOAD:      "Genel Foto",
+  UNLOAD:    "SMR Foto",
+  DELIVERY:  "Teslim Foto",
+  END_JOB:   "Bitis Foto",
 };
 
 interface ExtraPhotoConfig { label: string; display: string; required: boolean }
 const EXTRA_PHOTO_CONFIGS: Partial<Record<StepType, ExtraPhotoConfig[]>> = {
-  LOAD:     [{ label: "kantar_fisi",  display: "Kantar Fisi *",       required: true }],
-  UNLOAD:   [{ label: "bosaltma_ani", display: "Bosaltma Ani Foto *", required: true }],
+  LOAD:     [{ label: "kantar_fisi",  display: "Kantar Fisi",        required: false }],
+  UNLOAD:   [{ label: "bosaltma_ani", display: "Bosaltma Ani Foto",  required: false }],
   DELIVERY: [
     { label: "masraf_fisi_1", display: "Masraf Fisi 1",  required: false },
     { label: "masraf_fisi_2", display: "Masraf Fisi 2",  required: false },
@@ -104,7 +107,12 @@ export function TasksScreen(props: TasksScreenProps) {
     [activeTasks]
   );
   const currentTask = selectedTask ?? activeJob;
-  const phases: PhaseStep[] = useMemo(() => (currentTask?.jobType === "UNLOADING" ? UNLOADING_PHASES : LOADING_PHASES), [currentTask?.jobType]);
+  const phases: PhaseStep[] = useMemo(() => {
+    if (currentTask?.jobType === "FULL") return FULL_PHASES;
+    if (currentTask?.jobType === "UNLOADING") return UNLOADING_PHASES;
+    if (currentTask?.jobType === "LOADING") return LOADING_PHASES;
+    return SIMPLE_PHASES;
+  }, [currentTask?.jobType]);
   const doneTypes = useMemo(() => new Set(currentTask?.driverEvents?.map((e) => e.type) ?? []), [currentTask?.driverEvents]);
   const activePhase = useMemo(() => phases.find((p) => !doneTypes.has(p.type)) ?? null, [phases, doneTypes]);
 
@@ -139,24 +147,9 @@ export function TasksScreen(props: TasksScreenProps) {
   const displayPhotoUri = stepPhotoUri ?? serverPhotoUrl;
   const isViewingDone = viewingPhase !== null && doneTypes.has(viewingPhase);
 
-  const canSubmit = useMemo(() => {
-    if (!stepPhotos[stepType]) return false;
-    const requiredExtras = (EXTRA_PHOTO_CONFIGS[stepType] ?? []).filter((e) => e.required);
-    for (const extra of requiredExtras) {
-      if (!extraPhotos[extra.label]) return false;
-    }
-    const requiredDataFields = (PHASE_DATA_FIELDS[stepType] ?? []).filter((f) => f.required);
-    for (const f of requiredDataFields) {
-      if (!phaseInputs[f.key]?.trim()) return false;
-    }
-    return true;
-  }, [stepPhotos, extraPhotos, phaseInputs, stepType]);
+  const canSubmit = true;
 
   async function handleSubmit() {
-    if (!canSubmit) {
-      Alert.alert("Eksik Bilgi", "Lutfen zorunlu fotograflari ve alanlari doldurun.");
-      return;
-    }
     setSubmitting(true);
     try {
       const fields = PHASE_DATA_FIELDS[stepType] ?? [];
@@ -253,8 +246,13 @@ export function TasksScreen(props: TasksScreenProps) {
           </View>
         </View>
         {currentTask?.jobType ? (
-          <Text style={[local.jobTypeBadgeBase, currentTask.jobType === "UNLOADING" ? local.jobTypeUnload : local.jobTypeLoad]}>
-            {currentTask.jobType === "UNLOADING" ? "Bosaltma Isi" : "Yukleme Isi"}
+          <Text style={[local.jobTypeBadgeBase,
+            currentTask.jobType === "UNLOADING" ? local.jobTypeUnload :
+            currentTask.jobType === "FULL" ? local.jobTypeFull :
+            local.jobTypeLoad]}>
+            {currentTask.jobType === "UNLOADING" ? "Bosaltma" :
+             currentTask.jobType === "FULL" ? "Yukleme + Bosaltma" :
+             "Yukleme"}
           </Text>
         ) : null}
         {currentTask?.vehicle?.plateNumber ? (
@@ -290,10 +288,18 @@ export function TasksScreen(props: TasksScreenProps) {
 
           {/* Office location */}
           {!isViewingDone && (officeLocation ? (
-            <View style={local.locationBox}>
-              <Text style={local.locationLabel}>📍  Varis Konumu (Ofisten)</Text>
+            <Pressable
+              style={local.locationBox}
+              onPress={() => {
+                const encoded = encodeURIComponent(officeLocation);
+                const mapsUrl = `maps://?q=${encoded}`;
+                const fallback = `https://maps.apple.com/?q=${encoded}`;
+                Linking.canOpenURL(mapsUrl).then(ok => Linking.openURL(ok ? mapsUrl : fallback));
+              }}
+            >
+              <Text style={local.locationLabel}>📍  Varis Konumu (Ofisten)  <Text style={{ fontSize: 11, color: "#0ea5e9" }}>Navigasyonda Aç →</Text></Text>
               <Text style={[local.locationText, c && { color: "#bae6fd" }]}>{officeLocation}</Text>
-            </View>
+            </Pressable>
           ) : (
             <View style={[local.locationBox, { borderColor: "#94a3b820", backgroundColor: "transparent" }]}>
               <Text style={{ fontSize: 12, color: "#94a3b8" }}>📍  Konum henuz girilmedi</Text>
@@ -330,7 +336,7 @@ export function TasksScreen(props: TasksScreenProps) {
           {/* Phase data fields */}
           {!isViewingDone && (PHASE_DATA_FIELDS[displayPhase] ?? []).map((f) => (
             <View key={f.key} style={local.inputGroup}>
-              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{f.label}{f.required ? " *" : ""}</Text>
+              <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{f.label}</Text>
               <TextInput
                 style={[styles.input, c && styles.inputDark,
                   f.required && !phaseInputs[f.key]?.trim() ? local.inputRequired : null]}
@@ -370,22 +376,18 @@ export function TasksScreen(props: TasksScreenProps) {
               </View>
 
               <Pressable
-                style={[local.submitBtn, !canSubmit && local.submitBtnDisabled, submitting && local.submitBtnLoading]}
+                style={[local.submitBtn, submitting && local.submitBtnLoading]}
                 onPress={handleSubmit}
                 disabled={submitting}
               >
                 {submitting ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={local.submitBtnText}>
-                    {canSubmit ? `${activePhase?.label ?? ""} Kaydet` : `${activePhase?.label ?? ""} Kaydet`}
-                  </Text>
+                  <Text style={local.submitBtnText}>{activePhase?.label ?? ""} Kaydet</Text>
                 )}
               </Pressable>
 
-              {!canSubmit && (
-                <Text style={local.validationHint}>⚠  Zorunlu (*) fotograflari ve alanlari doldurun</Text>
-              )}
+
             </>
           )}
         </View>
@@ -535,6 +537,7 @@ const local = StyleSheet.create({
   jobTypeBadgeBase: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4, marginBottom: 6, fontSize: 11, fontWeight: "700" },
   jobTypeLoad: { backgroundColor: "#f9731615", color: "#f97316" },
   jobTypeUnload: { backgroundColor: "#3b82f615", color: "#3b82f6" },
+  jobTypeFull: { backgroundColor: "#8b5cf615", color: "#8b5cf6" },
 
   donePhaseMeta: { fontSize: 11, color: "#22c55e", marginTop: 1 },
   backBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: "#0ea5e910", borderWidth: 1, borderColor: "#0ea5e930" },

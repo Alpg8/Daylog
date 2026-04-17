@@ -29,7 +29,7 @@ export const createOrderSchema = z.object({
   notes: z.string().optional().nullable(),
 
   // Ortak
-  jobType: z.enum(["LOADING", "UNLOADING"]).default("LOADING"),
+  jobType: z.enum(["LOADING", "UNLOADING", "FULL"]).default("LOADING"),
   sender: z.string().optional().nullable(),
   recipient: z.string().optional().nullable(),
   customs: z.string().optional().nullable(),

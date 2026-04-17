@@ -124,6 +124,7 @@ enum ActionSource {
 enum JobType {
   LOADING
   UNLOADING
+  FULL
 }
 
 enum OperationTaskStatus {

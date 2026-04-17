@@ -34,7 +34,7 @@ const formSchema = z.object({
   routeText: str,
   notes: str,
   // İş Tipi + Adresler (sürücüye gösterilen)
-  jobType: z.enum(["LOADING", "UNLOADING"]).default("LOADING"),
+  jobType: z.enum(["LOADING", "UNLOADING", "FULL"]).default("LOADING"),
   loadingAddress: str,
   deliveryAddress: str,
   // EXPORT
@@ -140,7 +140,7 @@ export function OrderForm({
         routeText: d(o.routeText),
         notes: d(o.notes),
         // İş Tipi + Adresler
-        jobType: (o as { jobType?: "LOADING" | "UNLOADING" }).jobType ?? "LOADING",
+        jobType: (o as { jobType?: "LOADING" | "UNLOADING" | "FULL" }).jobType ?? "LOADING",
         loadingAddress: d((o as { loadingAddress?: unknown }).loadingAddress),
         deliveryAddress: d((o as { deliveryAddress?: unknown }).deliveryAddress),
         // EXPORT
@@ -384,8 +384,9 @@ export function OrderForm({
                           <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="LOADING">Yükleme</SelectItem>
-                              <SelectItem value="UNLOADING">Boşaltma</SelectItem>
+                              <SelectItem value="LOADING">Yükleme (Başla → Yükle → Bitir)</SelectItem>
+                              <SelectItem value="UNLOADING">Boşaltma (Başla → Boşalt → Bitir)</SelectItem>
+                              <SelectItem value="FULL">Yükleme + Boşaltma (Başla → Yükle → Boşalt → Bitir)</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>

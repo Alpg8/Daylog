@@ -95,7 +95,7 @@ interface TimelineResponse {
   order: {
     id: string;
     status: string;
-    jobType: "LOADING" | "UNLOADING" | null;
+    jobType: "LOADING" | "UNLOADING" | "FULL" | null;
     cargoNumber: string | null;
     tripNumber: string | null;
     routeText: string | null;
@@ -183,16 +183,15 @@ function AttachmentList({
   );
 }
 
-function getPhaseRows(jobType: "LOADING" | "UNLOADING" | null) {
-  const base = [
-    { key: "phaseStartLocation" as const, label: "Is Baslat Konumu", eventType: "START_JOB" },
-    { key: "phaseLoadLocation" as const, label: "Yukleme Konumu", eventType: "LOAD" },
-    { key: "phaseUnloadLocation" as const, label: "Bosaltma Konumu", eventType: "UNLOAD" },
-    { key: "phaseDeliveryLocation" as const, label: "Teslim Konumu", eventType: "DELIVERY" },
-  ];
-  if (jobType === "LOADING") return base.filter((r) => r.key !== "phaseUnloadLocation");
-  if (jobType === "UNLOADING") return base.filter((r) => r.key !== "phaseLoadLocation");
-  return base;
+function getPhaseRows(jobType: "LOADING" | "UNLOADING" | "FULL" | null) {
+  const start = { key: "phaseStartLocation" as const, label: "Is Baslat Konumu", eventType: "START_JOB" };
+  const load  = { key: "phaseLoadLocation"  as const, label: "Yukleme Konumu",   eventType: "LOAD" };
+  const unload= { key: "phaseUnloadLocation"as const, label: "Bosaltma Konumu",  eventType: "UNLOAD" };
+  const end   = { key: "phaseDeliveryLocation" as const, label: "Bitis Konumu",  eventType: "END_JOB" };
+  if (jobType === "LOADING")  return [start, load, end];
+  if (jobType === "UNLOADING") return [start, unload, end];
+  if (jobType === "FULL")     return [start, load, unload, end];
+  return [start, end];
 }
 
 export default function OrderOperationsDetailPage() {
