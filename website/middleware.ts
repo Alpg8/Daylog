@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyJWT } from "@/lib/auth/jwt";
 
-const PUBLIC_PATHS = ["/login", "/mobile-login", "/api/auth/login", "/api/auth/mobile-login"];
+const PUBLIC_PATHS = ["/login", "/mobile-login", "/api/auth/login", "/api/auth/mobile-login", "/api/r2-image"];
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -47,8 +47,8 @@ function applyApiCors(request: NextRequest, response: NextResponse): NextRespons
 
 function isProtected(pathname: string): boolean {
   if (pathname.startsWith("/api/")) {
-    // Auth routes are public; driver routes require auth
-    if (pathname.startsWith("/api/auth/login") || pathname.startsWith("/api/auth/mobile-login")) return false;
+    // Auth routes and public API routes are unprotected
+    if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return false;
     return true;
   }
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));

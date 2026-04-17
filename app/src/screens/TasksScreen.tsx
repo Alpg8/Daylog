@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LOADING_PHASES, STEP_LABELS, UNLOADING_PHASES, type PhaseStep, type StepType } from "../constants";
 import { styles } from "../styles";
 import type { AttachmentItem, DriverTask } from "../types";
+import { API_BASE_URL } from "../config";
 
 const STATUS_TR: Record<string, string> = {
   PLANNED: "Planli", IN_PROGRESS: "Devam Ediyor", COMPLETED: "Tamamlandi", CANCELLED: "Iptal",
@@ -115,7 +116,15 @@ export function TasksScreen(props: TasksScreenProps) {
   const serverPhotoUrl = useMemo(() => {
     if (!currentTask?.driverEvents) return null;
     const event = currentTask.driverEvents.find((e) => e.type === displayPhase);
-    return event?.photos?.[0]?.url ?? null;
+    const rawUrl = event?.photos?.[0]?.url ?? null;
+    if (!rawUrl) return null;
+    // Proxy R2 public URLs through the API server (direct r2.dev access is unreliable from most networks)
+    const r2Pattern = /^https:\/\/pub-[a-f0-9]+\.r2\.dev\//;
+    if (r2Pattern.test(rawUrl)) {
+      const key = rawUrl.replace(/^https:\/\/pub-[a-f0-9]+\.r2\.dev\//, "");
+      return `${API_BASE_URL}/api/r2-image?key=${encodeURIComponent(key)}`;
+    }
+    return rawUrl;
   }, [currentTask?.driverEvents, displayPhase]);
   const displayPhotoUri = stepPhotoUri ?? serverPhotoUrl;
   const isViewingDone = viewingPhase !== null && doneTypes.has(viewingPhase);
