@@ -18,7 +18,7 @@ export async function GET() {
     const tasks = await prisma.order.findMany({
       where: {
         driverId: driver.id,
-        status: { in: ["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] },
+        status: { in: ["PENDING", "PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] },
       },
       select: {
         id: true,

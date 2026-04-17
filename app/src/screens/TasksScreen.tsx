@@ -6,7 +6,14 @@ import type { AttachmentItem, DriverTask } from "../types";
 import { API_BASE_URL } from "../config";
 
 const STATUS_TR: Record<string, string> = {
-  PLANNED: "Planli", IN_PROGRESS: "Devam Ediyor", COMPLETED: "Tamamlandi", CANCELLED: "Iptal",
+  PENDING: "Beklemede", PLANNED: "Planli", IN_PROGRESS: "Devam Ediyor", COMPLETED: "Tamamlandi", CANCELLED: "Iptal",
+};
+
+const PHASE_ICONS: Partial<Record<StepType, string>> = {
+  START_JOB: "🚛",
+  LOAD:      "📦",
+  UNLOAD:    "🔄",
+  DELIVERY:  "📬",
 };
 
 interface DataField { key: string; label: string; numeric?: boolean; required?: boolean }
@@ -51,6 +58,7 @@ const EXTRA_PHOTO_CONFIGS: Partial<Record<StepType, ExtraPhotoConfig[]>> = {
 interface TasksScreenProps {
   darkMode: boolean;
   tasks: DriverTask[];
+  assignedVehicle?: string;
   selectedTaskId: string;
   selectedTask: DriverTask | null;
   stepType: StepType;
@@ -79,7 +87,7 @@ export function TasksScreen(props: TasksScreenProps) {
     tasks, darkMode, selectedTaskId, selectedTask, stepType, stepNotes, stepKm,
     stepPhotos, currentTaskAttachments, onRefresh, onSelectTask, onStepTypeChange,
     onStepNotesChange, onStepKmChange, onPickStepPhoto, onPickExtraPhoto,
-    onUploadJobDocument, onSubmitStep,
+    onUploadJobDocument, onSubmitStep, assignedVehicle,
   } = props;
 
   const [phaseInputs, setPhaseInputs] = useState<Record<string, string>>({});
@@ -89,9 +97,11 @@ export function TasksScreen(props: TasksScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const activeTasks = useMemo(() => tasks.filter((t) => t.status === "PENDING" || t.status === "PLANNED" || t.status === "IN_PROGRESS"), [tasks]);
+  const completedTasks = useMemo(() => tasks.filter((t) => t.status === "COMPLETED" || t.status === "CANCELLED"), [tasks]);
   const activeJob = useMemo(
-    () => tasks.find((t) => t.status === "IN_PROGRESS") ?? tasks.find((t) => t.status === "PLANNED") ?? tasks[0] ?? null,
-    [tasks]
+    () => activeTasks.find((t) => t.status === "IN_PROGRESS") ?? activeTasks.find((t) => t.status === "PLANNED") ?? activeTasks[0] ?? null,
+    [activeTasks]
   );
   const currentTask = selectedTask ?? activeJob;
   const phases: PhaseStep[] = useMemo(() => (currentTask?.jobType === "UNLOADING" ? UNLOADING_PHASES : LOADING_PHASES), [currentTask?.jobType]);
@@ -176,30 +186,59 @@ export function TasksScreen(props: TasksScreenProps) {
   const c = darkMode;
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
-      contentContainerStyle={{ paddingBottom: 32 }}
+      contentContainerStyle={{ paddingBottom: currentTask ? 100 : 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); }} />}
     >
-      {/* Task selector */}
-      {tasks.filter(t => t.status === "PLANNED" || t.status === "IN_PROGRESS").length > 1 && (
+      {/* Task selector – ALL jobs */}
+      {tasks.length > 0 && (
         <View style={[styles.card, c && styles.cardDark]}>
-          <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>
-            Isler ({tasks.filter(t => t.status === "PLANNED" || t.status === "IN_PROGRESS").length})
-          </Text>
-          {tasks.filter(t => t.status === "PLANNED" || t.status === "IN_PROGRESS").map((t) => (
+          <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Isler ({tasks.length})</Text>
+          {/* Active jobs first */}
+          {activeTasks.map((t) => (
             <Pressable
               key={t.id}
               onPress={() => onSelectTask(t.id)}
               style={[local.taskRow, (currentTask?.id === t.id) && local.taskRowSelected]}
             >
-              <Text style={[local.taskRowText, c && local.taskRowTextDark]} numberOfLines={1}>
-                {t.cargoNumber ?? t.tripNumber ?? t.id.slice(0, 8)}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[local.taskRowText, c && local.taskRowTextDark]} numberOfLines={1}>
+                  {t.cargoNumber ?? t.tripNumber ?? t.id.slice(0, 8)}
+                </Text>
+                {t.routeText ? <Text style={[local.historyMeta, c && { color: "#94a3b8" }]} numberOfLines={1}>{t.routeText}</Text> : null}
+              </View>
               <View style={[local.badge, t.status === "IN_PROGRESS" ? local.badgeActive : local.badgePlanned]}>
                 <Text style={local.badgeText}>{STATUS_TR[t.status] ?? t.status}</Text>
               </View>
             </Pressable>
           ))}
+          {/* Completed / Cancelled jobs */}
+          {completedTasks.length > 0 && (
+            <>
+              {activeTasks.length > 0 && <View style={[local.sectionDivider, c && local.sectionDividerDark]} />}
+              {completedTasks.map((t) => (
+                <Pressable
+                  key={t.id}
+                  onPress={() => onSelectTask(t.id)}
+                  style={[local.taskRow, (currentTask?.id === t.id) && local.taskRowSelected]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[local.taskRowText, c && local.taskRowTextDark, { opacity: 0.65 }]} numberOfLines={1}>
+                      {t.cargoNumber ?? t.tripNumber ?? t.id.slice(0, 8)}
+                    </Text>
+                    {t.routeText ? <Text style={[local.historyMeta, c && { color: "#94a3b8" }]} numberOfLines={1}>{t.routeText}</Text> : null}
+                    {t.updatedAt ? <Text style={[local.historyMeta, c && { color: "#64748b" }]}>{new Date(t.updatedAt).toLocaleDateString("tr-TR")}</Text> : null}
+                  </View>
+                  <View style={[local.badge, t.status === "COMPLETED" ? local.badgeCompleted : local.badgeCancelled]}>
+                    <Text style={[local.badgeText, t.status === "COMPLETED" ? { color: "#22c55e" } : { color: "#94a3b8" }]}>
+                      {STATUS_TR[t.status] ?? t.status}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </>
+          )}
         </View>
       )}
 
@@ -224,54 +263,13 @@ export function TasksScreen(props: TasksScreenProps) {
         {currentTask?.routeText ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>📍  {currentTask.routeText}</Text>
         ) : null}
+        {!currentTask && assignedVehicle && assignedVehicle !== "-" && assignedVehicle !== "Atanmamis" ? (
+          <Text style={[styles.cardLine, c && styles.cardLineDark]}>🚛  Atanan Arac: {assignedVehicle}</Text>
+        ) : null}
         {!currentTask && <Text style={[styles.cardLine, c && styles.cardLineDark]}>Aktif is bulunamadi.</Text>}
       </View>
 
-      {/* Phase stepper */}
-      {currentTask ? (
-        <View style={[styles.card, c && styles.cardDark]}>
-          <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Is Akisi</Text>
-          <View style={local.stepperRow}>
-            {phases.map((phase, idx) => {
-              const done = doneTypes.has(phase.type);
-              const isActive = activePhase?.type === phase.type;
-              const isViewing = viewingPhase === phase.type || (viewingPhase === null && isActive);
-              const tappable = done || isActive;
-              const isLast = idx === phases.length - 1;
-              return (
-                <View key={phase.type} style={[local.stepperItem, { flex: 1 }]}>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Pressable
-                      style={[
-                        local.stepCircle,
-                        done ? local.stepCircleDone : isActive ? local.stepCircleActive : local.stepCircleWaiting,
-                        isViewing ? local.stepCircleViewing : null,
-                      ]}
-                      onPress={() => tappable ? setViewingPhase(done ? phase.type : null) : undefined}
-                    >
-                      <Text style={[local.stepCircleText, (done || isActive) ? { color: "#fff" } : { color: "#94a3b8" }]}>
-                        {done ? "✓" : String(idx + 1)}
-                      </Text>
-                    </Pressable>
-                    {!isLast && (
-                      <View style={[local.stepConnector, done ? local.stepConnectorDone : local.stepConnectorWait]} />
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      local.stepLabel,
-                      done ? local.stepLabelDone : isActive ? local.stepLabelActive : local.stepLabelWait,
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {phase.label}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      ) : null}
+
 
       {/* Phase form */}
       {currentTask && (viewingPhase !== null || activePhase) ? (
@@ -401,8 +399,8 @@ export function TasksScreen(props: TasksScreenProps) {
         </View>
       ) : null}
 
-      {/* Documents */}
-      {currentTask ? (
+      {/* Documents – only when active job selected */}
+      {currentTask && (currentTask.status === "PLANNED" || currentTask.status === "IN_PROGRESS") ? (
         <View style={[styles.card, c && styles.cardDark]}>
           <View style={styles.sectionHead}>
             <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Is Dokumanlari</Text>
@@ -424,8 +422,56 @@ export function TasksScreen(props: TasksScreenProps) {
             ))
           )}
         </View>
+      ) : currentTask ? (
+        <View style={[styles.card, c && styles.cardDark]}>
+          <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Is Dokumanlari</Text>
+          {currentTaskAttachments.length === 0 ? (
+            <Text style={[styles.cardLine, c && styles.cardLineDark]}>Dokuman bulunmuyor.</Text>
+          ) : (
+            currentTaskAttachments.map((a) => (
+              <View key={a.id} style={[local.docRow, c && local.docRowDark]}>
+                <Text style={local.docIcon}>📄</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[local.docLabel, c && { color: "#f1f5f9" }]}>{a.label ?? "Dokuman"}</Text>
+                  <Text style={styles.meta}>{new Date(a.createdAt).toLocaleString("tr-TR")}</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
       ) : null}
     </ScrollView>
+
+    {/* Bottom phase bar */}
+    {currentTask ? (
+      <View style={[local.bottomBar, c && local.bottomBarDark]}>
+        {phases.map((phase) => {
+          const done = doneTypes.has(phase.type);
+          const isActive = activePhase?.type === phase.type;
+          const isViewing = viewingPhase === phase.type || (viewingPhase === null && isActive);
+          const tappable = done || isActive;
+          return (
+            <Pressable
+              key={phase.type}
+              style={[local.bottomTab, isViewing && local.bottomTabActive]}
+              onPress={() => tappable ? setViewingPhase(done ? phase.type : null) : undefined}
+            >
+              <View style={[local.bottomTabIconWrap, done && local.bottomTabIconDone, isViewing && !done && local.bottomTabIconActiveWrap]}>
+                <Text style={local.bottomTabIcon}>{PHASE_ICONS[phase.type] ?? "●"}</Text>
+                {done && <Text style={local.bottomTabDoneCheck}>✓</Text>}
+              </View>
+              <Text style={[
+                local.bottomTabLabel,
+                done ? local.bottomTabLabelDone : isViewing ? local.bottomTabLabelActive : local.bottomTabLabelWait,
+              ]}>
+                {phase.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    ) : null}
+    </View>
   );
 }
 
@@ -489,22 +535,6 @@ const local = StyleSheet.create({
   jobTypeBadgeBase: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4, marginBottom: 6, fontSize: 11, fontWeight: "700" },
   jobTypeLoad: { backgroundColor: "#f9731615", color: "#f97316" },
   jobTypeUnload: { backgroundColor: "#3b82f615", color: "#3b82f6" },
-
-  stepperRow: { flexDirection: "row", marginTop: 12 },
-  stepperItem: { alignItems: "center" },
-  stepCircle: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center" },
-  stepCircleDone: { backgroundColor: "#22c55e" },
-  stepCircleActive: { backgroundColor: "#0ea5e9" },
-  stepCircleWaiting: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: "#cbd5e1" },
-  stepCircleViewing: { borderWidth: 2.5, borderColor: "#f59e0b" },
-  stepCircleText: { fontSize: 13, fontWeight: "700" },
-  stepConnector: { flex: 1, height: 2.5, borderRadius: 1.5 },
-  stepConnectorDone: { backgroundColor: "#22c55e" },
-  stepConnectorWait: { backgroundColor: "#e2e8f0" },
-  stepLabel: { fontSize: 10, textAlign: "center", marginTop: 5, maxWidth: 70 },
-  stepLabelDone: { color: "#22c55e", fontWeight: "600" },
-  stepLabelActive: { color: "#0ea5e9", fontWeight: "700" },
-  stepLabelWait: { color: "#94a3b8" },
 
   donePhaseMeta: { fontSize: 11, color: "#22c55e", marginTop: 1 },
   backBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: "#0ea5e910", borderWidth: 1, borderColor: "#0ea5e930" },
@@ -574,8 +604,43 @@ const local = StyleSheet.create({
   docIcon: { fontSize: 17, marginTop: 1 },
   docLabel: { fontSize: 13, fontWeight: "600", color: "#0f172a" },
 
+  sectionDivider: { height: 1, backgroundColor: "#e2e8f0", marginVertical: 6 },
+  sectionDividerDark: { backgroundColor: "#1e293b" },
   taskRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 6, borderRadius: 8, marginTop: 4 },
   taskRowSelected: { backgroundColor: "#0ea5e910", borderWidth: 1, borderColor: "#0ea5e935" },
   taskRowText: { fontSize: 13, fontWeight: "600", color: "#0f172a", flex: 1, marginRight: 8 },
   taskRowTextDark: { color: "#f1f5f9" },
+
+  historyRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", paddingVertical: 10, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", gap: 8 },
+  historyRowDark: { borderBottomColor: "#1e293b" },
+  historyTitle: { fontSize: 13, fontWeight: "700", color: "#0f172a", marginBottom: 2 },
+  historyMeta: { fontSize: 11, color: "#64748b", marginTop: 1 },
+  badgeCompleted: { backgroundColor: "#22c55e15" },
+  badgeCancelled: { backgroundColor: "#94a3b815" },
+
+  bottomBar: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+    backgroundColor: "#ffffff",
+    paddingBottom: 28,
+    paddingTop: 6,
+  },
+  bottomBarDark: { backgroundColor: "#0f172a", borderTopColor: "#1e293b" },
+  bottomTab: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 6 },
+  bottomTabActive: {},
+  bottomTabIconWrap: {
+    width: 46, height: 46, borderRadius: 23,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+    marginBottom: 3,
+  },
+  bottomTabIconActiveWrap: { backgroundColor: "#0ea5e915", borderWidth: 2, borderColor: "#0ea5e9" },
+  bottomTabIconDone: { backgroundColor: "#22c55e15", borderWidth: 2, borderColor: "#22c55e" },
+  bottomTabIcon: { fontSize: 22 },
+  bottomTabDoneCheck: { position: "absolute", bottom: -2, right: -2, fontSize: 11, fontWeight: "800", color: "#22c55e", backgroundColor: "#fff", borderRadius: 6, paddingHorizontal: 1 },
+  bottomTabLabel: { fontSize: 11, fontWeight: "600" },
+  bottomTabLabelActive: { color: "#0ea5e9" },
+  bottomTabLabelDone: { color: "#22c55e" },
+  bottomTabLabelWait: { color: "#94a3b8" },
 });

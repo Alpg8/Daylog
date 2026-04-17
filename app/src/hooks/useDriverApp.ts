@@ -194,7 +194,7 @@ export function useDriverApp() {
   }, [token]);
 
   const activeTasks = useMemo(
-    () => tasks.filter((task) => task.status === "PLANNED" || task.status === "IN_PROGRESS"),
+    () => tasks.filter((task) => task.status === "PENDING" || task.status === "PLANNED" || task.status === "IN_PROGRESS"),
     [tasks]
   );
 
@@ -274,7 +274,7 @@ export function useDriverApp() {
     try {
       const data = await apiFetch<{ tasks: DriverTask[] }>("/api/driver/tasks", token);
       setTasks(data.tasks ?? []);
-      const firstActive = (data.tasks ?? []).find((task) => task.status === "PLANNED" || task.status === "IN_PROGRESS");
+      const firstActive = (data.tasks ?? []).find((task) => task.status === "PENDING" || task.status === "PLANNED" || task.status === "IN_PROGRESS");
       setSelectedTaskId((previous) => previous || firstActive?.id || "");
       return null;
     } catch (error) {
