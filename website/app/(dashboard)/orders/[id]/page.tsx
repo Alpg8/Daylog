@@ -467,14 +467,7 @@ export default function OrderOperationsDetailPage() {
               <p className="text-lg font-bold">{totalPhotos}</p>
               <p className="text-[10px] text-muted-foreground">Fotograf</p>
             </div>
-            <div className="rounded-lg border p-2 text-center">
-              <p className="text-lg font-bold">{order.driverConfirmations.length}</p>
-              <p className="text-[10px] text-muted-foreground">Onam</p>
-            </div>
-            <div className="rounded-lg border p-2 text-center">
-              <p className="text-lg font-bold">{order.handovers.length}</p>
-              <p className="text-[10px] text-muted-foreground">Devir</p>
-            </div>
+
           </div>
           {/* Notes inline editor */}
           <div className="mt-4 rounded-xl border border-border/60 p-4">
@@ -517,26 +510,7 @@ export default function OrderOperationsDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Warnings */}
-      {data.warnings.length > 0 && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-amber-700 dark:text-amber-300">
-              <AlertTriangle className="h-4 w-4" /> Eksik Islem Kontrolu ({data.warnings.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {data.warnings.map((w, i) => (
-                <div key={`${w.code}-${i}`} className="flex items-center gap-2 rounded border border-amber-500/20 bg-background p-2 text-sm">
-                  <Badge variant="outline" className="text-[10px] shrink-0">{w.code.replace("MISSING_", "")}</Badge>
-                  <span className="text-xs">{w.message}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Son Bilinen Konum */}
       {(() => {
@@ -719,60 +693,7 @@ export default function OrderOperationsDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Confirmations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4" /> Onam Kayitlari ({order.driverConfirmations.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {order.driverConfirmations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Onam kaydi yok.</p>
-          ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
-              {order.driverConfirmations.map((item) => (
-                <div key={item.id} className="rounded-lg border p-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                      {CONFIRMATION_LABELS[item.type] ?? item.type}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{new Date(item.confirmedAt).toLocaleString("tr-TR")}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.statement}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Handovers */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Devir Teslim ({order.handovers.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {order.handovers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Devir teslim kaydi yok.</p>
-          ) : (
-            <div className="space-y-2">
-              {order.handovers.map((item) => (
-                <div key={item.id} className="rounded-lg border p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{item.status}</Badge>
-                      <span>{item.fromDriver.fullName} → {item.toDriver?.fullName || "Belirtilmedi"}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{new Date(item.handoverAt).toLocaleString("tr-TR")}</span>
-                  </div>
-                  {item.notes && <p className="mt-1 text-muted-foreground">{item.notes}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Şoför Atama Geçmişi */}
       {order.driverHistory.length > 0 && (

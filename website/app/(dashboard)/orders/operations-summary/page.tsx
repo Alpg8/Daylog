@@ -229,7 +229,7 @@ async function getOrderSummaries(filters: Filters) {
           driver: { select: { fullName: true } },
         },
       },
-      _count: { select: { attachments: true, driverEvents: true, driverConfirmations: true } },
+      _count: { select: { attachments: true, driverEvents: true } },
     },
   });
 }
@@ -440,7 +440,6 @@ export default async function OrderOperationsSummaryPage({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline">{order._count.driverEvents} event</Badge>
-                      <Badge variant="outline">{order._count.driverConfirmations} onam</Badge>
                     </div>
                   </div>
 
