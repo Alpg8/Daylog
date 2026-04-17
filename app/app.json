@@ -36,6 +36,13 @@
           "photosPermission": "Daylog Driver, teslimat ve yakit belgeleri icin galeriden fotograf secmenizi ister.",
           "cameraPermission": "Daylog Driver, teslimat ve yakit belgeleri icin fotograf cekmenizi ister."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "sounds": []
+        }
       ]
     ],
     "web": {

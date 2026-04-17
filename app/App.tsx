@@ -3,7 +3,19 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { styles } from "./src/styles";
+
+// Show push notifications even when app is in foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 import { TabBar } from "./src/components/TabBar";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { TasksScreen } from "./src/screens/TasksScreen";

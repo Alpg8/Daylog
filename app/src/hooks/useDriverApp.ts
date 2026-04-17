@@ -3,6 +3,8 @@ import { Alert, AppState, Platform, type AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
 import { apiFetch, apiFetchForm, apiFetchPublic } from "../api";
 import { API_BASE_URL } from "../config";
 import { STEP_LABELS, TOKEN_KEY, USER_KEY, type StepType } from "../constants";
@@ -197,6 +199,30 @@ export function useDriverApp() {
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
 
+  async function registerPushToken(authToken: string) {
+    if (!Device.isDevice) return; // Simulator'da çalışmaz
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let finalStatus = existing;
+    if (existing !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") return;
+
+    const pushTokenData = await Notifications.getExpoPushTokenAsync();
+    const expoPushToken = pushTokenData.data;
+
+    await fetch(`${API_BASE_URL}/api/auth/push-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+        "x-client-source": "APP",
+      },
+      body: JSON.stringify({ token: expoPushToken }),
+    });
+  }
+
   async function login(email: string, password: string): Promise<string | null> {
     try {
       setBooting(true);
@@ -210,6 +236,10 @@ export function useDriverApp() {
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(json.user));
       setToken(json.token);
       setUser(json.user);
+
+      // Register Expo push token
+      registerPushToken(json.token).catch(() => {});
+
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "Bilinmeyen hata";
