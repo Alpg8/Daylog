@@ -58,6 +58,12 @@ type AttachmentItem = OrderSummary["attachments"][number];
 type DriverRecord = NonNullable<OrderSummary["driver"]>;
 type VehicleRecord = NonNullable<OrderSummary["vehicle"]>;
 
+const PHASE_DATA_LABELS: Record<string, string> = {
+  spanzet_count: "Spanzet", stanga_count: "Stanga", cita_count: "Çıta",
+  equipment_note: "Ekipman Notu", outgoing_spanzet: "Çıkan Spanzet",
+  tension_rod_count: "Gergi Çubuğu",
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function normalizeText(value: string | null | undefined) {
@@ -215,7 +221,7 @@ async function getOrderSummaries(filters: Filters) {
       trailer: { include: { attachments: { orderBy: { createdAt: "desc" } } } },
       driver: { include: { attachments: { orderBy: { createdAt: "desc" } } } },
       driverEvents: {
-        where: { OR: [{ photos: { some: {} } }, { notes: { not: null } }] },
+        where: { OR: [{ photos: { some: {} } }, { notes: { not: null } }, { odometerKm: { not: null } }] },
         orderBy: { eventAt: "desc" },
         take: 20,
         include: {
@@ -421,6 +427,16 @@ export default async function OrderOperationsSummaryPage({
                           ) : "Atanmadi"}
                         </span>
                       </div>
+                      {(order.spanzetStanga || order.cita || order.remaining) && (
+                        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 px-3 py-2">
+                          <span>Ekipman</span>
+                          <span className="font-medium text-foreground text-right text-xs leading-relaxed">
+                            {order.spanzetStanga && <span className="block">Stanga: {order.spanzetStanga}</span>}
+                            {order.cita && <span className="block">Çıta: {order.cita}</span>}
+                            {order.remaining && <span className="block">Kalan: {order.remaining}</span>}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="outline">{order._count.driverEvents} event</Badge>
@@ -511,6 +527,18 @@ export default async function OrderOperationsSummaryPage({
                                     {new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(event.eventAt))}
                                   </span>
                                 </div>
+                                {event.odometerKm != null && (
+                                  <p className="mb-1 text-muted-foreground">🛣 <span className="font-medium">{event.odometerKm.toLocaleString("tr-TR")} km</span></p>
+                                )}
+                                {(event.phaseData as Record<string,unknown> | null) && Object.keys(event.phaseData as object).length > 0 && (
+                                  <div className="mb-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                                    {Object.entries(event.phaseData as Record<string,unknown>).map(([k, v]) => (
+                                      <span key={k} className="text-muted-foreground">
+                                        <span className="font-medium">{PHASE_DATA_LABELS[k] ?? k.replace(/_/g," ")}:</span> {String(v)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                                 {event.notes && <p className="mb-2 italic text-muted-foreground">&ldquo;{event.notes}&rdquo;</p>}
                                 {event.photos.length > 0 && (
                                   <div className="grid grid-cols-3 gap-1.5">

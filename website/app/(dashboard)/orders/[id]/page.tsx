@@ -85,6 +85,12 @@ const SEVERITY_COLORS: Record<string, string> = {
   CRITICAL: "border-red-500 bg-red-500/20",
 };
 
+const PHASE_DATA_LABELS: Record<string, string> = {
+  spanzet_count: "Spanzet", stanga_count: "Stanga", cita_count: "Çıta",
+  equipment_note: "Ekipman Notu", outgoing_spanzet: "Çıkan Spanzet",
+  tension_rod_count: "Gergi Çubuğu",
+};
+
 interface TimelineResponse {
   order: {
     id: string;
@@ -93,6 +99,9 @@ interface TimelineResponse {
     cargoNumber: string | null;
     tripNumber: string | null;
     routeText: string | null;
+    spanzetStanga: string | null;
+    cita: string | null;
+    remaining: string | null;
     phaseStartLocation: string | null;
     phaseLoadLocation: string | null;
     phaseUnloadLocation: string | null;
@@ -430,6 +439,21 @@ export default function OrderOperationsDetailPage() {
                 <MapPin className="h-4 w-4 text-muted-foreground" /> {order.routeText}
               </div>
             )}
+            {order.spanzetStanga && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Stanga:</span> {order.spanzetStanga}
+              </div>
+            )}
+            {order.cita && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Çıta:</span> {order.cita}
+              </div>
+            )}
+            {order.remaining && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Kalan:</span> {order.remaining}
+              </div>
+            )}
           </div>
 
           {/* Summary stats */}
@@ -626,12 +650,12 @@ export default function OrderOperationsDetailPage() {
                       </div>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(event.eventAt).toLocaleString("tr-TR")}</span>
                     </div>
-                    {event.odometerKm && <p className="text-xs text-muted-foreground mt-0.5">Km: {event.odometerKm}</p>}
+                    {event.odometerKm && <p className="text-xs text-muted-foreground mt-0.5">🛣 <span className="font-medium">{event.odometerKm.toLocaleString("tr-TR")} km</span></p>}
                     {event.notes && <p className="mt-1 text-muted-foreground">{event.notes}</p>}
                     {event.phaseData && Object.keys(event.phaseData).length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                         {Object.entries(event.phaseData).map(([k, v]) => (
-                          <span key={k} className="text-xs text-muted-foreground"><span className="font-medium">{k.replace(/_/g, " ")}:</span> {String(v)}</span>
+                          <span key={k} className="text-xs text-muted-foreground"><span className="font-medium">{PHASE_DATA_LABELS[k] ?? k.replace(/_/g, " ")}:</span> {String(v)}</span>
                         ))}
                       </div>
                     )}
