@@ -195,6 +195,8 @@ async function getOrderSummaries(filters: Filters) {
     where.OR = [
       { operationDate: { gte: monthStart, lt: monthEnd } },
       { loadingDate: { gte: monthStart, lt: monthEnd } },
+      // Also include orders with no dates set so they always appear
+      { operationDate: null, loadingDate: null },
     ];
   }
 
