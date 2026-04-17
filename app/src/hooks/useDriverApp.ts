@@ -380,7 +380,7 @@ export function useDriverApp() {
     }
   }
 
-  async function submitStepUpdate(opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }>; mainPhotoLabel?: string }): Promise<string | null> {
+  async function submitStepUpdate(opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string; note?: string }>; mainPhotoLabel?: string; photoNotes?: Record<string, string> }): Promise<string | null> {
     if (!token) return "Oturum bulunamadi";
     if (!selectedTaskId) return "Lutfen once bir is secin";
     const stepPhotoUri = stepPhotos[stepType] ?? null;
@@ -399,13 +399,16 @@ export function useDriverApp() {
       });
 
       // Upload main photo
+      const mainLabel = opts?.mainPhotoLabel ?? STEP_LABELS[stepType];
+      const mainNote = opts?.photoNotes?.[mainLabel] ?? "";
       const formData = new FormData();
       formData.append("file", {
         uri: stepPhotoUri,
         name: `step-${Date.now()}.jpg`,
         type: "image/jpeg",
       } as unknown as Blob);
-      formData.append("label", opts?.mainPhotoLabel ?? STEP_LABELS[stepType]);
+      formData.append("label", mainLabel);
+      if (mainNote) formData.append("note", mainNote);
       await apiFetchForm(`/api/driver/events/${eventRes.event.id}/photos`, token, formData);
 
       // Upload extra photos (e.g. kantar fisi, smr, etc.)
@@ -418,6 +421,7 @@ export function useDriverApp() {
             type: "image/jpeg",
           } as unknown as Blob);
           fd.append("label", extra.label);
+          if (extra.note) fd.append("note", extra.note);
           await apiFetchForm(`/api/driver/events/${eventRes.event.id}/photos`, token, fd);
         }
       }

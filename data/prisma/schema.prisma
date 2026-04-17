@@ -469,6 +469,7 @@ model DriverEventPhoto {
   url       String
   key       String
   label     String?
+  note      String?
   mimeType  String?
   size      Int?
   createdAt DateTime @default(now())

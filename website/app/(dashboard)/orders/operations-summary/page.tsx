@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OperationsSummaryFilters } from "@/components/orders/operations-summary-filters";
+import { OpsSummaryRefresh } from "@/components/orders/ops-summary-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -218,7 +219,7 @@ async function getOrderSummaries(filters: Filters) {
         orderBy: { eventAt: "desc" },
         take: 20,
         include: {
-          photos: { orderBy: { createdAt: "desc" }, take: 10 },
+          photos: { orderBy: { createdAt: "desc" }, take: 10, select: { id: true, url: true, label: true, note: true } },
           driver: { select: { fullName: true } },
         },
       },
@@ -276,9 +277,12 @@ export default async function OrderOperationsSummaryPage({
         title="Operasyon Evrak Ozeti"
         description="Siparislerde operasyon akisini, surucu evraklarini ve arac dosyalarini tek ekranda takip edin."
         actions={
-          <Button asChild variant="outline">
-            <Link href="/orders">Tum siparislere don</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <OpsSummaryRefresh />
+            <Button asChild variant="outline">
+              <Link href="/orders">Tum siparislere don</Link>
+            </Button>
+          </div>
         }
       />
 
@@ -512,13 +516,24 @@ export default async function OrderOperationsSummaryPage({
                                   <div className="grid grid-cols-3 gap-1.5">
                                     {event.photos.map((photo) => (
                                       <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
-                                        className="group relative block aspect-square overflow-hidden rounded-lg border border-border/50 bg-muted">
-                                        <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                                        {photo.label && (
-                                          <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5 text-center text-[9px] leading-tight text-white">
-                                            {photo.label}
-                                          </span>
-                                        )}
+                                        className="group relative block overflow-hidden rounded-lg border border-border/50 bg-muted">
+                                        <div className="aspect-square">
+                                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                                          <img
+                                            src={photo.url}
+                                            alt={photo.label || "Foto"}
+                                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                          />
+                                        </div>
+                                        <div className="px-1.5 py-1">
+                                          {photo.label && (
+                                            <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">{photo.label}</p>
+                                          )}
+                                          {(photo as typeof photo & { note?: string | null }).note && (
+                                            <p className="mt-0.5 text-[10px] italic text-foreground/70 line-clamp-2">{(photo as typeof photo & { note?: string | null }).note}</p>
+                                          )}
+                                        </div>
                                       </a>
                                     ))}
                                   </div>

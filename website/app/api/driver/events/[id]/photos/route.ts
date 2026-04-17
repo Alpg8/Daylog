@@ -44,6 +44,7 @@ export async function POST(
   const parsed = await parseMultipart(request);
   const fileData = parsed.files["file"];
   const label = parsed.fields["label"] ?? null;
+  const note = parsed.fields["note"] ?? null;
 
   if (!fileData) {
     return NextResponse.json({ error: "file is required" }, { status: 400 });
@@ -66,6 +67,7 @@ export async function POST(
       url: uploaded.url,
       key: uploaded.key,
       label: label && label.length > 0 ? label : null,
+      note: note && note.length > 0 ? note : null,
       mimeType: uploaded.mimeType,
       size: uploaded.size,
     },
