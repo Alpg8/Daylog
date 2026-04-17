@@ -1,4 +1,4 @@
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useEffect, useMemo, useState } from "react";
 import { LOADING_PHASES, STEP_LABELS, UNLOADING_PHASES, type PhaseStep, type StepType } from "../constants";
 import { styles } from "../styles";
@@ -82,6 +82,7 @@ export function TasksScreen(props: TasksScreenProps) {
   const [phaseInputs, setPhaseInputs] = useState<Record<string, string>>({});
   const [extraPhotos, setExtraPhotos] = useState<Record<string, string | null>>({});
   const [viewingPhase, setViewingPhase] = useState<StepType | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const activeJob = useMemo(
     () => tasks.find((t) => t.status === "IN_PROGRESS") ?? tasks.find((t) => t.status === "PLANNED") ?? tasks[0] ?? null,
@@ -152,7 +153,10 @@ export function TasksScreen(props: TasksScreenProps) {
   const c = darkMode;
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+    <ScrollView
+      contentContainerStyle={{ paddingBottom: 24 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); }} />}
+    >
       <View style={[styles.card, c && styles.cardDark]}>
         <View style={local.rowBetween}>
           <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>
@@ -176,7 +180,6 @@ export function TasksScreen(props: TasksScreenProps) {
         <View style={[styles.card, c && styles.cardDark]}>
           <View style={local.rowBetween}>
             <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Asama Durumu</Text>
-            <Pressable onPress={onRefresh}><Text style={styles.linkText}>Yenile</Text></Pressable>
           </View>
           <View style={local.phaseRow}>
             {phases.map((phase, idx) => {
