@@ -1,6 +1,4 @@
 import type {
-  DriverConfirmationType,
-  DriverEventType,
   User,
   UserRole,
 } from "@/lib/db/prisma-client";
@@ -52,104 +50,6 @@ export async function notifyOpsTeam(title: string, message: string) {
   );
 }
 
-const REQUIRED_PHOTO_EVENT_TYPES: DriverEventType[] = [
-  "LOAD",
-  "DELIVERY",
-  "HANDOVER",
-  "END_JOB",
-];
-
-const REQUIRED_CONFIRMATION_TYPES: DriverConfirmationType[] = [
-  "JOB_STARTED",
-  "LOADING_CONFIRMED",
-  "DELIVERY_CONFIRMED",
-];
-
-export interface OrderTimelineWarning {
-  code: "MISSING_EVENT" | "MISSING_PHOTO" | "MISSING_CONFIRMATION" | "MISSING_CLOSEOUT";
-  message: string;
-}
-
-export function buildTimelineWarnings(input: {
-  eventTypes: DriverEventType[];
-  eventTypesWithPhoto: DriverEventType[];
-  confirmationTypes: DriverConfirmationType[];
-  hasEndJob: boolean;
-  orderStatus: string;
-}): OrderTimelineWarning[] {
-  const warnings: OrderTimelineWarning[] = [];
-
-  const uniqueEventTypes = Array.from(new Set(input.eventTypes));
-  const uniqueEventTypesWithPhoto = Array.from(new Set(input.eventTypesWithPhoto));
-  const uniqueConfirmationTypes = Array.from(new Set(input.confirmationTypes));
-
-  // Base operation flow checks
-  if (input.orderStatus === "IN_PROGRESS" || input.orderStatus === "COMPLETED") {
-    if (!uniqueEventTypes.includes("START_JOB")) {
-      warnings.push({
-        code: "MISSING_EVENT",
-        message: "Is baslangici kaydi (START_JOB) eksik",
-      });
-    }
-  }
-
-  if (input.orderStatus === "COMPLETED" && !uniqueEventTypes.includes("DELIVERY")) {
-    warnings.push({
-      code: "MISSING_EVENT",
-      message: "Teslim adimi (DELIVERY) eksik",
-    });
-  }
-
-  for (const eventType of REQUIRED_PHOTO_EVENT_TYPES) {
-    // Only require photo if that event has been performed
-    if (uniqueEventTypes.includes(eventType) && !uniqueEventTypesWithPhoto.includes(eventType)) {
-      warnings.push({
-        code: "MISSING_PHOTO",
-        message: `${eventType} adiminda fotograf eksik`,
-      });
-    }
-  }
-
-  for (const confirmationType of REQUIRED_CONFIRMATION_TYPES) {
-    // Only require confirmations when related flow is reached
-    if (
-      confirmationType === "JOB_STARTED" &&
-      !uniqueEventTypes.includes("START_JOB")
-    ) {
-      continue;
-    }
-
-    if (
-      confirmationType === "LOADING_CONFIRMED" &&
-      !uniqueEventTypes.includes("LOAD")
-    ) {
-      continue;
-    }
-
-    if (
-      confirmationType === "DELIVERY_CONFIRMED" &&
-      !uniqueEventTypes.includes("DELIVERY")
-    ) {
-      continue;
-    }
-
-    if (!uniqueConfirmationTypes.includes(confirmationType)) {
-      warnings.push({
-        code: "MISSING_CONFIRMATION",
-        message: `${confirmationType} onami eksik`,
-      });
-    }
-  }
-
-  if (input.orderStatus === "COMPLETED" && !input.hasEndJob) {
-    warnings.push({
-      code: "MISSING_CLOSEOUT",
-      message: "Siparis tamamlandi ancak END_JOB kaydi yok",
-    });
-  }
-
-  return warnings;
-}
 
 export async function mapDriverForUserOrFail(userId: string, role: string) {
   if (!isDriverRole(role)) {

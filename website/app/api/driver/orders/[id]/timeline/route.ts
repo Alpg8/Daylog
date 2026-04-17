@@ -4,7 +4,6 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import {
   assertDriverOrderAccess,
-  buildTimelineWarnings,
   isDriverRole,
   isOpsViewer,
   mapDriverForUserOrFail,
@@ -40,19 +39,6 @@ export async function GET(
         },
         orderBy: { eventAt: "desc" },
       },
-      driverConfirmations: {
-        include: {
-          event: { select: { id: true, type: true, eventAt: true } },
-        },
-        orderBy: { confirmedAt: "desc" },
-      },
-      handovers: {
-        include: {
-          fromDriver: { select: { id: true, fullName: true } },
-          toDriver: { select: { id: true, fullName: true } },
-        },
-        orderBy: { handoverAt: "desc" },
-      },
       driverHistory: {
         include: {
           driver: { select: { id: true, fullName: true, phoneNumber: true } },
@@ -65,25 +51,8 @@ export async function GET(
 
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
-  const eventTypesWithPhoto = order.driverEvents
-    .filter((event) => event.photos.length > 0)
-    .map((event) => event.type);
-  const eventTypes = order.driverEvents.map((event) => event.type);
-
-  const confirmationTypes = order.driverConfirmations.map((item) => item.type);
-  const hasEndJob = order.driverEvents.some((event) => event.type === "END_JOB");
-
-  const warnings = buildTimelineWarnings({
-    eventTypes,
-    eventTypesWithPhoto,
-    confirmationTypes,
-    hasEndJob,
-    orderStatus: order.status,
-  });
-
   return NextResponse.json({
     order,
-    warnings,
     lastEventAt: order.driverEvents[0]?.eventAt ?? null,
     lastEventType: order.driverEvents[0]?.type ?? null,
   });

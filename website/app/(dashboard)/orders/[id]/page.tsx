@@ -61,16 +61,6 @@ const EVENT_LABELS: Record<string, string> = {
   END_SHIFT: "Vardiya Bitti",
 };
 
-const CONFIRMATION_LABELS: Record<string, string> = {
-  JOB_STARTED: "Ise basladigini onayladi",
-  LOADING_CONFIRMED: "Yuklemeyi onayladi",
-  DELIVERY_CONFIRMED: "Teslimi onayladi",
-  VEHICLE_HANDED_OVER: "Araci devretti",
-  DELIVERY_RECEIVED: "Teslim aldi",
-  DOCUMENT_UPLOADED: "Evraki yukledi",
-  DAMAGE_CONFIRMED: "Hasar bilgisini onayladi",
-};
-
 const STATUS_LABELS: Record<string, string> = {
   PLANNED: "Planli",
   IN_PROGRESS: "Devam Ediyor",
@@ -121,21 +111,6 @@ interface TimelineResponse {
       phaseData: Record<string, unknown> | null;
       driver: { id: string; fullName: string };
       photos: Array<{ id: string; url: string; label: string | null }>;
-    }>;
-    driverConfirmations: Array<{
-      id: string;
-      type: string;
-      statement: string;
-      status: string;
-      confirmedAt: string;
-    }>;
-    handovers: Array<{
-      id: string;
-      status: string;
-      handoverAt: string;
-      notes: string | null;
-      fromDriver: { fullName: string };
-      toDriver: { fullName: string } | null;
     }>;
     driverHistory: Array<{
       id: string;
@@ -457,7 +432,7 @@ export default function OrderOperationsDetailPage() {
           </div>
 
           {/* Summary stats */}
-          <div className="mt-4 grid grid-cols-4 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <div className="rounded-lg border p-2 text-center">
               <p className="text-lg font-bold">{order.driverEvents.length}</p>
               <p className="text-[10px] text-muted-foreground">Aksiyon</p>
