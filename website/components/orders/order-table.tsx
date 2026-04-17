@@ -362,6 +362,7 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "supplierPhone", header: "Tedarikçi Cep", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).supplierPhone) },
     { accessorKey: "equipmentInfo", header: "Ekipman", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).equipmentInfo) },
     { accessorKey: "cita", header: "ÇITA", meta: { editable: true }, cell: ({ row }) => fmtNum(row.original.cita) },
+    { accessorKey: "spanzetStanga", header: "STANGA", meta: { editable: true }, cell: ({ row }) => fmtNum(row.original.spanzetStanga) },
     actionsCell,
   ];
 
@@ -467,6 +468,7 @@ export function OrderTable({ category }: OrderTableProps) {
       kar_orani: r.transportProfitRate ?? "", tedarikci_bilgi: String(r.supplierInfo ?? ""),
       tedarikci_cep: String(r.supplierPhone ?? ""), ekipman: String(r.equipmentInfo ?? ""),
       cita: o.cita ?? "",
+      spanzetStanga: o.spanzetStanga ?? "",
     };
     return {
       kategori: o.orderCategory, yuk_no: o.cargoNumber ?? "",

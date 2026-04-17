@@ -131,7 +131,7 @@ export async function PATCH(
       // DOMESTIC
       "rental", "containerTrailerNo", "containerPickupAddress", "loadUnloadLocation",
       "containerDropAddress", "deliveryCustomer", "supplierInfo", "supplierPhone",
-      "equipmentInfo", "cita",
+      "equipmentInfo", "cita", "spanzetStanga",
     ];
     const numberFields = [
       "waitingPrice", "freightPrice", "customsCost", "supplyPrice",

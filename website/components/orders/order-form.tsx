@@ -79,6 +79,7 @@ const formSchema = z.object({
   supplierPhone: str,
   equipmentInfo: str,
   cita: str,
+  spanzetStanga: str,
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -184,6 +185,7 @@ export function OrderForm({
         supplierPhone: d(o.supplierPhone),
         equipmentInfo: d(o.equipmentInfo),
         cita: d(o.cita),
+        spanzetStanga: d(o.spanzetStanga),
       });
     } else {
       form.reset({ orderCategory: defaultCategory, status: "PENDING" });
@@ -232,6 +234,7 @@ export function OrderForm({
       supplierPhone: nilIfBlank(data.supplierPhone),
       equipmentInfo: nilIfBlank(data.equipmentInfo),
       cita: nilIfBlank(data.cita),
+      spanzetStanga: nilIfBlank(data.spanzetStanga),
     };
 
     const res = await fetch(
@@ -462,6 +465,7 @@ export function OrderForm({
                     <F name="supplierPhone" label="Tedarikçi Cep No" />
                     <F name="equipmentInfo" label="Ekipman Bilgisi" />
                     <F name="cita" label="ÇITA" />
+                    <F name="spanzetStanga" label="Stanga" />
                     <div className="col-span-2">
                       <FormField control={form.control} name="notes" render={({ field }) => (
                         <FormItem><FormLabel>Açıklama</FormLabel>
