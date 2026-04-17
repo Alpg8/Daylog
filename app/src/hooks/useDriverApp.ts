@@ -210,8 +210,11 @@ export function useDriverApp() {
     }
     if (finalStatus !== "granted") return;
 
-    const pushTokenData = await Notifications.getExpoPushTokenAsync();
-    const expoPushToken = pushTokenData.data;
+    // Get native APNs device token (works without EAS/Expo account)
+    const deviceTokenData = await Notifications.getDevicePushTokenAsync();
+    const deviceToken = typeof deviceTokenData.data === "string"
+      ? deviceTokenData.data
+      : JSON.stringify(deviceTokenData.data);
 
     await fetch(`${API_BASE_URL}/api/auth/push-token`, {
       method: "POST",
@@ -220,7 +223,7 @@ export function useDriverApp() {
         Authorization: `Bearer ${authToken}`,
         "x-client-source": "APP",
       },
-      body: JSON.stringify({ token: expoPushToken }),
+      body: JSON.stringify({ token: deviceToken, platform: Platform.OS }),
     });
   }
 
