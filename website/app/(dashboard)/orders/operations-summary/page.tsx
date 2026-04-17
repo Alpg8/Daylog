@@ -514,13 +514,19 @@ export default async function OrderOperationsSummaryPage({
                                 {event.notes && <p className="mb-2 italic text-muted-foreground">&ldquo;{event.notes}&rdquo;</p>}
                                 {event.photos.length > 0 && (
                                   <div className="grid grid-cols-3 gap-1.5">
-                                    {event.photos.map((photo) => (
-                                      <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
+                                    {event.photos.map((photo) => {
+                                      // Proxy R2 images through our server to avoid cross-origin/public-access issues
+                                      const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "https://pub-60c1b097ea13484f9c04938288582747.r2.dev";
+                                      const proxyUrl = photo.url.startsWith(r2PublicUrl)
+                                        ? `/api/r2-image?key=${encodeURIComponent(photo.url.slice(r2PublicUrl.length + 1))}`
+                                        : photo.url;
+                                      return (
+                                      <a key={photo.id} href={proxyUrl} target="_blank" rel="noreferrer"
                                         className="group relative block overflow-hidden rounded-lg border border-border/50 bg-muted">
                                         <div className="aspect-square">
                                           {/* eslint-disable-next-line @next/next/no-img-element */}
                                           <img
-                                            src={photo.url}
+                                            src={proxyUrl}
                                             alt={photo.label || "Foto"}
                                             className="h-full w-full object-cover transition-transform group-hover:scale-105"
                                             onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
@@ -535,7 +541,8 @@ export default async function OrderOperationsSummaryPage({
                                           )}
                                         </div>
                                       </a>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
