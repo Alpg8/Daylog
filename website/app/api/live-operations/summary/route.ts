@@ -79,11 +79,7 @@ export async function GET(request: NextRequest) {
     : [[], []];
 
   for (const row of timelineRows) {
-    await syncOperationTasksForOrder({
-      orderId: row.id,
-      driverId: activeOrderRows.find((order) => order.id === row.id)?.driver?.id ?? null,
-      warnings: [],
-    });
+    await syncOperationTasksForOrder({ orderId: row.id });
   }
 
   const latestByOrder = new Map<string, (typeof latestEvents)[number]>();

@@ -8,8 +8,6 @@ import {
   ArrowLeft,
   Camera,
   Check,
-  CheckCircle2,
-  AlertTriangle,
   MapPin,
   Truck,
   Upload,
@@ -52,16 +50,6 @@ const EVENT_LABELS: Record<string, string> = {
   END_SHIFT: "Vardiya Bitti",
 };
 
-const CONFIRMATION_LABELS: Record<string, string> = {
-  JOB_STARTED: "Ise basladigimi onayliyorum",
-  LOADING_CONFIRMED: "Yuklemeyi onayliyorum",
-  DELIVERY_CONFIRMED: "Teslimi gerceklestirdim",
-  VEHICLE_HANDED_OVER: "Araci devrettim",
-  DELIVERY_RECEIVED: "Teslim aldim",
-  DOCUMENT_UPLOADED: "Evraki yukledim",
-  DAMAGE_CONFIRMED: "Hasar bilgisini onayladim",
-};
-
 const STATUS_LABELS: Record<string, string> = {
   PLANNED: "Planli",
   IN_PROGRESS: "Devam Ediyor",
@@ -75,13 +63,7 @@ const EVENT_TYPES = [
   "DELIVERY", "WAITING", "ISSUE", "HANDOVER", "END_JOB",
 ] as const;
 
-const CONFIRMATION_TYPES = [
-  "JOB_STARTED", "LOADING_CONFIRMED", "DELIVERY_CONFIRMED",
-  "VEHICLE_HANDED_OVER", "DELIVERY_RECEIVED", "DOCUMENT_UPLOADED", "DAMAGE_CONFIRMED",
-] as const;
-
 type EventType = (typeof EVENT_TYPES)[number];
-type ConfirmationType = (typeof CONFIRMATION_TYPES)[number];
 
 /* ─── Operation flow steps ───────────────────────────────────── */
 
@@ -101,8 +83,6 @@ interface FlowStep {
   eventType: EventType;
   label: string;
   icon: React.ElementType;
-  confirmationType?: ConfirmationType;
-  confirmLabel?: string;
   requiresPhoto: boolean;
   photoLabels?: PhotoInputDef[];
   dataFields?: DataFieldDef[];
@@ -112,13 +92,11 @@ interface FlowStep {
 const LOADING_FLOW: FlowStep[] = [
   {
     eventType: "START_JOB", label: "Isi Baslat", icon: Play,
-    confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum",
     requiresPhoto: true, phaseLocationKey: "phaseStartLocation",
     photoLabels: [{ key: "genel", label: "Genel Foto", required: true }],
   },
   {
     eventType: "LOAD", label: "Yukleme", icon: PackageOpen,
-    confirmationType: "LOADING_CONFIRMED", confirmLabel: "Yuklemeyi onayliyorum",
     requiresPhoto: true, phaseLocationKey: "phaseLoadLocation",
     photoLabels: [
       { key: "kantar_fisi", label: "Kantar Fisi", required: true },
@@ -133,7 +111,6 @@ const LOADING_FLOW: FlowStep[] = [
   },
   {
     eventType: "DELIVERY", label: "Teslim", icon: PackageCheck,
-    confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Teslimi gerceklestirdim",
     requiresPhoto: true, phaseLocationKey: "phaseDeliveryLocation",
     photoLabels: [
       { key: "teslim", label: "Teslim Foto", required: true },
@@ -146,13 +123,11 @@ const LOADING_FLOW: FlowStep[] = [
 const UNLOADING_FLOW: FlowStep[] = [
   {
     eventType: "START_JOB", label: "Isi Baslat", icon: Play,
-    confirmationType: "JOB_STARTED", confirmLabel: "Ise basladigimi onayliyorum",
     requiresPhoto: true, phaseLocationKey: "phaseStartLocation",
     photoLabels: [{ key: "genel", label: "Genel Foto", required: true }],
   },
   {
     eventType: "UNLOAD", label: "Bosaltma", icon: PackageCheck,
-    confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Bosaltmayi onayliyorum",
     requiresPhoto: true, phaseLocationKey: "phaseUnloadLocation",
     photoLabels: [
       { key: "smr", label: "SMR Foto", required: true },
@@ -165,7 +140,6 @@ const UNLOADING_FLOW: FlowStep[] = [
   },
   {
     eventType: "DELIVERY", label: "Teslim", icon: Flag,
-    confirmationType: "DELIVERY_CONFIRMED", confirmLabel: "Teslimi gerceklestirdim",
     requiresPhoto: true, phaseLocationKey: "phaseDeliveryLocation",
     photoLabels: [
       { key: "teslim", label: "Teslim Foto", required: true },
@@ -205,23 +179,7 @@ interface TimelineResponse {
       driver: { id: string; fullName: string };
       photos: Array<{ id: string; url: string; label: string | null }>;
     }>;
-    driverConfirmations: Array<{
-      id: string;
-      type: string;
-      statement: string;
-      status: string;
-      confirmedAt: string;
-    }>;
-    handovers: Array<{
-      id: string;
-      status: string;
-      notes: string | null;
-      handoverAt: string;
-      fromDriver: { fullName: string };
-      toDriver: { fullName: string } | null;
-    }>;
   };
-  warnings: Array<{ code: string; message: string }>;
 }
 
 interface DriverOption { id: string; fullName: string; }
@@ -250,10 +208,6 @@ export default function DriverOrderDetailPage() {
   const [handoverNotes, setHandoverNotes] = useState("");
   const [handoverToDriverId, setHandoverToDriverId] = useState("");
   const [availableDrivers, setAvailableDrivers] = useState<DriverOption[]>([]);
-
-  const [confirmationType, setConfirmationType] = useState<ConfirmationType>("JOB_STARTED");
-  const [confirmationStatement, setConfirmationStatement] = useState("Onayliyorum");
-  const [confirmationEventId, setConfirmationEventId] = useState("");
 
   const [phasePhotos, setPhasePhotos] = useState<Record<string, File | null>>({});
   const [phaseInputs, setPhaseInputs] = useState<Record<string, string>>({});
@@ -292,7 +246,6 @@ export default function DriverOrderDetailPage() {
   /* ─── Helpers ──────────────────────────────────────────── */
 
   const doneEventTypes = new Set(timeline?.order.driverEvents.map((e) => e.type) ?? []);
-  const doneConfirmTypes = new Set(timeline?.order.driverConfirmations.map((c) => c.type) ?? []);
   const photoEventTypes = new Set(
     timeline?.order.driverEvents.filter((e) => e.photos.length > 0).map((e) => e.type) ?? []
   );
@@ -301,7 +254,6 @@ export default function DriverOrderDetailPage() {
 
   function isStepDone(step: FlowStep) { return doneEventTypes.has(step.eventType); }
   function isStepPhotoOk(step: FlowStep) { return !step.requiresPhoto || photoEventTypes.has(step.eventType); }
-  function isStepConfirmOk(step: FlowStep) { return !step.confirmationType || doneConfirmTypes.has(step.confirmationType); }
   function getNextStep(): FlowStep | null {
     for (const step of activeFlow) { if (!isStepDone(step)) return step; }
     return null;
@@ -369,14 +321,6 @@ export default function DriverOrderDetailPage() {
       setPhaseInputs({});
       setPhaseFormKey((k) => k + 1);
 
-      if (step.confirmationType && step.confirmLabel) {
-        await fetch("/api/driver/confirmations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId, eventId: newEventId, type: step.confirmationType, statement: step.confirmLabel }),
-        });
-      }
-
       if (step.eventType === "START_JOB" && timeline?.order.status === "PLANNED") {
         await fetch("/api/driver/update-status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, status: "IN_PROGRESS" }) });
       }
@@ -428,24 +372,6 @@ export default function DriverOrderDetailPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
       setEventNotes(""); setEventKm(""); setActiveSection(null);
       fetchTimeline();
-    } finally { setSubmitting(false); }
-  }
-
-  async function createConfirmation() {
-    if (!confirmationEventId) {
-      toast.error("Onam icin once fotograflı bir event secin");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/driver/confirmations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, eventId: confirmationEventId, type: confirmationType, statement: confirmationStatement }),
-      });
-      if (!res.ok) { toast.error("Onam kaydedilemedi"); return; }
-      toast.success("Onam kaydedildi"); setActiveSection(null); fetchTimeline();
     } finally { setSubmitting(false); }
   }
 
@@ -569,18 +495,6 @@ export default function DriverOrderDetailPage() {
       </Card>
 
       {/* Warnings */}
-      {timeline.warnings.length > 0 && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
-              <AlertTriangle className="h-4 w-4" /> Eksik Islem ({timeline.warnings.length})
-            </div>
-            <div className="mt-1.5 space-y-0.5">
-              {timeline.warnings.map((w, i) => <p key={`${w.code}-${i}`} className="text-xs text-amber-700/80 dark:text-amber-300/80">• {w.message}</p>)}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Operation Flow */}
       <Card>
@@ -590,7 +504,6 @@ export default function DriverOrderDetailPage() {
             {activeFlow.map((step, idx) => {
               const done = isStepDone(step);
               const photoOk = isStepPhotoOk(step);
-              const confirmOk = isStepConfirmOk(step);
               const isNext = nextStep?.eventType === step.eventType;
               const Icon = step.icon;
 
@@ -605,7 +518,6 @@ export default function DriverOrderDetailPage() {
                       {done && (
                         <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                           {step.requiresPhoto && <span className={photoOk ? "text-emerald-600" : "text-amber-600"}>{photoOk ? "✓ Foto" : "✗ Foto eksik"}</span>}
-                          {step.confirmationType && <span className={confirmOk ? "text-emerald-600" : "text-amber-600"}>{confirmOk ? "✓ Onam" : "✗ Onam eksik"}</span>}
                         </div>
                       )}
                     </div>
@@ -698,7 +610,6 @@ export default function DriverOrderDetailPage() {
           <ActionButton icon={Camera} label="Fotograf Yukle" active={activeSection === "photo"} onClick={() => setActiveSection(activeSection === "photo" ? null : "photo")} />
           <ActionButton icon={Timer} label="Bekleme / Sorun" active={activeSection === "issue"} onClick={() => setActiveSection(activeSection === "issue" ? null : "issue")} />
           <ActionButton icon={ArrowRightLeft} label="Devir Teslim" active={activeSection === "handover"} onClick={() => setActiveSection(activeSection === "handover" ? null : "handover")} />
-          <ActionButton icon={CheckCircle2} label="Onam Gonder" active={activeSection === "confirm"} onClick={() => setActiveSection(activeSection === "confirm" ? null : "confirm")} />
         </div>
       )}
 
@@ -779,33 +690,6 @@ export default function DriverOrderDetailPage() {
         </Card>
       )}
 
-      {/* Confirmation */}
-      {activeSection === "confirm" && (
-        <Card className="border-emerald-500/30">
-          <CardHeader className="pb-2 px-3.5 pt-3.5"><CardTitle className="text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Onam / Dogrulama</CardTitle></CardHeader>
-          <CardContent className="px-3.5 pb-3.5 space-y-2.5">
-            <Select value={confirmationEventId} onValueChange={setConfirmationEventId}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Fotografli event sec" /></SelectTrigger>
-              <SelectContent>
-                {order.driverEvents.filter((e) => e.photos.length > 0).map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {EVENT_LABELS[event.type] ?? event.type} - {new Date(event.eventAt).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={confirmationType} onValueChange={(v) => { setConfirmationType(v as ConfirmationType); setConfirmationStatement(CONFIRMATION_LABELS[v] ?? "Onayliyorum"); }}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CONFIRMATION_TYPES.map((type) => <SelectItem key={type} value={type}>{CONFIRMATION_LABELS[type] ?? type}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Textarea value={confirmationStatement} onChange={(e) => setConfirmationStatement(e.target.value)} className="min-h-[40px] text-sm" />
-            <Button className="w-full h-9 text-sm" onClick={createConfirmation} disabled={submitting}><Check className="mr-1.5 h-3.5 w-3.5" />{submitting ? "Gonderiliyor..." : "Onam Gonder"}</Button>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Event Timeline */}
       <Card>
         <CardHeader className="px-3.5 pt-3.5 pb-2"><CardTitle className="text-sm">Gecmis Aksiyonlar ({order.driverEvents.length})</CardTitle></CardHeader>
@@ -842,39 +726,6 @@ export default function DriverOrderDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Confirmations */}
-      {order.driverConfirmations.length > 0 && (
-        <Card>
-          <CardHeader className="px-3.5 pt-3.5 pb-2"><CardTitle className="text-sm">Onam Kayitlari ({order.driverConfirmations.length})</CardTitle></CardHeader>
-          <CardContent className="px-3.5 pb-3.5 space-y-1.5">
-            {order.driverConfirmations.map((c) => (
-              <div key={c.id} className="flex items-center justify-between rounded-lg border p-2 text-xs">
-                <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-emerald-500" /><span className="font-medium">{CONFIRMATION_LABELS[c.type] ?? c.type}</span></div>
-                <span className="text-[10px] text-muted-foreground">{new Date(c.confirmedAt).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Handovers */}
-      {order.handovers.length > 0 && (
-        <Card>
-          <CardHeader className="px-3.5 pt-3.5 pb-2"><CardTitle className="text-sm">Devir Teslim Kayitlari</CardTitle></CardHeader>
-          <CardContent className="px-3.5 pb-3.5 space-y-1.5">
-            {order.handovers.map((h) => (
-              <div key={h.id} className="rounded-lg border p-2 text-xs space-y-0.5">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-[10px]">{h.status}</Badge>
-                  <span className="text-[10px] text-muted-foreground">{new Date(h.handoverAt).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-                <p>{h.fromDriver.fullName} → {h.toDriver?.fullName ?? "Belirtilmedi"}</p>
-                {h.notes && <p className="text-muted-foreground">{h.notes}</p>}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
