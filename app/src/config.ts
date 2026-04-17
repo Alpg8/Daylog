@@ -3,9 +3,10 @@ import Constants from "expo-constants";
 const PRODUCTION_API_URL = "https://daylogoperasyon.com";
 
 function resolveApiBaseUrl() {
-	// Explicit override via env var (e.g. local dev)
-	if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-		return process.env.EXPO_PUBLIC_API_BASE_URL;
+	// Dev override: only accept localhost/127.0.0.1 to avoid accidentally using wrong domain
+	const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+	if (envUrl && (envUrl.includes("localhost") || envUrl.includes("127.0.0.1"))) {
+		return envUrl;
 	}
 
 	// Always use production server
