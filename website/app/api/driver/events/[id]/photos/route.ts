@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getStorageProvider } from "@/lib/services/storage";
+import { parseMultipart } from "@/lib/utils/parse-multipart";
 import {
   createOpsNotificationForDriverAndOps,
   isDriverRole,
@@ -40,18 +41,21 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  const label = formData.get("label");
+  const parsed = await parseMultipart(request);
+  const fileData = parsed.files["file"];
+  const label = parsed.fields["label"] ?? null;
 
-  if (!(file instanceof File)) {
+  if (!fileData) {
     return NextResponse.json({ error: "file is required" }, { status: 400 });
   }
 
   const maxBytes = 8 * 1024 * 1024;
-  if (file.size > maxBytes) {
+  if (fileData.buffer.length > maxBytes) {
     return NextResponse.json({ error: "File too large" }, { status: 400 });
   }
+
+  // Wrap buffer as a File object for the storage provider
+  const file = new File([new Uint8Array(fileData.buffer)], fileData.filename, { type: fileData.mimeType || "image/jpeg" });
 
   const storage = getStorageProvider();
   const uploaded = await storage.upload(file, `driver-events/${event.id}`);
@@ -61,7 +65,7 @@ export async function POST(
       eventId: event.id,
       url: uploaded.url,
       key: uploaded.key,
-      label: typeof label === "string" && label.length > 0 ? label : null,
+      label: label && label.length > 0 ? label : null,
       mimeType: uploaded.mimeType,
       size: uploaded.size,
     },
