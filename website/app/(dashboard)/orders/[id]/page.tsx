@@ -1,6 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+
+const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "https://pub-60c1b097ea13484f9c04938288582747.r2.dev";
+function toProxyUrl(url: string): string {
+  if (url.startsWith(R2_PUBLIC_URL)) {
+    return `/api/r2-image?key=${encodeURIComponent(url.slice(R2_PUBLIC_URL.length + 1))}`;
+  }
+  return url;
+}
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -568,17 +576,20 @@ export default function OrderOperationsDetailPage() {
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                    {event.photos.map((photo) => (
-                      <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer"
+                    {event.photos.map((photo) => {
+                      const px = toProxyUrl(photo.url);
+                      return (
+                      <a key={photo.id} href={px} target="_blank" rel="noreferrer"
                         className="group relative block overflow-hidden rounded-lg border bg-muted aspect-square">
-                        <img src={photo.url} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                        <img src={px} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                         {photo.label && (
                           <span className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[10px] text-white truncate text-center">
                             {photo.label}
                           </span>
                         )}
                       </a>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -626,12 +637,15 @@ export default function OrderOperationsDetailPage() {
                     )}
                     {event.photos.length > 0 && (
                       <div className="mt-2 grid grid-cols-4 gap-2 lg:grid-cols-6">
-                        {event.photos.map((photo) => (
-                          <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-lg border">
-                            <img src={photo.url} alt={photo.label || "Event foto"} className="h-20 w-full object-cover transition-transform group-hover:scale-105" />
+                        {event.photos.map((photo) => {
+                          const px = toProxyUrl(photo.url);
+                          return (
+                          <a key={photo.id} href={px} target="_blank" rel="noreferrer" className="group relative block overflow-hidden rounded-lg border">
+                            <img src={px} alt={photo.label || "Event foto"} className="h-20 w-full object-cover transition-transform group-hover:scale-105" />
                             {photo.label && <span className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5 text-[10px] text-white truncate">{photo.label}</span>}
                           </a>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

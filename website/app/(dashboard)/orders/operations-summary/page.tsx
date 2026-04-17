@@ -529,7 +529,6 @@ export default async function OrderOperationsSummaryPage({
                                             src={proxyUrl}
                                             alt={photo.label || "Foto"}
                                             className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                                           />
                                         </div>
                                         <div className="px-1.5 py-1">
