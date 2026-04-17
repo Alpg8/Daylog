@@ -223,13 +223,11 @@ export default function App() {
             onStepKmChange={setStepKm}
             onPickStepPhoto={async () => {
               const result = await pickImage();
-              if (result && (result.startsWith("/") || result.startsWith("file://") || result.startsWith("ph://"))) setStepPhotoUri(result);
-              else if (result) Alert.alert("Fotograf", result);
+              if (result) setStepPhotoUri(result);
             }}
             onPickExtraPhoto={(label, onDone) => {
               pickImage().then((uri) => {
-                if (uri && (uri.startsWith("/") || uri.startsWith("file://") || uri.startsWith("ph://"))) onDone(uri);
-                else onDone(null);
+                onDone(uri ?? null);
               });
             }}
             onUploadJobDocument={async () => {
