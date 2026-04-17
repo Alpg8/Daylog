@@ -66,7 +66,11 @@ export function useDriverApp() {
   const [stepType, setStepType] = useState<StepType>("START_JOB");
   const [stepNotes, setStepNotes] = useState("");
   const [stepKm, setStepKm] = useState("");
-  const [stepPhotoUri, setStepPhotoUri] = useState<string | null>(null);
+  const [stepPhotos, setStepPhotos] = useState<Partial<Record<StepType, string | null>>>({});
+
+  function setStepPhoto(type: StepType, uri: string | null) {
+    setStepPhotos((prev) => ({ ...prev, [type]: uri }));
+  }
 
   const [fuelDate, setFuelDate] = useState(new Date().toISOString().slice(0, 10));
   const [fuelLiters, setFuelLiters] = useState("");
@@ -379,6 +383,7 @@ export function useDriverApp() {
   async function submitStepUpdate(opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }>; mainPhotoLabel?: string }): Promise<string | null> {
     if (!token) return "Oturum bulunamadi";
     if (!selectedTaskId) return "Lutfen once bir is secin";
+    const stepPhotoUri = stepPhotos[stepType] ?? null;
     if (!stepPhotoUri) return "Asama bildirimi icin fotograf zorunlu";
 
     try {
@@ -447,7 +452,6 @@ export function useDriverApp() {
 
       setStepNotes("");
       setStepKm("");
-      setStepPhotoUri(null);
       await loadTasks();
       return null;
     } catch (error) {
@@ -600,8 +604,8 @@ export function useDriverApp() {
     setStepNotes,
     stepKm,
     setStepKm,
-    stepPhotoUri,
-    setStepPhotoUri,
+    stepPhotos,
+    setStepPhoto,
     fuelDate,
     setFuelDate,
     fuelLiters,

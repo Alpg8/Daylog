@@ -54,8 +54,8 @@ export default function App() {
     setStepNotes,
     stepKm,
     setStepKm,
-    stepPhotoUri,
-    setStepPhotoUri,
+    stepPhotos,
+    setStepPhoto,
     fuelDate,
     setFuelDate,
     fuelLiters,
@@ -211,7 +211,7 @@ export default function App() {
             stepType={stepType}
             stepNotes={stepNotes}
             stepKm={stepKm}
-            stepPhotoUri={stepPhotoUri}
+            stepPhotos={stepPhotos}
             currentTaskAttachments={currentTaskAttachments}
             onRefresh={async () => {
               const err = await loadTasks();
@@ -221,9 +221,9 @@ export default function App() {
             onStepTypeChange={setStepType}
             onStepNotesChange={setStepNotes}
             onStepKmChange={setStepKm}
-            onPickStepPhoto={async () => {
+            onPickStepPhoto={async (phase) => {
               const result = await pickImage();
-              if (result) setStepPhotoUri(result);
+              if (result) setStepPhoto(phase, result);
             }}
             onPickExtraPhoto={(label, onDone) => {
               pickImage().then((uri) => {

@@ -58,14 +58,14 @@ interface TasksScreenProps {
   stepType: StepType;
   stepNotes: string;
   stepKm: string;
-  stepPhotoUri: string | null;
+  stepPhotos: Partial<Record<StepType, string | null>>;
   currentTaskAttachments: AttachmentItem[];
   onRefresh: () => void;
   onSelectTask: (id: string) => void;
   onStepTypeChange: (step: StepType) => void;
   onStepNotesChange: (value: string) => void;
   onStepKmChange: (value: string) => void;
-  onPickStepPhoto: () => void;
+  onPickStepPhoto: (phase: StepType) => void;
   onPickExtraPhoto: (label: string, onDone: (uri: string | null) => void) => void;
   onUploadJobDocument: () => void;
   onSubmitStep: (opts?: { phaseData?: Record<string, string | number>; extraPhotos?: Array<{ uri: string; label: string }>; mainPhotoLabel?: string }) => Promise<string | null>;
@@ -74,13 +74,14 @@ interface TasksScreenProps {
 export function TasksScreen(props: TasksScreenProps) {
   const {
     tasks, darkMode, selectedTaskId, selectedTask, stepType, stepNotes, stepKm,
-    stepPhotoUri, currentTaskAttachments, onRefresh, onSelectTask, onStepTypeChange,
+    stepPhotos, currentTaskAttachments, onRefresh, onSelectTask, onStepTypeChange,
     onStepNotesChange, onStepKmChange, onPickStepPhoto, onPickExtraPhoto,
     onUploadJobDocument, onSubmitStep,
   } = props;
 
   const [phaseInputs, setPhaseInputs] = useState<Record<string, string>>({});
   const [extraPhotos, setExtraPhotos] = useState<Record<string, string | null>>({});
+  const [viewingPhase, setViewingPhase] = useState<StepType | null>(null);
 
   const activeJob = useMemo(
     () => tasks.find((t) => t.status === "IN_PROGRESS") ?? tasks.find((t) => t.status === "PLANNED") ?? tasks[0] ?? null,
@@ -95,7 +96,7 @@ export function TasksScreen(props: TasksScreenProps) {
     if (activePhase && stepType !== activePhase.type) onStepTypeChange(activePhase.type);
   }, [activePhase?.type]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { setPhaseInputs({}); setExtraPhotos({}); }, [stepType]);
+  useEffect(() => { setPhaseInputs({}); setExtraPhotos({}); setViewingPhase(null); }, [stepType]);
 
   useEffect(() => {
     if (!selectedTaskId && activeJob?.id) onSelectTask(activeJob.id);
@@ -104,9 +105,14 @@ export function TasksScreen(props: TasksScreenProps) {
   const locationKey = activePhase?.locationKey as keyof DriverTask | undefined;
   const officeLocation = locationKey ? (currentTask?.[locationKey] as string | null | undefined) : null;
 
+  // The phase being displayed (done phase viewed for photo, or active phase)
+  const displayPhase: StepType = viewingPhase ?? stepType;
+  const stepPhotoUri = stepPhotos[displayPhase] ?? null;
+  const isViewingDone = viewingPhase !== null && doneTypes.has(viewingPhase);
+
   // Compute whether all required fields for the current phase are filled
   const canSubmit = useMemo(() => {
-    if (!stepPhotoUri) return false;
+    if (!stepPhotos[stepType]) return false;
     const requiredExtras = (EXTRA_PHOTO_CONFIGS[stepType] ?? []).filter((e) => e.required);
     for (const extra of requiredExtras) {
       if (!extraPhotos[extra.label]) return false;
@@ -116,7 +122,7 @@ export function TasksScreen(props: TasksScreenProps) {
       if (!phaseInputs[f.key]?.trim()) return false;
     }
     return true;
-  }, [stepPhotoUri, extraPhotos, phaseInputs, stepType]);
+  }, [stepPhotos, extraPhotos, phaseInputs, stepType]);
 
   async function handleSubmit() {
     if (!canSubmit) {
@@ -176,24 +182,43 @@ export function TasksScreen(props: TasksScreenProps) {
             {phases.map((phase, idx) => {
               const done = doneTypes.has(phase.type);
               const isActive = activePhase?.type === phase.type;
+              const isViewing = viewingPhase === phase.type || (viewingPhase === null && isActive);
+              const tappable = done || isActive;
               return (
-                <View key={phase.type} style={local.phaseStep}>
-                  <View style={[local.phaseCircle, done ? local.phaseCircleDone : isActive ? local.phaseCircleActive : local.phaseCircleWaiting]}>
-                    <Text style={local.phaseCircleText}>{done ? "v" : String(idx + 1)}</Text>
+                <Pressable
+                  key={phase.type}
+                  style={local.phaseStep}
+                  onPress={() => tappable ? setViewingPhase(done ? phase.type : null) : undefined}
+                >
+                  <View style={[
+                    local.phaseCircle,
+                    done ? local.phaseCircleDone : isActive ? local.phaseCircleActive : local.phaseCircleWaiting,
+                    isViewing ? local.phaseCircleSelected : null,
+                  ]}>
+                    <Text style={local.phaseCircleText}>{done ? (stepPhotos[phase.type] ? "📷" : "✓") : String(idx + 1)}</Text>
                   </View>
                   <Text style={[local.phaseLabel, done ? local.phaseDoneLabel : isActive ? local.phaseActiveLabel : local.phaseWaitLabel]}>
                     {phase.label}
                   </Text>
-                </View>
+                </Pressable>
               );
             })}
           </View>
         </View>
       ) : null}
 
-      {currentTask && activePhase ? (
+      {currentTask && (viewingPhase !== null || activePhase) ? (
         <View style={[styles.card, c && styles.cardDark]}>
-          <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>Asama: {activePhase.label}</Text>
+          <View style={local.rowBetween}>
+            <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>
+              Asama: {phases.find((p) => p.type === displayPhase)?.label ?? STEP_LABELS[displayPhase]}
+            </Text>
+            {isViewingDone && (
+              <Pressable onPress={() => setViewingPhase(null)}>
+                <Text style={styles.linkText}>Aktif Asama →</Text>
+              </Pressable>
+            )}
+          </View>
 
           {/* Location sent from office */}
           {officeLocation ? (
@@ -208,14 +233,14 @@ export function TasksScreen(props: TasksScreenProps) {
           )}
 
           {/* Main required photo */}
-          <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{MAIN_PHOTO_DISPLAY[stepType] ?? "Ana Fotograf *"}</Text>
-          <Pressable style={[styles.secondaryBtn, stepPhotoUri ? local.btnDone : null]} onPress={onPickStepPhoto}>
+          <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{MAIN_PHOTO_DISPLAY[displayPhase] ?? "Ana Fotograf *"}</Text>
+          <Pressable style={[styles.secondaryBtn, stepPhotoUri ? local.btnDone : null]} onPress={() => onPickStepPhoto(displayPhase)}>
             <Text style={styles.secondaryBtnText}>{stepPhotoUri ? "✓ Fotograf Secildi — Degistir" : "Fotograf Sec"}</Text>
           </Pressable>
-          {stepPhotoUri ? <Image source={{ uri: stepPhotoUri }} style={styles.preview} /> : null}
+          {stepPhotoUri ? <Image source={{ uri: stepPhotoUri }} style={local.photoLarge} /> : null}
 
-          {/* Extra labeled photos */}
-          {(EXTRA_PHOTO_CONFIGS[stepType] ?? []).map((cfg) => (
+          {/* Extra labeled photos — only for active (non-done-viewing) phase */}
+          {!isViewingDone && (EXTRA_PHOTO_CONFIGS[displayPhase] ?? []).map((cfg) => (
             <View key={cfg.label} style={{ marginTop: 10 }}>
               <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{cfg.display}</Text>
               <Pressable
@@ -227,8 +252,8 @@ export function TasksScreen(props: TasksScreenProps) {
             </View>
           ))}
 
-          {/* Phase data fields */}
-          {(PHASE_DATA_FIELDS[stepType] ?? []).map((f) => (
+          {/* Phase data fields — only for active phase */}
+          {!isViewingDone && (PHASE_DATA_FIELDS[displayPhase] ?? []).map((f) => (
             <View key={f.key} style={{ marginTop: 10 }}>
               <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{f.label}{f.required ? " *" : ""}</Text>
               <TextInput
@@ -243,21 +268,28 @@ export function TasksScreen(props: TasksScreenProps) {
             </View>
           ))}
 
-          <TextInput style={[styles.input, c && styles.inputDark, { marginTop: 10 }]} value={stepKm} onChangeText={onStepKmChange}
-            placeholder="Kilometre (opsiyonel)" placeholderTextColor={c ? "#94a3b8" : "#64748b"} keyboardType="numeric" />
-          <TextInput style={[styles.input, styles.textArea, c && styles.inputDark]} value={stepNotes} onChangeText={onStepNotesChange}
-            placeholder="Aciklama (opsiyonel)" placeholderTextColor={c ? "#94a3b8" : "#64748b"} multiline />
+          {!isViewingDone && (
+            <>
+              <TextInput style={[styles.input, c && styles.inputDark, { marginTop: 10 }]} value={stepKm} onChangeText={onStepKmChange}
+                placeholder="Kilometre (opsiyonel)" placeholderTextColor={c ? "#94a3b8" : "#64748b"} keyboardType="numeric" />
+              <TextInput style={[styles.input, styles.textArea, c && styles.inputDark]} value={stepNotes} onChangeText={onStepNotesChange}
+                placeholder="Aciklama (opsiyonel)" placeholderTextColor={c ? "#94a3b8" : "#64748b"} multiline />
 
-          {/* Submit — disabled until all required fields filled */}
-          <Pressable
-            style={[styles.primaryBtn, !canSubmit && local.btnDisabled]}
-            onPress={handleSubmit}
-            disabled={false}
-          >
-            <Text style={styles.primaryBtnText}>{activePhase.label} Kaydet</Text>
-          </Pressable>
-          {!canSubmit && (
-            <Text style={local.validationHint}>Zorunlu (*) alanları doldurun</Text>
+              {/* Submit — disabled until all required fields filled */}
+              <Pressable
+                style={[styles.primaryBtn, !canSubmit && local.btnDisabled]}
+                onPress={handleSubmit}
+                disabled={false}
+              >
+                <Text style={styles.primaryBtnText}>{activePhase?.label ?? ""} Kaydet</Text>
+              </Pressable>
+              {!canSubmit && (
+                <Text style={local.validationHint}>Zorunlu (*) alanları doldurun</Text>
+              )}
+            </>
+          )}
+          {isViewingDone && (
+            <Text style={[local.validationHint, { color: "#22c55e", marginTop: 8 }]}>Bu asama tamamlandi.</Text>
           )}
         </View>
       ) : null}
@@ -306,6 +338,7 @@ const local = StyleSheet.create({
   phaseCircleDone: { backgroundColor: "#22c55e" },
   phaseCircleActive: { backgroundColor: "#0ea5e9" },
   phaseCircleWaiting: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: "#94a3b8" },
+  phaseCircleSelected: { borderWidth: 3, borderColor: "#f59e0b" },
   phaseCircleText: { fontSize: 12, fontWeight: "700", color: "#fff" },
   phaseLabel: { fontSize: 10, textAlign: "center" },
   phaseDoneLabel: { color: "#22c55e" },
@@ -319,4 +352,5 @@ const local = StyleSheet.create({
   btnDisabled: { backgroundColor: "#94a3b830", opacity: 0.6 },
   inputRequired: { borderColor: "#f97316", borderWidth: 1.5 },
   validationHint: { fontSize: 11, color: "#f97316", textAlign: "center", marginTop: 6 },
+  photoLarge: { width: "100%", height: 240, borderRadius: 8, marginTop: 8, resizeMode: "cover" } as const,
 });
