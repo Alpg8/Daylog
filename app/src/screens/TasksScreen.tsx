@@ -109,6 +109,13 @@ export function TasksScreen(props: TasksScreenProps) {
   // The phase being displayed (done phase viewed for photo, or active phase)
   const displayPhase: StepType = viewingPhase ?? stepType;
   const stepPhotoUri = stepPhotos[displayPhase] ?? null;
+  // R2 photo URL stored on server for this phase (shown when viewing a completed phase)
+  const serverPhotoUrl = useMemo(() => {
+    if (!currentTask?.driverEvents) return null;
+    const event = currentTask.driverEvents.find((e) => e.type === displayPhase);
+    return event?.photos?.[0]?.url ?? null;
+  }, [currentTask?.driverEvents, displayPhase]);
+  const displayPhotoUri = stepPhotoUri ?? serverPhotoUrl;
   const isViewingDone = viewingPhase !== null && doneTypes.has(viewingPhase);
 
   // Compute whether all required fields for the current phase are filled
@@ -218,7 +225,7 @@ export function TasksScreen(props: TasksScreenProps) {
                     done ? local.phaseCircleDone : isActive ? local.phaseCircleActive : local.phaseCircleWaiting,
                     isViewing ? local.phaseCircleSelected : null,
                   ]}>
-                    <Text style={local.phaseCircleText}>{done ? (stepPhotos[phase.type] ? "📷" : "✓") : String(idx + 1)}</Text>
+                    <Text style={local.phaseCircleText}>{done ? (stepPhotos[phase.type] || currentTask.driverEvents?.find((e) => e.type === phase.type)?.photos?.[0] ? "📷" : "✓") : String(idx + 1)}</Text>
                   </View>
                   <Text style={[local.phaseLabel, done ? local.phaseDoneLabel : isActive ? local.phaseActiveLabel : local.phaseWaitLabel]}>
                     {phase.label}
@@ -260,7 +267,7 @@ export function TasksScreen(props: TasksScreenProps) {
           <Pressable style={[styles.secondaryBtn, stepPhotoUri ? local.btnDone : null]} onPress={() => onPickStepPhoto(displayPhase)}>
             <Text style={styles.secondaryBtnText}>{stepPhotoUri ? "✓ Fotograf Secildi — Degistir" : "Fotograf Sec"}</Text>
           </Pressable>
-          {stepPhotoUri ? <Image source={{ uri: stepPhotoUri }} style={local.photoLarge} /> : null}
+          {displayPhotoUri ? <Image source={{ uri: displayPhotoUri }} style={local.photoLarge} /> : null}
 
           {/* Extra labeled photos — only for active (non-done-viewing) phase */}
           {!isViewingDone && (EXTRA_PHOTO_CONFIGS[displayPhase] ?? []).map((cfg) => (

@@ -38,8 +38,15 @@ export async function GET() {
         trailer: { select: { plateNumber: true } },
         driverEvents: {
           orderBy: { eventAt: "desc" },
-          take: 5,
-          select: { type: true, eventAt: true },
+          select: {
+            type: true,
+            eventAt: true,
+            photos: {
+              take: 1,
+              select: { url: true, label: true },
+              orderBy: { createdAt: "asc" },
+            },
+          },
         },
       },
       orderBy: { updatedAt: "desc" },
