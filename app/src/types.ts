@@ -25,6 +25,8 @@ export interface DriverTask {
   phaseLoadLocation?: string | null;
   phaseUnloadLocation?: string | null;
   phaseDeliveryLocation?: string | null;
+  loadingAddress?: string | null;
+  deliveryAddress?: string | null;
   vehicle?: { plateNumber: string } | null;
   driverEvents?: Array<{ type: string; eventAt: string; photos?: Array<{ url: string; label: string | null }> }>;
 }

@@ -34,6 +34,8 @@ export async function GET() {
         phaseLoadLocation: true,
         phaseUnloadLocation: true,
         phaseDeliveryLocation: true,
+        loadingAddress: true,
+        deliveryAddress: true,
         vehicle: { select: { plateNumber: true } },
         trailer: { select: { plateNumber: true } },
         driverEvents: {

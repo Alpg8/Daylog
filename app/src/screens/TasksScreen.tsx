@@ -5,6 +5,8 @@ import { styles } from "../styles";
 import type { AttachmentItem, DriverTask } from "../types";
 import { API_BASE_URL } from "../config";
 
+type JobType = "LOADING" | "UNLOADING" | "FULL" | null | undefined;
+
 const STATUS_TR: Record<string, string> = {
   PENDING: "Beklemede", PLANNED: "Planli", IN_PROGRESS: "Devam Ediyor", COMPLETED: "Tamamlandi", CANCELLED: "Iptal",
 };
@@ -17,46 +19,118 @@ const PHASE_ICONS: Partial<Record<StepType, string>> = {
   END_JOB:   "🏁",
 };
 
-interface DataField { key: string; label: string; numeric?: boolean; required?: boolean }
-
-const PHASE_DATA_FIELDS: Partial<Record<StepType, DataField[]>> = {
-  LOAD: [
-    { key: "spanzet_count",  label: "Spanzet Sayisi",  numeric: true,  required: true },
-    { key: "stanga_count",   label: "Stanga Sayisi",   numeric: true,  required: true },
-    { key: "cita_count",     label: "Cita Sayisi",     numeric: true,  required: false },
-    { key: "equipment_note", label: "Ekipman Notu",                    required: false },
-  ],
-  UNLOAD: [
-    { key: "outgoing_spanzet",  label: "Cikan Spanzet",       numeric: true, required: true },
-    { key: "tension_rod_count", label: "Gergi Cubugu Sayisi", numeric: true, required: false },
-  ],
+// Job type meta
+const JOB_TYPE_LABEL: Record<string, string> = {
+  LOADING:  "Yukleme Is",
+  UNLOADING: "Bosaltma Is",
+  FULL:     "Yukleme + Bosaltma",
+};
+const JOB_TYPE_FLOW: Record<string, string> = {
+  LOADING:  "Basla  →  Yukle  →  Bitir",
+  UNLOADING: "Basla  →  Bosalt  →  Bitir",
+  FULL:     "Basla  →  Yukle  →  Bosalt  →  Bitir",
 };
 
+// ─── Photo / form configuration per job type ──────────────────────────────────
+
+interface DataField { key: string; label: string; numeric?: boolean; required?: boolean }
+interface ExtraPhotoConfig { label: string; display: string; required: boolean }
+
+// Main phase photo labels – same per phase 
 const MAIN_PHOTO_LABEL: Partial<Record<StepType, string>> = {
-  START_JOB: "genel",
-  LOAD:      "genel",
+  START_JOB: "baslangic",
+  LOAD:      "yukleme",
   UNLOAD:    "smr",
   DELIVERY:  "teslim",
   END_JOB:   "bitis",
 };
 
-const MAIN_PHOTO_DISPLAY: Partial<Record<StepType, string>> = {
-  START_JOB: "Genel Foto",
-  LOAD:      "Genel Foto",
-  UNLOAD:    "SMR Foto",
-  DELIVERY:  "Teslim Foto",
-  END_JOB:   "Bitis Foto",
-};
+function getMainPhotoDisplay(phase: StepType, jobType: JobType): string {
+  switch (phase) {
+    case "START_JOB": return "Arac Foto";
+    case "LOAD":      return "Yukleme Foto";
+    case "UNLOAD":    return "SMR Foto";
+    case "DELIVERY":  return "Teslim Foto";
+    case "END_JOB":
+      if (jobType === "LOADING") return "Son Durum Foto";
+      if (jobType === "UNLOADING") return "Bosaltma Bitis Foto";
+      return "Bitis Foto";
+    default: return "Foto";
+  }
+}
 
-interface ExtraPhotoConfig { label: string; display: string; required: boolean }
-const EXTRA_PHOTO_CONFIGS: Partial<Record<StepType, ExtraPhotoConfig[]>> = {
-  LOAD:     [{ label: "kantar_fisi",  display: "Kantar Fisi",        required: false }],
-  UNLOAD:   [{ label: "bosaltma_ani", display: "Bosaltma Ani Foto",  required: false }],
-  DELIVERY: [
-    { label: "masraf_fisi_1", display: "Masraf Fisi 1",  required: false },
-    { label: "masraf_fisi_2", display: "Masraf Fisi 2",  required: false },
-  ],
-};
+function getExtraPhotos(phase: StepType, jobType: JobType): ExtraPhotoConfig[] {
+  if (phase === "START_JOB") {
+    if (jobType === "LOADING" || jobType === "FULL") {
+      return [{ label: "arac_on", display: "Arac On Foto", required: false }];
+    }
+    if (jobType === "UNLOADING") {
+      return [
+        { label: "arac_on",    display: "Arac On Foto",    required: false },
+        { label: "bosaltma_belge", display: "Bosaltma Belgesi", required: false },
+      ];
+    }
+    return [{ label: "arac_on", display: "Arac On Foto", required: false }];
+  }
+  if (phase === "LOAD") {
+    return [
+      { label: "kantar_fisi",   display: "Kantar Fisi",    required: false },
+      { label: "yukleme_belge", display: "Yukleme Belgesi",required: false },
+    ];
+  }
+  if (phase === "UNLOAD") {
+    return [
+      { label: "bosaltma_ani",  display: "Bosaltma Ani Foto",  required: false },
+      { label: "smr_detay",     display: "SMR Detay Foto",     required: false },
+    ];
+  }
+  if (phase === "END_JOB") {
+    if (jobType === "LOADING" || jobType === "FULL") {
+      return [
+        { label: "spanzet_cikis", display: "Spanzet Cikis Foto", required: false },
+        { label: "masraf_fisi",   display: "Masraf Fisi",         required: false },
+      ];
+    }
+    if (jobType === "UNLOADING") {
+      return [
+        { label: "bos_dorsie",  display: "Bos Dorse Foto",  required: false },
+        { label: "masraf_fisi", display: "Masraf Fisi",      required: false },
+      ];
+    }
+    return [{ label: "masraf_fisi", display: "Masraf Fisi", required: false }];
+  }
+  return [];
+}
+
+function getDataFields(phase: StepType, jobType: JobType): DataField[] {
+  if (phase === "LOAD") {
+    return [
+      { key: "spanzet_count",  label: "Spanzet Sayisi", numeric: true },
+      { key: "stanga_count",   label: "Stanga Sayisi",  numeric: true },
+      { key: "cita_count",     label: "Cita Sayisi",    numeric: true },
+      { key: "equipment_note", label: "Ekipman Notu" },
+    ];
+  }
+  if (phase === "UNLOAD") {
+    return [
+      { key: "outgoing_spanzet",  label: "Cikan Spanzet",       numeric: true },
+      { key: "tension_rod_count", label: "Gergi Cubugu Sayisi", numeric: true },
+    ];
+  }
+  if (phase === "END_JOB" && (jobType === "LOADING" || jobType === "FULL")) {
+    return [
+      { key: "return_spanzet", label: "Iade Spanzet Sayisi", numeric: true },
+    ];
+  }
+  return [];
+}
+
+// Helper to open address in maps
+function openMaps(address: string) {
+  const encoded = encodeURIComponent(address);
+  const mapsUrl = `maps://?q=${encoded}`;
+  Linking.canOpenURL(mapsUrl).then(ok => Linking.openURL(ok ? mapsUrl : `https://maps.apple.com/?q=${encoded}`));
+}
 
 interface TasksScreenProps {
   darkMode: boolean;
@@ -152,14 +226,14 @@ export function TasksScreen(props: TasksScreenProps) {
   async function handleSubmit() {
     setSubmitting(true);
     try {
-      const fields = PHASE_DATA_FIELDS[stepType] ?? [];
+      const fields = getDataFields(stepType, currentTask?.jobType);
       const phaseData: Record<string, string | number> = {};
       for (const f of fields) {
         const val = phaseInputs[f.key];
         if (val) phaseData[f.key] = f.numeric ? Number(val) : val;
       }
       const extraPhotosList: Array<{ uri: string; label: string; note?: string }> = [];
-      for (const cfg of (EXTRA_PHOTO_CONFIGS[stepType] ?? [])) {
+      for (const cfg of getExtraPhotos(stepType, currentTask?.jobType)) {
         const uri = extraPhotos[cfg.label];
         if (uri) extraPhotosList.push({ uri, label: cfg.label, note: photoNotes[cfg.label] || undefined });
       }
@@ -237,6 +311,7 @@ export function TasksScreen(props: TasksScreenProps) {
 
       {/* Active task info */}
       <View style={[styles.card, c && styles.cardDark]}>
+        {/* Header row */}
         <View style={local.rowBetween}>
           <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>
             {currentTask?.cargoNumber ?? currentTask?.tripNumber ?? "Aktif Is"}
@@ -245,27 +320,80 @@ export function TasksScreen(props: TasksScreenProps) {
             <Text style={local.badgeText}>{STATUS_TR[currentTask?.status ?? ""] ?? (currentTask?.status ?? "?")}</Text>
           </View>
         </View>
+
+        {/* Job type section */}
         {currentTask?.jobType ? (
-          <Text style={[local.jobTypeBadgeBase,
-            currentTask.jobType === "UNLOADING" ? local.jobTypeUnload :
-            currentTask.jobType === "FULL" ? local.jobTypeFull :
-            local.jobTypeLoad]}>
-            {currentTask.jobType === "UNLOADING" ? "Bosaltma" :
-             currentTask.jobType === "FULL" ? "Yukleme + Bosaltma" :
-             "Yukleme"}
-          </Text>
+          <View style={local.jobTypeSection}>
+            <View style={[local.jobTypePill,
+              currentTask.jobType === "UNLOADING" ? local.jobTypeUnload :
+              currentTask.jobType === "FULL"      ? local.jobTypeFull :
+              local.jobTypeLoad]}>
+              <Text style={local.jobTypePillText}>{JOB_TYPE_LABEL[currentTask.jobType] ?? currentTask.jobType}</Text>
+            </View>
+            <Text style={[local.flowText, c && { color: "#94a3b8" }]}>{JOB_TYPE_FLOW[currentTask.jobType] ?? ""}</Text>
+          </View>
         ) : null}
+
+        {/* Vehicle / route */}
         {currentTask?.vehicle?.plateNumber ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🚛  {currentTask.vehicle.plateNumber}</Text>
         ) : null}
         {currentTask?.routeText ? (
-          <Text style={[styles.cardLine, c && styles.cardLineDark]}>📍  {currentTask.routeText}</Text>
+          <Text style={[styles.cardLine, c && styles.cardLineDark]}>🗺  {currentTask.routeText}</Text>
         ) : null}
+
+        {/* Addresses per job type */}
+        {currentTask && (currentTask.loadingAddress || currentTask.deliveryAddress) ? (
+          <View style={local.addressSection}>
+            {/* Show loading address for LOADING and FULL */}
+            {(currentTask.jobType === "LOADING" || currentTask.jobType === "FULL") && currentTask.loadingAddress ? (
+              <Pressable style={local.addressRow} onPress={() => openMaps(currentTask.loadingAddress!)}>
+                <View style={local.addressIconWrap}>
+                  <Text style={local.addressIcon}>📦</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={local.addressTypeLabel}>Yukleme Adresi</Text>
+                  <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{currentTask.loadingAddress}</Text>
+                </View>
+                <Text style={local.navHint}>Aç →</Text>
+              </Pressable>
+            ) : null}
+            {/* Show delivery/unload address for UNLOADING and FULL */}
+            {(currentTask.jobType === "UNLOADING" || currentTask.jobType === "FULL") && currentTask.deliveryAddress ? (
+              <Pressable style={[local.addressRow, (currentTask.loadingAddress && (currentTask.jobType === "FULL")) && { marginTop: 8 }]}
+                onPress={() => openMaps(currentTask.deliveryAddress!)}>
+                <View style={local.addressIconWrap}>
+                  <Text style={local.addressIcon}>🏭</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={local.addressTypeLabel}>Bosaltma / Teslim Adresi</Text>
+                  <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{currentTask.deliveryAddress}</Text>
+                </View>
+                <Text style={local.navHint}>Aç →</Text>
+              </Pressable>
+            ) : null}
+            {/* LOADING: show delivery address as destination */}
+            {currentTask.jobType === "LOADING" && currentTask.deliveryAddress ? (
+              <Pressable style={[local.addressRow, { marginTop: 8 }]} onPress={() => openMaps(currentTask.deliveryAddress!)}>
+                <View style={local.addressIconWrap}>
+                  <Text style={local.addressIcon}>🎯</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={local.addressTypeLabel}>Teslim Adresi</Text>
+                  <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{currentTask.deliveryAddress}</Text>
+                </View>
+                <Text style={local.navHint}>Aç →</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {!currentTask && assignedVehicle && assignedVehicle !== "-" && assignedVehicle !== "Atanmamis" ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🚛  Atanan Arac: {assignedVehicle}</Text>
         ) : null}
         {!currentTask && <Text style={[styles.cardLine, c && styles.cardLineDark]}>Aktif is bulunamadi.</Text>}
       </View>
+
 
 
 
@@ -290,12 +418,7 @@ export function TasksScreen(props: TasksScreenProps) {
           {!isViewingDone && (officeLocation ? (
             <Pressable
               style={local.locationBox}
-              onPress={() => {
-                const encoded = encodeURIComponent(officeLocation);
-                const mapsUrl = `maps://?q=${encoded}`;
-                const fallback = `https://maps.apple.com/?q=${encoded}`;
-                Linking.canOpenURL(mapsUrl).then(ok => Linking.openURL(ok ? mapsUrl : fallback));
-              }}
+              onPress={() => openMaps(officeLocation)}
             >
               <Text style={local.locationLabel}>📍  Varis Konumu (Ofisten)  <Text style={{ fontSize: 11, color: "#0ea5e9" }}>Navigasyonda Aç →</Text></Text>
               <Text style={[local.locationText, c && { color: "#bae6fd" }]}>{officeLocation}</Text>
@@ -309,7 +432,7 @@ export function TasksScreen(props: TasksScreenProps) {
           {/* Main photo */}
           <PhotoPicker
             darkMode={c}
-            label={MAIN_PHOTO_DISPLAY[displayPhase] ?? "Ana Fotograf *"}
+            label={getMainPhotoDisplay(displayPhase, currentTask?.jobType)}
             photoUri={displayPhotoUri}
             noteKey={MAIN_PHOTO_LABEL[displayPhase] ?? "genel"}
             note={photoNotes[MAIN_PHOTO_LABEL[displayPhase] ?? "genel"] ?? ""}
@@ -319,7 +442,7 @@ export function TasksScreen(props: TasksScreenProps) {
           />
 
           {/* Extra photos */}
-          {!isViewingDone && (EXTRA_PHOTO_CONFIGS[displayPhase] ?? []).map((cfg) => (
+          {!isViewingDone && getExtraPhotos(displayPhase, currentTask?.jobType).map((cfg) => (
             <PhotoPicker
               key={cfg.label}
               darkMode={c}
@@ -334,7 +457,7 @@ export function TasksScreen(props: TasksScreenProps) {
           ))}
 
           {/* Phase data fields */}
-          {!isViewingDone && (PHASE_DATA_FIELDS[displayPhase] ?? []).map((f) => (
+          {!isViewingDone && getDataFields(displayPhase, currentTask?.jobType).map((f) => (
             <View key={f.key} style={local.inputGroup}>
               <Text style={[local.fieldLabel, c && { color: "#94a3b8" }]}>{f.label}</Text>
               <TextInput
@@ -534,10 +657,24 @@ const local = StyleSheet.create({
   badgeActive: { backgroundColor: "#0ea5e920" },
   badgePlanned: { backgroundColor: "#64748b20" },
   badgeText: { fontSize: 11, fontWeight: "600", color: "#0ea5e9" },
-  jobTypeBadgeBase: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginTop: 4, marginBottom: 6, fontSize: 11, fontWeight: "700" },
+
+  // Job type section
+  jobTypeSection: { marginTop: 6, marginBottom: 8 },
+  jobTypePill: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 4 },
+  jobTypePillText: { fontSize: 12, fontWeight: "700" },
   jobTypeLoad: { backgroundColor: "#f9731615", color: "#f97316" },
   jobTypeUnload: { backgroundColor: "#3b82f615", color: "#3b82f6" },
   jobTypeFull: { backgroundColor: "#8b5cf615", color: "#8b5cf6" },
+  flowText: { fontSize: 11, color: "#64748b", fontWeight: "500", letterSpacing: 0.2 },
+
+  // Address section
+  addressSection: { marginTop: 10, borderTopWidth: 1, borderTopColor: "#e2e8f015", paddingTop: 10 },
+  addressRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#f8fafc", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#e2e8f0" },
+  addressIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center", marginRight: 10 },
+  addressIcon: { fontSize: 16 },
+  addressTypeLabel: { fontSize: 10, fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: 1 },
+  addressText: { fontSize: 13, fontWeight: "500", color: "#0f172a", flexShrink: 1 },
+  navHint: { fontSize: 11, color: "#0ea5e9", fontWeight: "600", marginLeft: 8 },
 
   donePhaseMeta: { fontSize: 11, color: "#22c55e", marginTop: 1 },
   backBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: "#0ea5e910", borderWidth: 1, borderColor: "#0ea5e930" },
