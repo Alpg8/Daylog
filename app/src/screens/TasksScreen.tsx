@@ -377,6 +377,13 @@ export function TasksScreen(props: TasksScreenProps) {
         {currentTask?.routeText ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🗺  {currentTask.routeText}</Text>
         ) : null}
+        {currentTask && displayPhaseLocation ? (
+          <Pressable style={[local.addressRow, c && local.addressRowDark]} onPress={() => openMaps(displayPhaseLocation)}>
+            <Text style={[local.addressTypeLabel, c && local.addressTypeLabelDark]}>📍  Varis Konumu  </Text>
+            <Text style={[local.addressText, c && { color: "#bae6fd" }, { flex: 1 }]} numberOfLines={2}>{displayPhaseLocation}</Text>
+            <Text style={local.navHint}>Aç →</Text>
+          </Pressable>
+        ) : null}
 
         {!currentTask && assignedVehicle && assignedVehicle !== "-" && assignedVehicle !== "Atanmamis" ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🚛  Atanan Arac: {assignedVehicle}</Text>

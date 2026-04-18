@@ -334,12 +334,26 @@ export function OrderTable({ category }: OrderTableProps) {
   ];
 
   // ── DOMESTIC kolonları ────────────────────────────────────────────
+  const jobTypeCell: ColumnDef<OrderWithRelations> = {
+    accessorKey: "jobType",
+    header: "İş Tipi",
+    cell: ({ row }) => {
+      const labels: Record<string, string> = { LOADING: "Yükleme", UNLOADING: "Boşaltma", FULL: "Tam Sefer" };
+      const colors: Record<string, string> = { LOADING: "bg-orange-100 text-orange-800", UNLOADING: "bg-rose-100 text-rose-800", FULL: "bg-purple-100 text-purple-800" };
+      const jt = (row.original as Record<string, unknown>).jobType as string ?? "LOADING";
+      return <span className={`rounded px-2 py-0.5 text-xs font-semibold ${colors[jt] ?? ""}`}>{labels[jt] ?? jt}</span>;
+    },
+  };
+
   const domesticColumns: ColumnDef<OrderWithRelations>[] = [
     statusCell,
     { accessorKey: "serialNumber", header: "NO", cell: ({ row }) => fmtNum(row.original.serialNumber) },
     { accessorKey: "loadingDate", header: "Başlangıç", cell: ({ row }) => fmtDate(row.original.loadingDate) },
     { accessorKey: "unloadingDate", header: "Bitiş", cell: ({ row }) => fmtDate(row.original.unloadingDate) },
     vehicleCell, trailerCell, driverCell,
+    jobTypeCell,
+    { accessorKey: "loadingAddress", header: "Yükleme Adresi", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).loadingAddress) },
+    { accessorKey: "deliveryAddress", header: "Teslimat Adresi", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).deliveryAddress) },
     { accessorKey: "sender", header: "Gönderici", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).sender) },
     { accessorKey: "rental", header: "Kiralık", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).rental) },
     { accessorKey: "referenceNumber", header: "REF", meta: { editable: true } },
@@ -410,6 +424,7 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "customerName", header: "Müşteri", meta: { editable: true } },
     { accessorKey: "routeText", header: "Güzergah", meta: { editable: true } },
     vehicleCell, trailerCell, driverCell,
+    jobTypeCell,
     { accessorKey: "loadingDate", header: "Yükleme", cell: ({ row }) => fmtDate(row.original.loadingDate) },
     actionsCell,
   ];
