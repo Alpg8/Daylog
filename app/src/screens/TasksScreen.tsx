@@ -375,27 +375,6 @@ export function TasksScreen(props: TasksScreenProps) {
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🗺  {currentTask.routeText}</Text>
         ) : null}
 
-        {/* Address for current/viewed phase */}
-        {currentTask && displayPhaseLocation ? (
-          <View style={local.addressSection}>
-            <Pressable style={[local.addressRow, c && local.addressRowDark]} onPress={() => openMaps(displayPhaseLocation)}>
-              <View style={[local.addressIconWrap, c && local.addressIconWrapDark]}>
-                <Text style={local.addressIcon}>📍</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[local.addressTypeLabel, c && local.addressTypeLabelDark]}>
-                  {displayPhase === "LOAD" ? "Yukleme Konumu" :
-                   displayPhase === "UNLOAD" ? "Bosaltma Konumu" :
-                   displayPhase === "START_JOB" ? "Baslangic Konumu" :
-                   displayPhase === "END_JOB" ? "Teslim Konumu" : "Konum"}
-                </Text>
-                <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{displayPhaseLocation}</Text>
-              </View>
-              <Text style={local.navHint}>Aç →</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         {!currentTask && assignedVehicle && assignedVehicle !== "-" && assignedVehicle !== "Atanmamis" ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🚛  Atanan Arac: {assignedVehicle}</Text>
         ) : null}
