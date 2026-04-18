@@ -22,6 +22,7 @@ export async function POST(
     where: { id },
     include: {
       driver: { select: { id: true, fullName: true, userId: true } },
+      vehicle: { select: { id: true } },
     },
   });
 
@@ -32,13 +33,23 @@ export async function POST(
 
   const newStatus = body.action === "approve" ? "APPROVED" : "REJECTED";
 
-  await prisma.fuelRequest.update({
-    where: { id },
-    data: {
-      status: newStatus,
-      reviewedBy: session.sub,
-      reviewedAt: new Date(),
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.fuelRequest.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        reviewedBy: session.sub,
+        reviewedAt: new Date(),
+      },
+    });
+
+    // On approval, update the vehicle's current km
+    if (newStatus === "APPROVED" && fuelRequest.vehicleId) {
+      await tx.vehicle.update({
+        where: { id: fuelRequest.vehicleId },
+        data: { currentKm: fuelRequest.km },
+      });
+    }
   });
 
   // Send in-app notification to driver if they have a user account
