@@ -119,6 +119,7 @@ export function OrderForm({
   });
 
   const category = form.watch("orderCategory");
+  const jobType = form.watch("jobType");
 
   useEffect(() => {
     if (!open) return;
@@ -395,8 +396,12 @@ export function OrderForm({
                     )} />
                   </div>
                   <div className="grid grid-cols-1 gap-3">
-                    <F name="loadingAddress" label="Yükleme Adresi (Sürücüye gösterilir)" placeholder="Örn: İstanbul, Pendik OSB" />
-                    <F name="deliveryAddress" label="Teslim / Boşaltma Adresi (Sürücüye gösterilir)" placeholder="Örn: Ankara, Eryaman Depo" />
+                    {(jobType === "LOADING" || jobType === "FULL") && (
+                      <F name="loadingAddress" label="Yükleme Adresi (Sürücüye gösterilir)" placeholder="Örn: İstanbul, Pendik OSB" />
+                    )}
+                    {(jobType === "UNLOADING" || jobType === "FULL") && (
+                      <F name="deliveryAddress" label="Teslim / Boşaltma Adresi (Sürücüye gösterilir)" placeholder="Örn: Ankara, Eryaman Depo" />
+                    )}
                   </div>
                 </div>
 

@@ -96,6 +96,8 @@ interface TimelineResponse {
     phaseLoadLocation: string | null;
     phaseUnloadLocation: string | null;
     phaseDeliveryLocation: string | null;
+    loadingAddress: string | null;
+    deliveryAddress: string | null;
     driver?: { id: string; fullName: string } | null;
     vehicle?: { id: string; plateNumber: string } | null;
     trailer?: { id: string; plateNumber: string } | null;
@@ -412,6 +414,18 @@ export default function OrderOperationsDetailPage() {
             {order.routeText && (
               <div className="flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4 text-muted-foreground" /> {order.routeText}
+              </div>
+            )}
+            {(order.jobType === "LOADING" || order.jobType === "FULL") && order.loadingAddress && (
+              <div className="flex items-start gap-2 text-sm">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
+                <span><span className="text-muted-foreground">Yükleme Adresi: </span>{order.loadingAddress}</span>
+              </div>
+            )}
+            {(order.jobType === "UNLOADING" || order.jobType === "FULL") && order.deliveryAddress && (
+              <div className="flex items-start gap-2 text-sm">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
+                <span><span className="text-muted-foreground">Teslim Adresi: </span>{order.deliveryAddress}</span>
               </div>
             )}
             {order.spanzetStanga && (
