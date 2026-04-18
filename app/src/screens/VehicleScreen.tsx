@@ -10,11 +10,6 @@ interface VehicleScreenProps {
   vehicleHistory: DriverVehicleHistoryItem[];
   recentJobs: DriverRecentJobItem[];
   overviewStats: DriverOverviewStats;
-  damageTitle: string;
-  damageDescription: string;
-  onDamageTitleChange: (value: string) => void;
-  onDamageDescriptionChange: (value: string) => void;
-  onSubmitDamageReport: () => Promise<string | null>;
 }
 
 export function VehicleScreen({
@@ -24,11 +19,6 @@ export function VehicleScreen({
   vehicleHistory,
   recentJobs,
   overviewStats,
-  damageTitle,
-  damageDescription,
-  onDamageTitleChange,
-  onDamageDescriptionChange,
-  onSubmitDamageReport,
 }: VehicleScreenProps) {
   async function openAttachment(url: string) {
     const targetUrl = resolveAppUrl(url);
@@ -38,12 +28,6 @@ export function VehicleScreen({
       return;
     }
     await Linking.openURL(targetUrl);
-  }
-
-  async function handleDamageReport() {
-    const err = await onSubmitDamageReport();
-    if (err) Alert.alert("Hasar Bildirimi", err);
-    else Alert.alert("Basarili", "Hasar bildirimi merkeze iletildi");
   }
 
   return (
@@ -78,15 +62,6 @@ export function VehicleScreen({
         ) : (
           <Text style={[styles.cardLine, darkMode && styles.cardLineDark]}>Muayene, kasko veya poliçe dosyasi henuz eklenmemis.</Text>
         )}
-      </View>
-
-      <View style={[styles.card, darkMode && styles.cardDark]}>
-        <Text style={[styles.cardTitle, darkMode && styles.cardTitleDark]}>Arac Hasar Bildirimi</Text>
-        <TextInput style={[styles.input, darkMode && styles.inputDark]} value={damageTitle} onChangeText={onDamageTitleChange} placeholder="Baslik" placeholderTextColor={darkMode ? "#94a3b8" : "#64748b"} />
-        <TextInput style={[styles.input, styles.textArea, darkMode && styles.inputDark]} value={damageDescription} onChangeText={onDamageDescriptionChange} placeholder="Hasar detaylari" placeholderTextColor={darkMode ? "#94a3b8" : "#64748b"} multiline />
-        <Pressable style={styles.primaryBtn} onPress={handleDamageReport}>
-          <Text style={styles.primaryBtnText}>Merkeze Bildir</Text>
-        </Pressable>
       </View>
 
       <View style={[styles.card, darkMode && styles.cardDark]}>

@@ -121,12 +121,12 @@ export const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#f9d6ac",
-    backgroundColor: "#fff5e8",
+    borderColor: "#bfdbfe",
+    backgroundColor: "#eff6ff",
   },
   gradientCardWarmDark: {
-    borderColor: "#7c4a00",
-    backgroundColor: "#2a1d0f",
+    borderColor: "#1e3a5f",
+    backgroundColor: "#0f1f35",
   },
   gradientCard: {
     borderRadius: 16,

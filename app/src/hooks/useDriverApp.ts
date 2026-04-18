@@ -83,9 +83,6 @@ export function useDriverApp() {
   const [fuelNotes, setFuelNotes] = useState("");
   const [fuelRequests, setFuelRequests] = useState<DriverFuelRequest[]>([]);
 
-  const [damageTitle, setDamageTitle] = useState("");
-  const [damageDescription, setDamageDescription] = useState("");
-
   useEffect(() => {
     (async () => {
       const [savedToken, savedUser] = await Promise.all([
@@ -553,23 +550,6 @@ export function useDriverApp() {
     }
   }
 
-  async function submitVehicleDamageReport(): Promise<string | null> {
-    if (!token) return "Oturum bulunamadi";
-    if (!damageTitle.trim() || !damageDescription.trim()) return "Baslik ve aciklama gerekli";
-
-    try {
-      await apiFetch("/api/driver/vehicle-damage", token, {
-        method: "POST",
-        body: JSON.stringify({ title: damageTitle.trim(), description: damageDescription.trim() }),
-      });
-      setDamageTitle("");
-      setDamageDescription("");
-      return null;
-    } catch (error) {
-      return error instanceof Error ? error.message : "Hasar bildirimi gonderilemedi";
-    }
-  }
-
   async function saveProfile(): Promise<string | null> {
     if (!token || !driverId) return "Surucu profili bulunamadi";
     try {
@@ -679,10 +659,6 @@ export function useDriverApp() {
     setFuelNotes,
     fuelRequests,
     loadFuelRequests,
-    damageTitle,
-    setDamageTitle,
-    damageDescription,
-    setDamageDescription,
     login,
     logout,
     refreshAll,
@@ -695,7 +671,6 @@ export function useDriverApp() {
     submitStepUpdate,
     loadFuelRequests,
     submitFuelRequest,
-    submitVehicleDamageReport,
     saveProfile,
     markAllNotificationsRead,
     markAllMessagesRead,

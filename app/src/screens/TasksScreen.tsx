@@ -378,12 +378,12 @@ export function TasksScreen(props: TasksScreenProps) {
         {/* Address for current/viewed phase */}
         {currentTask && displayPhaseLocation ? (
           <View style={local.addressSection}>
-            <Pressable style={local.addressRow} onPress={() => openMaps(displayPhaseLocation)}>
-              <View style={local.addressIconWrap}>
+            <Pressable style={[local.addressRow, c && local.addressRowDark]} onPress={() => openMaps(displayPhaseLocation)}>
+              <View style={[local.addressIconWrap, c && local.addressIconWrapDark]}>
                 <Text style={local.addressIcon}>📍</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={local.addressTypeLabel}>
+                <Text style={[local.addressTypeLabel, c && local.addressTypeLabelDark]}>
                   {displayPhase === "LOAD" ? "Yukleme Konumu" :
                    displayPhase === "UNLOAD" ? "Bosaltma Konumu" :
                    displayPhase === "START_JOB" ? "Baslangic Konumu" :
@@ -678,9 +678,12 @@ const local = StyleSheet.create({
   // Address section
   addressSection: { marginTop: 10, borderTopWidth: 1, borderTopColor: "#e2e8f015", paddingTop: 10 },
   addressRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#f8fafc", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#e2e8f0" },
+  addressRowDark: { backgroundColor: "#0d1826", borderColor: "#22314a" },
   addressIconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center", marginRight: 10 },
+  addressIconWrapDark: { backgroundColor: "#162032" },
   addressIcon: { fontSize: 16 },
   addressTypeLabel: { fontSize: 10, fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: 1 },
+  addressTypeLabelDark: { color: "#475569" },
   addressText: { fontSize: 13, fontWeight: "500", color: "#0f172a", flexShrink: 1 },
   navHint: { fontSize: 11, color: "#0ea5e9", fontWeight: "600", marginLeft: 8 },
 

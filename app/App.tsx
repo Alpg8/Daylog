@@ -80,10 +80,6 @@ export default function App() {
     setFuelNotes,
     fuelRequests,
     loadFuelRequests,
-    damageTitle,
-    setDamageTitle,
-    damageDescription,
-    setDamageDescription,
     login,
     logout,
     loadTasks,
@@ -293,11 +289,6 @@ export default function App() {
             vehicleHistory={vehicleHistory}
             recentJobs={recentJobs}
             overviewStats={overviewStats}
-            damageTitle={damageTitle}
-            damageDescription={damageDescription}
-            onDamageTitleChange={setDamageTitle}
-            onDamageDescriptionChange={setDamageDescription}
-            onSubmitDamageReport={submitVehicleDamageReport}
           />
         )}
 
