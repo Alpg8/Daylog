@@ -2,9 +2,32 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getStorageProvider } from "@/lib/services/storage";
 import { mapDriverForUserOrFail } from "@/lib/services/driver-operations";
 import { recordActivity } from "@/lib/services/activity-log";
+
+// GET — driver fetches their own fuel requests
+export async function GET(request: NextRequest) {
+  const session = await getCurrentUser();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.role !== "DRIVER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const driver = await mapDriverForUserOrFail(session.sub, session.role);
+  if (!driver) return NextResponse.json({ error: "Driver profile not found" }, { status: 404 });
+
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get("status");
+
+  const requests = await prisma.fuelRequest.findMany({
+    where: {
+      driverId: driver.id,
+      ...(status && status !== "all" ? { status: status as "PENDING" | "APPROVED" | "REJECTED" } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+
+  return NextResponse.json({ requests });
+}
 
 export async function POST(request: NextRequest) {
   const session = await getCurrentUser();
@@ -24,72 +47,41 @@ export async function POST(request: NextRequest) {
   }
 
   const body = (await request.json()) as {
-    date?: string;
-    liters?: number | string;
-    totalCost?: number | string | null;
-    fuelStation?: string | null;
-    startKm?: number | string | null;
-    endKm?: number | string | null;
-    tankRight?: number | string | null;
-    tankLeft?: number | string | null;
+    km?: number | string;
+    tankLeft?: number | string;
+    tankRight?: number | string;
+    requestedLiters?: number | string | null;
     notes?: string | null;
   };
 
-  const date = String(body.date ?? "").trim();
-  const litersRaw = String(body.liters ?? "").trim();
-  const totalCostRaw = String(body.totalCost ?? "").trim();
-  const fuelStation = String(body.fuelStation ?? "").trim();
-  const startKmRaw = String(body.startKm ?? "").trim();
-  const endKmRaw = String(body.endKm ?? "").trim();
-  const tankRightRaw = String(body.tankRight ?? "").trim();
-  const tankLeftRaw = String(body.tankLeft ?? "").trim();
+  const km = Number(String(body.km ?? "").trim());
+  const tankLeft = Number(String(body.tankLeft ?? "").trim());
+  const tankRight = Number(String(body.tankRight ?? "").trim());
+  const requestedLiters = body.requestedLiters ? Number(String(body.requestedLiters).trim()) : null;
   const notes = String(body.notes ?? "").trim();
 
-  const liters = Number(litersRaw);
-  const totalCost = totalCostRaw ? Number(totalCostRaw) : null;
-  const startKm = startKmRaw ? Number(startKmRaw) : null;
-  const endKm = endKmRaw ? Number(endKmRaw) : null;
-  const tankRight = tankRightRaw ? Number(tankRightRaw) : null;
-  const tankLeft = tankLeftRaw ? Number(tankLeftRaw) : null;
-  const tankTotal = (tankRight ?? 0) + (tankLeft ?? 0) || null;
-  const distanceKm =
-    startKm != null && endKm != null && Number.isFinite(startKm) && Number.isFinite(endKm) && endKm > startKm
-      ? endKm - startKm
-      : null;
-
-  if (!date) return NextResponse.json({ error: "Tarih gerekli" }, { status: 400 });
-  if (!Number.isFinite(liters) || liters <= 0) {
-    return NextResponse.json({ error: "Litre degeri gecersiz" }, { status: 400 });
-  }
+  if (!Number.isFinite(km) || km <= 0) return NextResponse.json({ error: "KM degeri gecersiz" }, { status: 400 });
+  if (!Number.isFinite(tankLeft) || tankLeft < 0) return NextResponse.json({ error: "Sol depo degeri gecersiz" }, { status: 400 });
+  if (!Number.isFinite(tankRight) || tankRight < 0) return NextResponse.json({ error: "Sag depo degeri gecersiz" }, { status: 400 });
+  if (requestedLiters !== null && (!Number.isFinite(requestedLiters) || requestedLiters <= 0)) return NextResponse.json({ error: "Istenilen litre degeri gecersiz" }, { status: 400 });
 
   const activeOrder = await prisma.order.findFirst({
-    where: {
-      driverId: driver.id,
-      status: { in: ["PLANNED", "IN_PROGRESS"] },
-    },
+    where: { driverId: driver.id, status: { in: ["PLANNED", "IN_PROGRESS"] } },
     orderBy: { updatedAt: "desc" },
     select: { id: true },
   });
 
-  if (!activeOrder) {
-    return NextResponse.json({ error: "Yakit talebi icin aktif is bulunamadi" }, { status: 400 });
-  }
-
-  const record = await prisma.fuelRecord.create({
+  const fuelRequest = await prisma.fuelRequest.create({
     data: {
-      vehicleId: fullDriver.assignedVehicleId,
       driverId: driver.id,
-      date: new Date(date),
-      fuelStation: fuelStation || null,
-      liters,
-      totalCost,
-      startKm,
-      endKm,
-      distanceKm,
-      tankRight,
+      vehicleId: fullDriver.assignedVehicleId,
+      orderId: activeOrder?.id ?? null,
+      km,
       tankLeft,
-      tankTotal,
+      tankRight,
+      requestedLiters: requestedLiters ?? null,
       notes: notes || null,
+      status: "PENDING",
     },
   });
 
@@ -97,19 +89,13 @@ export async function POST(request: NextRequest) {
     userId: session.sub,
     role: session.role,
     source: "APP",
-    action: "CREATE_FUEL_RECORD",
-    entityType: "FuelRecord",
-    entityId: record.id,
-    message: "Yakit talebi olusturuldu",
-    metadata: {
-      driverId: driver.id,
-      liters,
-      tankRight,
-      tankLeft,
-      distanceKm,
-    },
+    action: "CREATE_FUEL_REQUEST",
+    entityType: "FuelRequest",
+    entityId: fuelRequest.id,
+    message: `Yakit talebi olusturuldu — ${fullDriver.fullName}, KM: ${km}, Sol: ${tankLeft}L, Sag: ${tankRight}L`,
+    metadata: { driverId: driver.id, km, tankLeft, tankRight },
     notifyOps: true,
   });
 
-  return NextResponse.json({ record }, { status: 201 });
+  return NextResponse.json({ request: fuelRequest }, { status: 201 });
 }

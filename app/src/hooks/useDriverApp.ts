@@ -11,6 +11,7 @@ import { API_BASE_URL } from "../config";
 import { STEP_LABELS, TOKEN_KEY, USER_KEY, type StepType } from "../constants";
 import type {
   AttachmentItem,
+  DriverFuelRequest,
   DriverMessage,
   DriverMeResponse,
   DriverNotification,
@@ -75,14 +76,12 @@ export function useDriverApp() {
     setStepPhotos((prev) => ({ ...prev, [type]: uri }));
   }
 
-  const [fuelDate, setFuelDate] = useState(new Date().toISOString().slice(0, 10));
-  const [fuelLiters, setFuelLiters] = useState("");
-  const [fuelStation, setFuelStation] = useState("");
-  const [fuelCost, setFuelCost] = useState("");
-  const [fuelStartKm, setFuelStartKm] = useState("");
-  const [fuelEndKm, setFuelEndKm] = useState("");
+  const [fuelKm, setFuelKm] = useState("");
+  const [fuelRequestedLiters, setFuelRequestedLiters] = useState("");
   const [fuelTankLeft, setFuelTankLeft] = useState("");
   const [fuelTankRight, setFuelTankRight] = useState("");
+  const [fuelNotes, setFuelNotes] = useState("");
+  const [fuelRequests, setFuelRequests] = useState<DriverFuelRequest[]>([]);
 
   const [damageTitle, setDamageTitle] = useState("");
   const [damageDescription, setDamageDescription] = useState("");
@@ -515,33 +514,39 @@ export function useDriverApp() {
     }
   }
 
+  async function loadFuelRequests(): Promise<string | null> {
+    if (!token) return null;
+    try {
+      const data = await apiFetch<{ requests: DriverFuelRequest[] }>("/api/driver/fuel-request", token);
+      setFuelRequests(data.requests ?? []);
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Yakit talepleri alinamadi";
+    }
+  }
+
   async function submitFuelRequest(): Promise<string | null> {
     if (!token) return "Oturum bulunamadi";
-    if (!fuelLiters) return "Litre bilgisi zorunlu";
-    if (!fuelStartKm || !fuelEndKm) return "Baslangic ve bitis kilometresi gerekli";
+    if (!fuelKm) return "KM bilgisi zorunlu";
     if (!fuelTankLeft || !fuelTankRight) return "Sol ve sag depo miktarlari gerekli";
 
     try {
       await apiFetch("/api/driver/fuel-request", token, {
         method: "POST",
         body: JSON.stringify({
-          date: fuelDate,
-          liters: Number(fuelLiters),
-          fuelStation: fuelStation || null,
-          totalCost: fuelCost ? Number(fuelCost) : null,
-          startKm: Number(fuelStartKm),
-          endKm: Number(fuelEndKm),
+          km: Number(fuelKm),
           tankLeft: Number(fuelTankLeft),
           tankRight: Number(fuelTankRight),
+          requestedLiters: fuelRequestedLiters ? Number(fuelRequestedLiters) : null,
+          notes: fuelNotes.trim() || null,
         }),
       });
-      setFuelLiters("");
-      setFuelStation("");
-      setFuelCost("");
-      setFuelStartKm("");
-      setFuelEndKm("");
+      setFuelKm("");
+      setFuelRequestedLiters("");
       setFuelTankLeft("");
       setFuelTankRight("");
+      setFuelNotes("");
+      await loadFuelRequests();
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "Yakit talebi gonderilemedi";
@@ -662,22 +667,18 @@ export function useDriverApp() {
     setStepKm,
     stepPhotos,
     setStepPhoto,
-    fuelDate,
-    setFuelDate,
-    fuelLiters,
-    setFuelLiters,
-    fuelStation,
-    setFuelStation,
-    fuelCost,
-    setFuelCost,
-    fuelStartKm,
-    setFuelStartKm,
-    fuelEndKm,
-    setFuelEndKm,
+    fuelKm,
+    setFuelKm,
+    fuelRequestedLiters,
+    setFuelRequestedLiters,
     fuelTankLeft,
     setFuelTankLeft,
     fuelTankRight,
     setFuelTankRight,
+    fuelNotes,
+    setFuelNotes,
+    fuelRequests,
+    loadFuelRequests,
     damageTitle,
     setDamageTitle,
     damageDescription,
@@ -692,6 +693,7 @@ export function useDriverApp() {
     uploadCurrentTaskDocument,
     uploadDriverDocument,
     submitStepUpdate,
+    loadFuelRequests,
     submitFuelRequest,
     submitVehicleDamageReport,
     saveProfile,

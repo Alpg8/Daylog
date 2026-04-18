@@ -49,6 +49,22 @@ export interface DriverNotification {
   createdAt: string;
 }
 
+export type FuelRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface DriverFuelRequest {
+  id: string;
+  vehicleId: string;
+  orderId: string | null;
+  status: FuelRequestStatus;
+  km: number;
+  tankLeft: number;
+  tankRight: number;
+  requestedLiters: number | null;
+  notes: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 export type DriverMessageDirection = "DRIVER_TO_OFFICE" | "OFFICE_TO_DRIVER";
 
 export interface DriverMessage {

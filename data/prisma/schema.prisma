@@ -134,6 +134,12 @@ enum OperationTaskStatus {
   DISMISSED
 }
 
+enum FuelRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -173,10 +179,11 @@ model Vehicle {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  drivers     Driver[]
-  orders      Order[]
-  fuelRecords FuelRecord[]
-  attachments Attachment[]
+  drivers      Driver[]
+  orders       Order[]
+  fuelRecords  FuelRecord[]
+  fuelRequests FuelRequest[]
+  attachments  Attachment[]
 }
 
 model Trailer {
@@ -224,6 +231,7 @@ model Driver {
   operationTasks     OperationTask[]
   officeMessages     DriverMessage[]
   orderDriverHistory OrderDriverHistory[]
+  fuelRequests       FuelRequest[]
 
   @@index([passportExpiryDate])
   @@index([licenseExpiryDate])
@@ -375,7 +383,28 @@ model FuelRecord {
   @@index([driverId, date])
 }
 
-model Notification {
+model FuelRequest {
+  id               String            @id @default(uuid())
+  driverId         String
+  vehicleId        String
+  orderId          String?
+  status           FuelRequestStatus @default(PENDING)
+  km               Int
+  tankLeft         Float
+  tankRight        Float
+  requestedLiters  Float?
+  notes            String?
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  driver   Driver  @relation(fields: [driverId], references: [id])
+  vehicle  Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([driverId, status, createdAt])
+  @@index([status, createdAt])
+}
   id        String           @id @default(uuid())
   userId    String
   title     String

@@ -68,22 +68,18 @@ export default function App() {
     setStepKm,
     stepPhotos,
     setStepPhoto,
-    fuelDate,
-    setFuelDate,
-    fuelLiters,
-    setFuelLiters,
-    fuelStation,
-    setFuelStation,
-    fuelCost,
-    setFuelCost,
-    fuelStartKm,
-    setFuelStartKm,
-    fuelEndKm,
-    setFuelEndKm,
+    fuelKm,
+    setFuelKm,
+    fuelRequestedLiters,
+    setFuelRequestedLiters,
     fuelTankLeft,
     setFuelTankLeft,
     fuelTankRight,
     setFuelTankRight,
+    fuelNotes,
+    setFuelNotes,
+    fuelRequests,
+    loadFuelRequests,
     damageTitle,
     setDamageTitle,
     damageDescription,
@@ -144,6 +140,10 @@ export default function App() {
     counts.notifications = unreadNotifications.length;
     counts.messages = unreadOfficeMessages.length;
   }, [messages, notifications]);
+
+  useEffect(() => {
+    if (activeTab === "fuel") void loadFuelRequests();
+  }, [activeTab]);
 
   useEffect(() => {
     (async () => {
@@ -218,6 +218,7 @@ export default function App() {
           <TasksScreen
             darkMode={isDarkMode}
             tasks={tasks}
+            assignedVehicle={assignedVehicle}
             selectedTaskId={selectedTaskId}
             selectedTask={selectedTask}
             stepType={stepType}
@@ -267,23 +268,19 @@ export default function App() {
         {activeTab === "fuel" && (
           <FuelScreen
             darkMode={isDarkMode}
-            fuelDate={fuelDate}
-            fuelLiters={fuelLiters}
-            fuelStation={fuelStation}
-            fuelCost={fuelCost}
-            fuelStartKm={fuelStartKm}
-            fuelEndKm={fuelEndKm}
+            fuelKm={fuelKm}
+            fuelRequestedLiters={fuelRequestedLiters}
             fuelTankLeft={fuelTankLeft}
             fuelTankRight={fuelTankRight}
-            onDateChange={setFuelDate}
-            onLitersChange={setFuelLiters}
-            onStationChange={setFuelStation}
-            onCostChange={setFuelCost}
-            onStartKmChange={setFuelStartKm}
-            onEndKmChange={setFuelEndKm}
+            fuelNotes={fuelNotes}
+            fuelRequests={fuelRequests}
+            onKmChange={setFuelKm}
+            onRequestedLitersChange={setFuelRequestedLiters}
             onTankLeftChange={setFuelTankLeft}
             onTankRightChange={setFuelTankRight}
+            onNotesChange={setFuelNotes}
             onSubmit={submitFuelRequest}
+            onRefresh={loadFuelRequests}
           />
         )}
 
