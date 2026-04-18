@@ -361,7 +361,10 @@ export function TasksScreen(props: TasksScreenProps) {
               currentTask.jobType === "UNLOADING" ? local.jobTypeUnload :
               currentTask.jobType === "FULL"      ? local.jobTypeFull :
               local.jobTypeLoad]}>
-              <Text style={local.jobTypePillText}>{JOB_TYPE_LABEL[currentTask.jobType] ?? currentTask.jobType}</Text>
+              <Text style={[local.jobTypePillText,
+                currentTask.jobType === "UNLOADING" ? local.jobTypeUnloadText :
+                currentTask.jobType === "FULL"      ? local.jobTypeFullText :
+                local.jobTypeLoadText]}>{JOB_TYPE_LABEL[currentTask.jobType] ?? currentTask.jobType}</Text>
             </View>
             <Text style={[local.flowText, c && { color: "#94a3b8" }]}>{JOB_TYPE_FLOW[currentTask.jobType] ?? ""}</Text>
           </View>
@@ -647,11 +650,14 @@ const local = StyleSheet.create({
 
   // Job type section
   jobTypeSection: { marginTop: 6, marginBottom: 8 },
-  jobTypePill: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3, marginBottom: 4 },
-  jobTypePillText: { fontSize: 12, fontWeight: "700" },
-  jobTypeLoad: { backgroundColor: "#f9731615", color: "#f97316" },
-  jobTypeUnload: { backgroundColor: "#3b82f615", color: "#3b82f6" },
-  jobTypeFull: { backgroundColor: "#8b5cf615", color: "#8b5cf6" },
+  jobTypePill: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 4 },
+  jobTypePillText: { fontSize: 12, fontWeight: "800" },
+  jobTypeLoad: { backgroundColor: "#ff6b2b22", borderWidth: 1, borderColor: "#ff6b2b50" },
+  jobTypeLoadText: { color: "#e84e0f" },
+  jobTypeUnload: { backgroundColor: "#f43f5e22", borderWidth: 1, borderColor: "#f43f5e50" },
+  jobTypeUnloadText: { color: "#e11d48" },
+  jobTypeFull: { backgroundColor: "#c026d322", borderWidth: 1, borderColor: "#c026d350" },
+  jobTypeFullText: { color: "#a21caf" },
   flowText: { fontSize: 11, color: "#64748b", fontWeight: "500", letterSpacing: 0.2 },
 
   // Address section
