@@ -106,6 +106,14 @@ export function VehicleTable() {
     { accessorKey: "ownershipType", header: "Mülkiyet", filterFn: "equals", cell: ({ row }) => row.original.ownershipType ?? "—" },
     { accessorKey: "status", header: "Durum", filterFn: "equals", cell: ({ row }) => <VehicleStatusBadge status={row.original.status} /> },
     {
+      accessorKey: "latestKm",
+      header: "Son KM",
+      cell: ({ row }) => {
+        const km = (row.original as Vehicle & { latestKm?: number | null }).latestKm;
+        return km != null ? <span className="font-mono text-sm">{km.toLocaleString("tr-TR")} km</span> : <span className="text-muted-foreground">—</span>;
+      },
+    },
+    {
       id: "actions", header: "", cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>

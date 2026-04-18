@@ -29,7 +29,20 @@ export async function GET(request: NextRequest) {
     include: { _count: { select: { orders: true, drivers: true } } },
   });
 
-  return NextResponse.json({ vehicles });
+  // Attach latest approved km from FuelRequest per vehicle
+  const vehicleIds = vehicles.map((v) => v.id);
+  const latestKmRecords = await prisma.fuelRequest.findMany({
+    where: { vehicleId: { in: vehicleIds }, status: "APPROVED" },
+    orderBy: { createdAt: "desc" },
+    select: { vehicleId: true, km: true, createdAt: true },
+  });
+  const latestKmMap: Record<string, number> = {};
+  for (const r of latestKmRecords) {
+    if (!(r.vehicleId in latestKmMap)) latestKmMap[r.vehicleId] = r.km;
+  }
+  const vehiclesWithKm = vehicles.map((v) => ({ ...v, latestKm: latestKmMap[v.id] ?? null }));
+
+  return NextResponse.json({ vehicles: vehiclesWithKm });
 }
 
 export async function POST(request: NextRequest) {
