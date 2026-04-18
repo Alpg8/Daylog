@@ -172,6 +172,7 @@ export default function App() {
         password={password}
         loading={booting}
         errorMessage={loginError}
+        darkMode={isDarkMode}
         onEmailChange={setEmail}
         onPasswordChange={setPassword}
         onSubmit={async () => {

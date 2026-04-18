@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#eef4f8",
+    backgroundColor: "#edf2f7",
   },
   screenDark: {
     backgroundColor: "#0b1220",
@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#eef4f8",
+    backgroundColor: "#edf2f7",
   },
   loginHero: {
     paddingTop: 60,
@@ -49,7 +49,11 @@ export const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: "#dbe4f2",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f8f9fb",
+  },
+  loginCardDark: {
+    borderColor: "#22314a",
+    backgroundColor: "#111a2b",
   },
   headerWrap: {
     flexDirection: "row",
@@ -60,7 +64,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#d5e1ea",
-    backgroundColor: "#f7fbff",
+    backgroundColor: "#edf2f8",
   },
   headerWrapDark: {
     borderBottomColor: "#1f2a3d",
@@ -89,17 +93,25 @@ export const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f0f4f9",
+  },
+  refreshGhostDark: {
+    borderColor: "#22314a",
+    backgroundColor: "#0d1826",
   },
   refreshGhostText: {
     color: "#334155",
     fontSize: 12,
     fontWeight: "700",
   },
+  refreshGhostTextDark: {
+    color: "#8aa0be",
+  },
   content: {
     flex: 1,
     paddingHorizontal: 12,
     paddingTop: 12,
+    backgroundColor: "#edf2f7",
   },
   contentDark: {
     backgroundColor: "#0b1220",
@@ -138,13 +150,13 @@ export const styles = StyleSheet.create({
   card: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#dbe4f2",
-    backgroundColor: "#ffffff",
+    borderColor: "#dce4ef",
+    backgroundColor: "#f8f9fb",
     padding: 12,
     marginBottom: 10,
     shadowColor: "#0f172a",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
@@ -159,8 +171,12 @@ export const styles = StyleSheet.create({
     backgroundColor: "#eff6ff",
   },
   unreadCard: {
-    borderColor: "#f59e0b",
-    backgroundColor: "#fff7ed",
+    borderColor: "#94a3b8",
+    backgroundColor: "#f8fafc",
+  },
+  unreadCardDark: {
+    borderColor: "#334155",
+    backgroundColor: "#131e2f",
   },
   cardTitle: {
     fontSize: 15,
@@ -192,13 +208,13 @@ export const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: "#c8d5e2",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
     marginBottom: 8,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f4f7fb",
   },
   inputDark: {
     borderColor: "#334155",
@@ -253,15 +269,25 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#0f172a",
   },
+  sectionTitleDark: {
+    color: "#e2e8f0",
+  },
   linkText: {
     fontSize: 12,
     color: "#2563eb",
-    fontWeight: "700",
+    fontWeight: "600",
+  },
+  linkTextDark: {
+    color: "#7dd3fc",
   },
   emptyText: {
     textAlign: "center",
     color: "#64748b",
     marginTop: 24,
+    fontSize: 13,
+  },
+  emptyTextDark: {
+    color: "#475569",
   },
   quickGrid: {
     flexDirection: "row",
@@ -272,15 +298,22 @@ export const styles = StyleSheet.create({
     width: "48%",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#dbe4f2",
-    backgroundColor: "#ffffff",
+    borderColor: "#d8e1ed",
+    backgroundColor: "#f4f7fb",
     paddingVertical: 10,
     alignItems: "center",
+  },
+  quickBtnDark: {
+    borderColor: "#22314a",
+    backgroundColor: "#0d1826",
   },
   quickBtnText: {
     fontSize: 12,
     color: "#334155",
     fontWeight: "700",
+  },
+  quickBtnTextDark: {
+    color: "#94a3b8",
   },
   stepRow: {
     flexDirection: "row",
@@ -290,11 +323,15 @@ export const styles = StyleSheet.create({
   },
   stepBtn: {
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: "#c8d5e2",
     borderRadius: 999,
     paddingVertical: 7,
     paddingHorizontal: 10,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f4f7fb",
+  },
+  stepBtnDark: {
+    borderColor: "#22314a",
+    backgroundColor: "#0d1826",
   },
   stepBtnActive: {
     borderColor: "#0284c7",
@@ -305,14 +342,17 @@ export const styles = StyleSheet.create({
     color: "#334155",
     fontWeight: "700",
   },
+  stepTextDark: {
+    color: "#94a3b8",
+  },
   stepTextActive: {
     color: "#0c4a6e",
   },
   tabBar: {
     flexDirection: "row",
     borderTopWidth: 1,
-    borderTopColor: "#dbe4f2",
-    backgroundColor: "#f7fbff",
+    borderTopColor: "#d8e1ed",
+    backgroundColor: "#edf2f8",
     paddingHorizontal: 10,
     paddingVertical: 10,
     gap: 6,
@@ -463,38 +503,38 @@ export const styles = StyleSheet.create({
     zIndex: 20,
   },
   toastCard: {
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#bae6fd",
-    backgroundColor: "#eff6ff",
+    borderColor: "#dce4ef",
+    backgroundColor: "#f8f9fb",
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 10,
     shadowColor: "#0f172a",
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   toastCardDark: {
-    borderColor: "#075985",
-    backgroundColor: "#082f49",
+    borderColor: "#1f2a3d",
+    backgroundColor: "#111a2b",
     shadowOpacity: 0,
     elevation: 0,
   },
   toastTitle: {
     fontSize: 13,
-    fontWeight: "800",
-    color: "#0c4a6e",
+    fontWeight: "700",
+    color: "#0f172a",
   },
   toastTitleDark: {
-    color: "#bae6fd",
+    color: "#e2e8f0",
   },
   toastMessage: {
-    marginTop: 4,
+    marginTop: 3,
     fontSize: 12,
-    color: "#334155",
+    color: "#475569",
   },
   toastMessageDark: {
-    color: "#cbd5e1",
+    color: "#94a3b8",
   },
 });
