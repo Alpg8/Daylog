@@ -201,7 +201,21 @@ export function TasksScreen(props: TasksScreenProps) {
   }, [selectedTaskId, activeJob, onSelectTask]);
 
   const locationKey = activePhase?.locationKey as keyof DriverTask | undefined;
-  const officeLocation = locationKey ? (currentTask?.[locationKey] as string | null | undefined) : null;
+  const phaseLocation = locationKey ? (currentTask?.[locationKey] as string | null | undefined) : null;
+  // Fall back to order-level addresses when no phase-specific location is set
+  const officeLocation = phaseLocation || (() => {
+    const type = activePhase?.type;
+    if (!currentTask) return null;
+    if (type === "LOAD") return currentTask.loadingAddress ?? null;
+    if (type === "UNLOAD" || type === "DELIVERY" || type === "END_JOB") return currentTask.deliveryAddress ?? null;
+    if (type === "START_JOB") {
+      // For UNLOADING jobs go to unload/delivery, others go to loading point
+      return currentTask.jobType === "UNLOADING"
+        ? currentTask.deliveryAddress ?? null
+        : currentTask.loadingAddress ?? currentTask.deliveryAddress ?? null;
+    }
+    return null;
+  })();
 
   const displayPhase: StepType = viewingPhase ?? stepType;
   const stepPhotoUri = stepPhotos[displayPhase] ?? null;
