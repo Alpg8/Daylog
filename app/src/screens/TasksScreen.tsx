@@ -342,51 +342,33 @@ export function TasksScreen(props: TasksScreenProps) {
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🗺  {currentTask.routeText}</Text>
         ) : null}
 
-        {/* Addresses per job type */}
-        {currentTask && (currentTask.loadingAddress || currentTask.deliveryAddress) ? (
+        {/* Address for current phase – show exactly 1 */}
+        {currentTask && (currentTask.loadingAddress || currentTask.deliveryAddress) ? (() => {
+          const phaseType = activePhase?.type;
+          // Determine which address is relevant for the current phase
+          const showLoading =
+            phaseType === "LOAD" ||
+            (phaseType === "START_JOB" && currentTask.jobType !== "UNLOADING") ||
+            (!phaseType && currentTask.jobType === "LOADING");
+          const addr = showLoading ? currentTask.loadingAddress : currentTask.deliveryAddress;
+          const label = showLoading ? "Yukleme Adresi" : "Bosaltma / Teslim Adresi";
+          const icon = showLoading ? "📦" : "🏭";
+          if (!addr) return null;
+          return (
           <View style={local.addressSection}>
-            {/* Show loading address for LOADING and FULL */}
-            {(currentTask.jobType === "LOADING" || currentTask.jobType === "FULL") && currentTask.loadingAddress ? (
-              <Pressable style={local.addressRow} onPress={() => openMaps(currentTask.loadingAddress!)}>
-                <View style={local.addressIconWrap}>
-                  <Text style={local.addressIcon}>📦</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={local.addressTypeLabel}>Yukleme Adresi</Text>
-                  <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{currentTask.loadingAddress}</Text>
-                </View>
-                <Text style={local.navHint}>Aç →</Text>
-              </Pressable>
-            ) : null}
-            {/* Show delivery/unload address for UNLOADING and FULL */}
-            {(currentTask.jobType === "UNLOADING" || currentTask.jobType === "FULL") && currentTask.deliveryAddress ? (
-              <Pressable style={[local.addressRow, (currentTask.loadingAddress && (currentTask.jobType === "FULL")) && { marginTop: 8 }]}
-                onPress={() => openMaps(currentTask.deliveryAddress!)}>
-                <View style={local.addressIconWrap}>
-                  <Text style={local.addressIcon}>🏭</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={local.addressTypeLabel}>Bosaltma / Teslim Adresi</Text>
-                  <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{currentTask.deliveryAddress}</Text>
-                </View>
-                <Text style={local.navHint}>Aç →</Text>
-              </Pressable>
-            ) : null}
-            {/* LOADING: show delivery address as destination */}
-            {currentTask.jobType === "LOADING" && currentTask.deliveryAddress ? (
-              <Pressable style={[local.addressRow, { marginTop: 8 }]} onPress={() => openMaps(currentTask.deliveryAddress!)}>
-                <View style={local.addressIconWrap}>
-                  <Text style={local.addressIcon}>🎯</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={local.addressTypeLabel}>Teslim Adresi</Text>
-                  <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{currentTask.deliveryAddress}</Text>
-                </View>
-                <Text style={local.navHint}>Aç →</Text>
-              </Pressable>
-            ) : null}
+            <Pressable style={local.addressRow} onPress={() => openMaps(addr)}>
+              <View style={local.addressIconWrap}>
+                <Text style={local.addressIcon}>{icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={local.addressTypeLabel}>{label}</Text>
+                <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{addr}</Text>
+              </View>
+              <Text style={local.navHint}>Aç →</Text>
+            </Pressable>
           </View>
-        ) : null}
+          );
+        })() : null}
 
         {!currentTask && assignedVehicle && assignedVehicle !== "-" && assignedVehicle !== "Atanmamis" ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🚛  Atanan Arac: {assignedVehicle}</Text>

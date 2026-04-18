@@ -475,22 +475,27 @@ export default function DriverOrderDetailPage() {
             {order.vehicle && <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> {order.vehicle.plateNumber}</span>}
             {order.routeText && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {order.routeText}</span>}
           </div>
-          {(order.loadingAddress || order.deliveryAddress) && (
-            <div className="mt-2 space-y-1.5 rounded-lg border border-border/60 bg-muted/30 p-2.5 text-xs">
-              {order.loadingAddress && (
+          {(order.loadingAddress || order.deliveryAddress) && (() => {
+            const showLoading =
+              nextStep?.eventType === "LOAD" ||
+              (nextStep?.eventType === "START_JOB" && order.jobType !== "UNLOADING") ||
+              (!nextStep && order.jobType === "LOADING");
+            const addr = showLoading ? order.loadingAddress : order.deliveryAddress;
+            const label = showLoading ? "Yukleme Adresi" : "Teslim / Bosaltma Adresi";
+            const badge = showLoading
+              ? "bg-blue-500/20 text-blue-700 dark:text-blue-300"
+              : "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300";
+            const letter = showLoading ? "Y" : "T";
+            if (!addr) return null;
+            return (
+              <div className="mt-2 rounded-lg border border-border/60 bg-muted/30 p-2.5 text-xs">
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-[9px] font-bold text-blue-700 dark:text-blue-300">Y</span>
-                  <div><p className="font-medium text-foreground/80">Yukleme Adresi</p><p className="text-muted-foreground">{order.loadingAddress}</p></div>
+                  <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${badge}`}>{letter}</span>
+                  <div><p className="font-medium text-foreground/80">{label}</p><p className="text-muted-foreground">{addr}</p></div>
                 </div>
-              )}
-              {order.deliveryAddress && (
-                <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-[9px] font-bold text-emerald-700 dark:text-emerald-300">T</span>
-                  <div><p className="font-medium text-foreground/80">Teslim / Bosaltma Adresi</p><p className="text-muted-foreground">{order.deliveryAddress}</p></div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
