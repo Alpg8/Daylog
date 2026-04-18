@@ -209,7 +209,6 @@ export function TasksScreen(props: TasksScreenProps) {
     if (type === "LOAD") return currentTask.loadingAddress ?? null;
     if (type === "UNLOAD" || type === "DELIVERY" || type === "END_JOB") return currentTask.deliveryAddress ?? null;
     if (type === "START_JOB") {
-      // For UNLOADING jobs go to unload/delivery, others go to loading point
       return currentTask.jobType === "UNLOADING"
         ? currentTask.deliveryAddress ?? null
         : currentTask.loadingAddress ?? currentTask.deliveryAddress ?? null;
@@ -217,7 +216,27 @@ export function TasksScreen(props: TasksScreenProps) {
     return null;
   })();
 
+  // Location for the currently viewed phase (used in phase form + task card address)
+  function getLocationForPhaseType(type: StepType | undefined): string | null {
+    if (!currentTask || !type) return null;
+    const phaseStep = phases.find((p) => p.type === type);
+    const key = phaseStep?.locationKey as keyof DriverTask | undefined;
+    const specific = key ? (currentTask[key] as string | null | undefined) : null;
+    if (specific) return specific;
+    // fallback to order-level addresses
+    if (type === "LOAD") return currentTask.loadingAddress ?? null;
+    if (type === "UNLOAD" || type === "DELIVERY" || type === "END_JOB") return currentTask.deliveryAddress ?? null;
+    if (type === "START_JOB") {
+      return currentTask.jobType === "UNLOADING"
+        ? currentTask.deliveryAddress ?? null
+        : currentTask.loadingAddress ?? currentTask.deliveryAddress ?? null;
+    }
+    return null;
+  }
+
   const displayPhase: StepType = viewingPhase ?? stepType;
+  const displayPhaseLocation = getLocationForPhaseType(displayPhase);
+
   const stepPhotoUri = stepPhotos[displayPhase] ?? null;
   const serverPhotoUrl = useMemo(() => {
     if (!currentTask?.driverEvents) return null;
@@ -356,21 +375,21 @@ export function TasksScreen(props: TasksScreenProps) {
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🗺  {currentTask.routeText}</Text>
         ) : null}
 
-        {/* Address for current phase – use phase-specific location key */}
-        {currentTask && officeLocation ? (
+        {/* Address for current/viewed phase */}
+        {currentTask && displayPhaseLocation ? (
           <View style={local.addressSection}>
-            <Pressable style={local.addressRow} onPress={() => openMaps(officeLocation)}>
+            <Pressable style={local.addressRow} onPress={() => openMaps(displayPhaseLocation)}>
               <View style={local.addressIconWrap}>
                 <Text style={local.addressIcon}>📍</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={local.addressTypeLabel}>
-                  {activePhase?.type === "LOAD" ? "Yukleme Konumu" :
-                   activePhase?.type === "UNLOAD" ? "Bosaltma Konumu" :
-                   activePhase?.type === "START_JOB" ? "Baslangic Konumu" :
-                   activePhase?.type === "END_JOB" ? "Teslim Konumu" : "Konum"}
+                  {displayPhase === "LOAD" ? "Yukleme Konumu" :
+                   displayPhase === "UNLOAD" ? "Bosaltma Konumu" :
+                   displayPhase === "START_JOB" ? "Baslangic Konumu" :
+                   displayPhase === "END_JOB" ? "Teslim Konumu" : "Konum"}
                 </Text>
-                <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{officeLocation}</Text>
+                <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{displayPhaseLocation}</Text>
               </View>
               <Text style={local.navHint}>Aç →</Text>
             </Pressable>
@@ -404,13 +423,13 @@ export function TasksScreen(props: TasksScreenProps) {
           </View>
 
           {/* Office location */}
-          {!isViewingDone && (officeLocation ? (
+          {!isViewingDone && (displayPhaseLocation ? (
             <Pressable
               style={local.locationBox}
-              onPress={() => openMaps(officeLocation)}
+              onPress={() => openMaps(displayPhaseLocation)}
             >
               <Text style={local.locationLabel}>📍  Varis Konumu (Ofisten)  <Text style={{ fontSize: 11, color: "#0ea5e9" }}>Navigasyonda Aç →</Text></Text>
-              <Text style={[local.locationText, c && { color: "#bae6fd" }]}>{officeLocation}</Text>
+              <Text style={[local.locationText, c && { color: "#bae6fd" }]}>{displayPhaseLocation}</Text>
             </Pressable>
           ) : (
             <View style={[local.locationBox, { borderColor: "#94a3b820", backgroundColor: "transparent" }]}>
