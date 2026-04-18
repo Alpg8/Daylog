@@ -342,33 +342,26 @@ export function TasksScreen(props: TasksScreenProps) {
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🗺  {currentTask.routeText}</Text>
         ) : null}
 
-        {/* Address for current phase – show exactly 1 */}
-        {currentTask && (currentTask.loadingAddress || currentTask.deliveryAddress) ? (() => {
-          const phaseType = activePhase?.type;
-          // Determine which address is relevant for the current phase
-          const showLoading =
-            phaseType === "LOAD" ||
-            (phaseType === "START_JOB" && currentTask.jobType !== "UNLOADING") ||
-            (!phaseType && currentTask.jobType === "LOADING");
-          const addr = showLoading ? currentTask.loadingAddress : currentTask.deliveryAddress;
-          const label = showLoading ? "Yukleme Adresi" : "Bosaltma / Teslim Adresi";
-          const icon = showLoading ? "📦" : "🏭";
-          if (!addr) return null;
-          return (
+        {/* Address for current phase – use phase-specific location key */}
+        {currentTask && officeLocation ? (
           <View style={local.addressSection}>
-            <Pressable style={local.addressRow} onPress={() => openMaps(addr)}>
+            <Pressable style={local.addressRow} onPress={() => openMaps(officeLocation)}>
               <View style={local.addressIconWrap}>
-                <Text style={local.addressIcon}>{icon}</Text>
+                <Text style={local.addressIcon}>📍</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={local.addressTypeLabel}>{label}</Text>
-                <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{addr}</Text>
+                <Text style={local.addressTypeLabel}>
+                  {activePhase?.type === "LOAD" ? "Yukleme Konumu" :
+                   activePhase?.type === "UNLOAD" ? "Bosaltma Konumu" :
+                   activePhase?.type === "START_JOB" ? "Baslangic Konumu" :
+                   activePhase?.type === "END_JOB" ? "Teslim Konumu" : "Konum"}
+                </Text>
+                <Text style={[local.addressText, c && { color: "#bae6fd" }]}>{officeLocation}</Text>
               </View>
               <Text style={local.navHint}>Aç →</Text>
             </Pressable>
           </View>
-          );
-        })() : null}
+        ) : null}
 
         {!currentTask && assignedVehicle && assignedVehicle !== "-" && assignedVehicle !== "Atanmamis" ? (
           <Text style={[styles.cardLine, c && styles.cardLineDark]}>🚛  Atanan Arac: {assignedVehicle}</Text>
