@@ -405,6 +405,8 @@ model FuelRequest {
   @@index([driverId, status, createdAt])
   @@index([status, createdAt])
 }
+
+model Notification {
   id        String           @id @default(uuid())
   userId    String
   title     String
