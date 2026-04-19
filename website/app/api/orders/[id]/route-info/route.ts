@@ -99,7 +99,7 @@ export async function GET(
   // Determine remaining legs based on current phase
   // stops[0]→[1] = leg 0 (yükleme), [1]→[2] = leg 1 (boşaltma), [2]→[3] = leg 2 (teslim)
   // Phase progression: START_JOB → LOAD_DONE → UNLOAD_DONE → END_JOB
-  const eventTypes = order.driverEvents.map((e) => e.type);
+  const eventTypes = order.driverEvents.map((e) => e.type as string);
   let completedLegs = 0;
   if (eventTypes.includes("UNLOAD_DONE")) {
     completedLegs = Math.min(legs.length - 1, stops.length - 2);
@@ -113,10 +113,10 @@ export async function GET(
   const remainingDurationS = remainingLegs.reduce((s, l) => s + l.duration.value, 0);
 
   // Find the most recent phase-transition event time as the "from" time
-  const phaseEvents = ["UNLOAD_DONE", "LOAD_DONE", "START_JOB"] as const;
+  const phaseEventOrder = ["UNLOAD_DONE", "LOAD_DONE", "START_JOB"];
   let latestPhaseEvent: (typeof order.driverEvents)[0] | undefined;
-  for (const type of phaseEvents) {
-    latestPhaseEvent = order.driverEvents.filter((e) => e.type === type).at(-1);
+  for (const type of phaseEventOrder) {
+    latestPhaseEvent = order.driverEvents.filter((e) => (e.type as string) === type).at(-1);
     if (latestPhaseEvent) break;
   }
 
