@@ -587,6 +587,19 @@ export default function OrderOperationsDetailPage() {
                     </div>
                   )}
                 </div>
+                {routeInfo.legs.length > 1 && (
+                  <div className="mt-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Duraklar Arası</p>
+                    <div className="space-y-1">
+                      {routeInfo.legs.map((leg, i) => (
+                        <div key={i} className="flex items-center justify-between rounded-md border bg-background px-3 py-1.5 text-xs">
+                          <span className="text-muted-foreground">{i + 1}. Durak</span>
+                          <span className="font-medium">{leg.distance} &nbsp;·&nbsp; {leg.duration}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               ) : null}
             </div>
           )}

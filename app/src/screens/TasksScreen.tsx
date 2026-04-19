@@ -401,7 +401,7 @@ export function TasksScreen(props: TasksScreenProps) {
       </View>
 
       {/* Route info card */}
-      {currentTask && (routeInfo || routeInfoLoading) ? (
+      {currentTask && routeInfo ? (
         <View style={[styles.card, c && styles.cardDark]}>
           <View style={local.rowBetween}>
             <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>🗺  Rota Bilgisi</Text>
@@ -411,9 +411,7 @@ export function TasksScreen(props: TasksScreenProps) {
               </Pressable>
             ) : null}
           </View>
-          {routeInfoLoading && !routeInfo ? (
-            <Text style={[styles.cardLine, c && styles.cardLineDark]}>Hesaplaniyor...</Text>
-          ) : routeInfo ? (
+          {routeInfo ? (
             <>
               <View style={local.routeStatsRow}>
                 <View style={[local.routeStat, c && local.routeStatDark]}>
@@ -445,7 +443,7 @@ export function TasksScreen(props: TasksScreenProps) {
                 </View>
               ) : null}
             </>
-          ) : null}
+          )}
         </View>
       ) : null}
 
