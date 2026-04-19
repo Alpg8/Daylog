@@ -42,6 +42,33 @@ export async function GET(
   url.searchParams.set("language", "tr");
   url.searchParams.set("key", apiKey);
 
+  // Dark mode styles
+  const darkStyles: [string, string][] = [
+    ["style", "element:geometry|color:0x212121"],
+    ["style", "element:labels.icon|visibility:off"],
+    ["style", "element:labels.text.fill|color:0x757575"],
+    ["style", "element:labels.text.stroke|color:0x212121"],
+    ["style", "feature:administrative|element:geometry|color:0x757575"],
+    ["style", "feature:administrative.country|element:labels.text.fill|color:0x9e9e9e"],
+    ["style", "feature:administrative.locality|element:labels.text.fill|color:0xbdbdbd"],
+    ["style", "feature:poi|element:labels.text.fill|color:0x757575"],
+    ["style", "feature:poi.park|element:geometry|color:0x181818"],
+    ["style", "feature:poi.park|element:labels.text.fill|color:0x616161"],
+    ["style", "feature:poi.park|element:labels.text.stroke|color:0x1b1b1b"],
+    ["style", "feature:road|element:geometry.fill|color:0x2c2c2c"],
+    ["style", "feature:road|element:labels.text.fill|color:0x8a8a8a"],
+    ["style", "feature:road.arterial|element:geometry|color:0x373737"],
+    ["style", "feature:road.highway|element:geometry|color:0x3c3c3c"],
+    ["style", "feature:road.highway.controlled_access|element:geometry|color:0x4e4e4e"],
+    ["style", "feature:road.local|element:labels.text.fill|color:0x616161"],
+    ["style", "feature:transit|element:labels.text.fill|color:0x757575"],
+    ["style", "feature:water|element:geometry|color:0x000000"],
+    ["style", "feature:water|element:labels.text.fill|color:0x3d3d3d"],
+  ];
+  for (const [k, v] of darkStyles) {
+    url.searchParams.append(k, v);
+  }
+
   // Colored markers: start=green, waypoints=blue, end=red
   const colors = ["green", "blue", "blue", "red"];
   const labels = ["A", "B", "C", "D"];
