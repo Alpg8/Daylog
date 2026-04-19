@@ -27,20 +27,34 @@ export async function GET(
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Maps API key not configured" }, { status: 500 });
 
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
-    select: {
-      phaseStartLocation: true,
-      loadingAddress: true,
-      phaseUnloadLocation: true,
-      deliveryAddress: true,
-      status: true,
-      driverEvents: {
-        select: { type: true, eventAt: true },
-        orderBy: { eventAt: "asc" },
+  let order: {
+    phaseStartLocation: string | null;
+    loadingAddress: string | null;
+    phaseUnloadLocation: string | null;
+    deliveryAddress: string | null;
+    status: string;
+    driverEvents: { type: string; eventAt: Date }[];
+  } | null = null;
+
+  try {
+    order = await prisma.order.findUnique({
+      where: { id: params.id },
+      select: {
+        phaseStartLocation: true,
+        loadingAddress: true,
+        phaseUnloadLocation: true,
+        deliveryAddress: true,
+        status: true,
+        driverEvents: {
+          select: { type: true, eventAt: true },
+          orderBy: { eventAt: "asc" },
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("[route-info] DB error:", err);
+    return NextResponse.json({ error: "Veritabanı hatası" }, { status: 500 });
+  }
 
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
