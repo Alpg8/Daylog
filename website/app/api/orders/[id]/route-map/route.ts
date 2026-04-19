@@ -35,8 +35,9 @@ export async function GET(
 
   // Build Static Maps URL with markers and path
   const url = new URL("https://maps.googleapis.com/maps/api/staticmap");
-  url.searchParams.set("size", "640x300");
+  url.searchParams.set("size", "400x400");
   url.searchParams.set("scale", "2");
+  url.searchParams.set("zoom", "5");
   url.searchParams.set("maptype", "roadmap");
   url.searchParams.set("language", "tr");
   url.searchParams.set("key", apiKey);
@@ -60,7 +61,7 @@ export async function GET(
   return new NextResponse(imgBuffer, {
     headers: {
       "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=300",
+      "Cache-Control": "no-store",
     },
   });
 }

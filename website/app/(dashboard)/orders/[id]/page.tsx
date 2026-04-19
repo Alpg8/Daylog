@@ -204,6 +204,7 @@ export default function OrderOperationsDetailPage() {
   } | null>(null);
   const [routeInfoLoading, setRouteInfoLoading] = useState(false);
   const [routeInfoError, setRouteInfoError] = useState<string | null>(null);
+  const [mapKey, setMapKey] = useState(() => Date.now());
 
   const loadAttachments = useCallback(async (trailerId?: string | null) => {
     setAttachmentsLoading(true);
@@ -233,6 +234,7 @@ export default function OrderOperationsDetailPage() {
       const res = await fetch(`/api/orders/${params.id}/route-info`);
       if (res.ok) {
         setRouteInfo(await res.json());
+        setMapKey(Date.now());
       } else {
         const body = await res.json().catch(() => ({})) as { error?: string };
         setRouteInfoError(body.error ?? "Rota hesaplanamadı");
@@ -311,6 +313,7 @@ export default function OrderOperationsDetailPage() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Kaydedilemedi"); }
       toast.success("Konumlar güncellendi");
       setLocationOpen(false);
+      setMapKey(Date.now());
       void fetchData();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Hata oluştu");
@@ -580,8 +583,10 @@ export default function OrderOperationsDetailPage() {
               ) : routeInfoError ? (
                 <p className="text-sm text-muted-foreground">{routeInfoError}</p>
               ) : routeInfo ? (
-                <>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="flex gap-3 items-start">
+                  {/* Stats */}
+                  <div className="flex-1 min-w-0">
+                  <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border bg-background p-2 text-center">
                     <p className="text-base font-bold">{routeInfo.distanceText}</p>
                     <p className="text-[10px] text-muted-foreground">Toplam Mesafe</p>
@@ -616,7 +621,17 @@ export default function OrderOperationsDetailPage() {
                     </div>
                   </div>
                 )}
-                </>
+                  </div>
+                  {/* Square map thumbnail */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    key={mapKey}
+                    src={`/api/orders/${params.id}/route-map?t=${mapKey}`}
+                    alt="Rota haritası"
+                    className="rounded-lg border object-cover shrink-0"
+                    style={{ width: 140, height: 140 }}
+                  />
+                </div>
               ) : null}
             </div>
 
