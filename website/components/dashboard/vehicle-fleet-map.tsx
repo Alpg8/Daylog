@@ -1,0 +1,199 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Truck, RefreshCw, MapPin, Clock } from "lucide-react";
+
+interface VehicleLocation {
+  id: string;
+  plateNumber: string;
+  brand: string | null;
+  model: string | null;
+  status: string;
+  lastLat: number | null;
+  lastLng: number | null;
+  lastLocationAt: string | null;
+  drivers: { fullName: string }[];
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  ON_ROUTE: "Rotada",
+  AVAILABLE: "Müsait",
+  MAINTENANCE: "Bakımda",
+  PASSIVE: "Pasif",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  ON_ROUTE: "bg-red-500/20 text-red-400 border-red-500/30",
+  AVAILABLE: "bg-green-500/20 text-green-400 border-green-500/30",
+  MAINTENANCE: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  PASSIVE: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+};
+
+function formatTimeAgo(dateStr: string | null): string {
+  if (!dateStr) return "Bilinmiyor";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Az önce";
+  if (mins < 60) return `${mins} dk önce`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} sa önce`;
+  return `${Math.floor(hrs / 24)} gün önce`;
+}
+
+export function VehicleFleetMap() {
+  const [vehicles, setVehicles] = useState<VehicleLocation[]>([]);
+  const [mapKey, setMapKey] = useState(() => Date.now());
+  const [loading, setLoading] = useState(true);
+  const [mapError, setMapError] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchVehicles = useCallback(async () => {
+    try {
+      const res = await fetch("/api/vehicles/locations");
+      if (res.ok) {
+        const data = await res.json();
+        setVehicles(data);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const refresh = useCallback(() => {
+    setMapKey(Date.now());
+    fetchVehicles();
+  }, [fetchVehicles]);
+
+  useEffect(() => {
+    fetchVehicles();
+    intervalRef.current = setInterval(refresh, 60000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [fetchVehicles, refresh]);
+
+  const handleSeedLocations = async () => {
+    setSeeding(true);
+    try {
+      await fetch("/api/admin/seed-vehicle-locations", { method: "POST" });
+      await fetchVehicles();
+      setMapKey(Date.now());
+      setMapError(false);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const vehiclesWithLocation = vehicles.filter((v) => v.lastLat && v.lastLng);
+
+  return (
+    <Card className="border border-border/50">
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <Truck className="h-4 w-4 text-primary" />
+          Araçlarım
+          <Badge variant="outline" className="text-xs font-normal">
+            {vehiclesWithLocation.length}/{vehicles.length} konumlu
+          </Badge>
+        </CardTitle>
+        <div className="flex items-center gap-2">
+          {vehiclesWithLocation.length === 0 && !loading && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSeedLocations}
+              disabled={seeding}
+              className="text-xs h-7"
+            >
+              {seeding ? "Oluşturuluyor..." : "Test Konumları Ekle"}
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={refresh}>
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {loading ? (
+          <div className="p-4">
+            <Skeleton className="w-full h-[300px] rounded-lg" />
+          </div>
+        ) : vehiclesWithLocation.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-3">
+            <MapPin className="h-10 w-10 opacity-30" />
+            <p className="text-sm">Henüz araç konum bilgisi yok</p>
+            <p className="text-xs opacity-70">
+              Şoförler konumlarını güncelledikçe burada görünecek
+            </p>
+          </div>
+        ) : (
+          <div className="flex gap-0 divide-x divide-border/50">
+            {/* Map */}
+            <div className="flex-1 min-w-0">
+              {mapError ? (
+                <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground text-sm gap-2">
+                  <MapPin className="h-8 w-8 opacity-30" />
+                  <span>Harita yüklenemedi</span>
+                  <Button variant="outline" size="sm" onClick={refresh}>
+                    Tekrar Dene
+                  </Button>
+                </div>
+              ) : (
+                <img
+                  key={mapKey}
+                  src={`/api/fleet-map?t=${mapKey}`}
+                  alt="Araç konumları haritası"
+                  className="w-full rounded-bl-lg object-cover"
+                  style={{ height: 300 }}
+                  onError={() => setMapError(true)}
+                  onLoad={() => setMapError(false)}
+                />
+              )}
+            </div>
+
+            {/* Vehicle list */}
+            <div className="w-56 shrink-0 flex flex-col divide-y divide-border/30 overflow-y-auto" style={{ maxHeight: 300 }}>
+              {vehicles.map((v) => (
+                <div key={v.id} className="p-3 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="font-mono text-xs font-semibold tracking-wide text-foreground">
+                      {v.plateNumber}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] px-1 py-0 font-normal border ${STATUS_COLORS[v.status] ?? ""}`}
+                    >
+                      {STATUS_LABELS[v.status] ?? v.status}
+                    </Badge>
+                  </div>
+                  {v.drivers[0] && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                      {v.drivers[0].fullName}
+                    </p>
+                  )}
+                  {v.lastLocationAt ? (
+                    <div className="flex items-center gap-1 mt-1">
+                      <Clock className="h-2.5 w-2.5 text-muted-foreground/60" />
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {formatTimeAgo(v.lastLocationAt)}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground/40 mt-1">Konum yok</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

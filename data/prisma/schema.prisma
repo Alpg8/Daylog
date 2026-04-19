@@ -181,6 +181,11 @@ model Vehicle {
 
   currentKm    Int?
 
+  // Son bilinen konum (araç takip için)
+  lastLat         Float?
+  lastLng         Float?
+  lastLocationAt  DateTime?
+
   drivers      Driver[]
   orders       Order[]
   fuelRecords  FuelRecord[]
