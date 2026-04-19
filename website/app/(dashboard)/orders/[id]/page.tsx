@@ -416,18 +416,47 @@ export default function OrderOperationsDetailPage() {
                 <MapPin className="h-4 w-4 text-muted-foreground" /> {order.routeText}
               </div>
             )}
-            {(order.jobType === "LOADING" || order.jobType === "FULL") && order.loadingAddress && (
-              <div className="flex items-start gap-2 text-sm">
+            {/* LOADING: Yükleme Noktası + Teslim Noktası */}
+            {order.jobType === "LOADING" && (<>
+              {order.loadingAddress && <div className="flex items-start gap-2 text-sm col-span-2">
                 <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
-                <span><span className="text-muted-foreground">Yükleme Adresi: </span>{order.loadingAddress}</span>
-              </div>
-            )}
-            {(order.jobType === "UNLOADING" || order.jobType === "FULL") && order.deliveryAddress && (
-              <div className="flex items-start gap-2 text-sm">
+                <span><span className="text-muted-foreground">Yükleme Noktası: </span>{order.loadingAddress}</span>
+              </div>}
+              {order.deliveryAddress && <div className="flex items-start gap-2 text-sm col-span-2">
                 <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
-                <span><span className="text-muted-foreground">Teslim Adresi: </span>{order.deliveryAddress}</span>
-              </div>
-            )}
+                <span><span className="text-muted-foreground">Teslim Noktası: </span>{order.deliveryAddress}</span>
+              </div>}
+            </>)}
+            {/* UNLOADING: Alım Noktası + Boşaltma Noktası */}
+            {order.jobType === "UNLOADING" && (<>
+              {order.phaseStartLocation && <div className="flex items-start gap-2 text-sm col-span-2">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
+                <span><span className="text-muted-foreground">Alım Noktası: </span>{order.phaseStartLocation}</span>
+              </div>}
+              {order.phaseUnloadLocation && <div className="flex items-start gap-2 text-sm col-span-2">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-rose-500" />
+                <span><span className="text-muted-foreground">Boşaltma Noktası: </span>{order.phaseUnloadLocation}</span>
+              </div>}
+            </>)}
+            {/* FULL: 4 adres */}
+            {order.jobType === "FULL" && (<>
+              {order.phaseStartLocation && <div className="flex items-start gap-2 text-sm col-span-2">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
+                <span><span className="text-muted-foreground">Başlangıç Noktası: </span>{order.phaseStartLocation}</span>
+              </div>}
+              {order.loadingAddress && <div className="flex items-start gap-2 text-sm col-span-2">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
+                <span><span className="text-muted-foreground">Yükleme Noktası: </span>{order.loadingAddress}</span>
+              </div>}
+              {order.phaseUnloadLocation && <div className="flex items-start gap-2 text-sm col-span-2">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-rose-500" />
+                <span><span className="text-muted-foreground">Boşaltma Noktası: </span>{order.phaseUnloadLocation}</span>
+              </div>}
+              {order.deliveryAddress && <div className="flex items-start gap-2 text-sm col-span-2">
+                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
+                <span><span className="text-muted-foreground">Teslim Noktası: </span>{order.deliveryAddress}</span>
+              </div>}
+            </>)}
             {order.spanzetStanga && (
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Stanga:</span> {order.spanzetStanga}

@@ -35,7 +35,9 @@ const formSchema = z.object({
   notes: str,
   // İş Tipi + Adresler (sürücüye gösterilen)
   jobType: z.enum(["LOADING", "UNLOADING", "FULL"]).default("LOADING"),
+  startAddress: str,
   loadingAddress: str,
+  unloadAddress: str,
   deliveryAddress: str,
   // EXPORT
   borderExitDate: str,
@@ -142,7 +144,9 @@ export function OrderForm({
         notes: d(o.notes),
         // İş Tipi + Adresler
         jobType: (o as { jobType?: "LOADING" | "UNLOADING" | "FULL" }).jobType ?? "LOADING",
+        startAddress: d((o as { phaseStartLocation?: unknown }).phaseStartLocation),
         loadingAddress: d((o as { loadingAddress?: unknown }).loadingAddress),
+        unloadAddress: d((o as { phaseUnloadLocation?: unknown }).phaseUnloadLocation),
         deliveryAddress: d((o as { deliveryAddress?: unknown }).deliveryAddress),
         // EXPORT
         borderExitDate: o.borderExitDate ? new Date(o.borderExitDate).toISOString().split("T")[0] : "",
@@ -204,6 +208,8 @@ export function OrderForm({
       borderExitDate: data.borderExitDate || null,
       loadingAddress: nilIfBlank(data.loadingAddress),
       deliveryAddress: nilIfBlank(data.deliveryAddress),
+      phaseStartLocation: nilIfBlank(data.startAddress),
+      phaseUnloadLocation: nilIfBlank(data.unloadAddress),
       transportType: nilIfBlank(data.transportType),
       referenceNumber: nilIfBlank(data.referenceNumber),
       cargoNumber: nilIfBlank(data.cargoNumber),
@@ -396,11 +402,28 @@ export function OrderForm({
                     )} />
                   </div>
                   <div className="grid grid-cols-1 gap-3">
-                    {(jobType === "LOADING" || jobType === "FULL") && (
-                      <F name="loadingAddress" label="Yükleme Adresi (Sürücüye gösterilir)" placeholder="Örn: İstanbul, Pendik OSB" />
+                    {/* LOADING: Yükleme Noktası + Teslim Noktası */}
+                    {jobType === "LOADING" && (
+                      <>
+                        <F name="loadingAddress" label="📍 Yükleme Noktası (Sürücüye gösterilir)" placeholder="Örn: İstanbul, Pendik OSB" />
+                        <F name="deliveryAddress" label="📍 Teslim Noktası (Sürücüye gösterilir)" placeholder="Örn: Ankara, Eryaman Depo" />
+                      </>
                     )}
-                    {(jobType === "UNLOADING" || jobType === "FULL") && (
-                      <F name="deliveryAddress" label="Teslim / Boşaltma Adresi (Sürücüye gösterilir)" placeholder="Örn: Ankara, Eryaman Depo" />
+                    {/* UNLOADING: Alım Noktası + Boşaltma Noktası */}
+                    {jobType === "UNLOADING" && (
+                      <>
+                        <F name="startAddress" label="📍 Alım Noktası (Sürücüye gösterilir)" placeholder="Örn: İstanbul, Haydarpaşa Liman" />
+                        <F name="unloadAddress" label="📍 Boşaltma Noktası (Sürücüye gösterilir)" placeholder="Örn: Ankara, Depo" />
+                      </>
+                    )}
+                    {/* FULL: 4 adres */}
+                    {jobType === "FULL" && (
+                      <>
+                        <F name="startAddress" label="📍 Başlangıç / Alım Noktası" placeholder="Örn: Liman çıkış noktası" />
+                        <F name="loadingAddress" label="📍 Yükleme Noktası" placeholder="Örn: İstanbul, Pendik OSB" />
+                        <F name="unloadAddress" label="📍 Boşaltma Noktası" placeholder="Örn: Muratbey Depo" />
+                        <F name="deliveryAddress" label="📍 Teslim / Bitiş Noktası" placeholder="Örn: Ankara, Eryaman Depo" />
+                      </>
                     )}
                   </div>
                 </div>
