@@ -19,6 +19,7 @@ import {
   ImageIcon,
   Loader2,
   MapPin,
+  Navigation,
   Pencil,
   RefreshCw,
   Truck,
@@ -33,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { TRAILER_ATTACHMENT_LABEL_OPTIONS } from "@/lib/document-presets";
 import type { Attachment } from "@/types";
 
@@ -174,6 +175,9 @@ export default function OrderOperationsDetailPage() {
   const [assignVehicleId, setAssignVehicleId] = useState("__none__");
   const [assignTrailerId, setAssignTrailerId] = useState("__none__");
   const [assignLoading, setAssignLoading] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [locationValues, setLocationValues] = useState({ phaseStartLocation: "", loadingAddress: "", phaseUnloadLocation: "", deliveryAddress: "" });
+  const [locationSaving, setLocationSaving] = useState(false);
 
   const loadAttachments = useCallback(async (trailerId?: string | null) => {
     setAttachmentsLoading(true);
@@ -230,6 +234,42 @@ export default function OrderOperationsDetailPage() {
       if (!notesEditing) setNotesValue(data.order.notes ?? "");
     }
   }, [data?.order.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function openLocationDialog() {
+    if (!data) return;
+    setLocationValues({
+      phaseStartLocation: data.order.phaseStartLocation ?? "",
+      loadingAddress: data.order.loadingAddress ?? "",
+      phaseUnloadLocation: data.order.phaseUnloadLocation ?? "",
+      deliveryAddress: data.order.deliveryAddress ?? "",
+    });
+    setLocationOpen(true);
+  }
+
+  async function handleSaveLocations() {
+    setLocationSaving(true);
+    try {
+      const nilIfBlank = (v: string) => v.trim() || null;
+      const res = await fetch(`/api/orders/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phaseStartLocation: nilIfBlank(locationValues.phaseStartLocation),
+          loadingAddress: nilIfBlank(locationValues.loadingAddress),
+          phaseUnloadLocation: nilIfBlank(locationValues.phaseUnloadLocation),
+          deliveryAddress: nilIfBlank(locationValues.deliveryAddress),
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Kaydedilemedi"); }
+      toast.success("Konumlar güncellendi");
+      setLocationOpen(false);
+      void fetchData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Hata oluştu");
+    } finally {
+      setLocationSaving(false);
+    }
+  }
 
   function openAssignDialog() {
     if (!data) return;
@@ -351,6 +391,10 @@ export default function OrderOperationsDetailPage() {
             </CardTitle>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" className="gap-2" onClick={openLocationDialog}>
+              <Navigation className="h-4 w-4" />
+              Konum Değiştir
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={openAssignDialog}>
               <UserPlus className="h-4 w-4" />
               {order.driver ? "Atama Değiştir" : "Sürücü Ata"}
@@ -657,6 +701,40 @@ export default function OrderOperationsDetailPage() {
           <Button variant="outline" onClick={() => setAssignOpen(false)} disabled={assignLoading}>Vazgeç</Button>
           <Button onClick={handleSaveAssignment} disabled={assignLoading} className="gap-2">
             {assignLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+            Kaydet
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Konum Değiştir Dialog */}
+    <Dialog open={locationOpen} onOpenChange={setLocationOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Navigation className="h-4 w-4" /> Konumları Düzenle</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Başlangıç / Alım Noktası</p>
+            <Input placeholder="Örn: İstanbul, Pendik OSB" value={locationValues.phaseStartLocation} onChange={(e) => setLocationValues((p) => ({ ...p, phaseStartLocation: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Yükleme Noktası</p>
+            <Input placeholder="Örn: Gebze Lojistik Merkezi" value={locationValues.loadingAddress} onChange={(e) => setLocationValues((p) => ({ ...p, loadingAddress: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Boşaltma Noktası</p>
+            <Input placeholder="Örn: Köln Gümrük Kapısı" value={locationValues.phaseUnloadLocation} onChange={(e) => setLocationValues((p) => ({ ...p, phaseUnloadLocation: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Teslim Noktası</p>
+            <Input placeholder="Örn: Hamburg Limanı" value={locationValues.deliveryAddress} onChange={(e) => setLocationValues((p) => ({ ...p, deliveryAddress: e.target.value }))} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setLocationOpen(false)} disabled={locationSaving}>Vazgeç</Button>
+          <Button onClick={handleSaveLocations} disabled={locationSaving} className="gap-2">
+            {locationSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Navigation className="h-4 w-4" />}
             Kaydet
           </Button>
         </DialogFooter>
