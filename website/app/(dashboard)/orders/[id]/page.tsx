@@ -158,6 +158,21 @@ function AttachmentList({
   );
 }
 
+const PHASE_EVENT_RANK: Record<string, number> = {
+  START_JOB: 1,
+  LOAD: 2,
+  UNLOAD: 3,
+  DELIVERY: 4,
+  END_JOB: 4,
+};
+
+function getPhaseSteps(jobType: "LOADING" | "UNLOADING" | "FULL" | null): Array<{ label: string; eventRank: number }> {
+  if (jobType === "LOADING")  return [{ label: "Başlangıç", eventRank: 1 }, { label: "Yükleme", eventRank: 2 }, { label: "Teslim", eventRank: 4 }];
+  if (jobType === "UNLOADING") return [{ label: "Alım", eventRank: 1 }, { label: "Boşaltma", eventRank: 3 }, { label: "Teslim", eventRank: 4 }];
+  if (jobType === "FULL")     return [{ label: "Başlangıç", eventRank: 1 }, { label: "Yükleme", eventRank: 2 }, { label: "Boşaltma", eventRank: 3 }, { label: "Teslim", eventRank: 4 }];
+  return [{ label: "Bağlangıç", eventRank: 1 }, { label: "Teslim", eventRank: 4 }];
+}
+
 export default function OrderOperationsDetailPage() {
   const params = useParams<{ id: string }>();
   const [data, setData] = useState<TimelineResponse | null>(null);
@@ -310,6 +325,14 @@ export default function OrderOperationsDetailPage() {
   const order = data.order;
   const totalPhotos = order.driverEvents.reduce((n, e) => n + e.photos.length, 0);
 
+  // Phase stepper
+  const phaseSteps = getPhaseSteps(order.jobType);
+  const maxEventRank = order.driverEvents.reduce((max, e) => Math.max(max, PHASE_EVENT_RANK[e.type] ?? 0), 0);
+  const isCompleted = order.status === "COMPLETED";
+  const currentStepIndex = isCompleted
+    ? phaseSteps.length - 1
+    : phaseSteps.reduce((found, step, idx) => (step.eventRank <= maxEventRank ? idx : found), -1);
+
   return (
     <>
     <div className="space-y-4">
@@ -455,6 +478,38 @@ export default function OrderOperationsDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Phase stepper */}
+          {order.status !== "CANCELLED" && (
+            <div className="mt-4 rounded-xl border border-border/60 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Operasyon Aşaması</p>
+              <div className="flex items-center gap-0">
+                {phaseSteps.map((step, idx) => {
+                  const done = idx < currentStepIndex;
+                  const active = idx === currentStepIndex;
+                  const last = idx === phaseSteps.length - 1;
+                  return (
+                    <div key={step.label} className="flex items-center flex-1 min-w-0">
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors
+                          ${done || (active && isCompleted) ? "bg-emerald-500 border-emerald-500 text-white" : active ? "bg-primary border-primary text-primary-foreground" : "bg-muted border-border text-muted-foreground"}`}>
+                          {done || (active && isCompleted) ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+                        </div>
+                        <span className={`mt-1 text-[10px] text-center leading-tight max-w-[56px] truncate
+                          ${active && !isCompleted ? "font-semibold text-primary" : done || isCompleted && active ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                          {step.label}
+                        </span>
+                      </div>
+                      {!last && (
+                        <div className={`flex-1 h-0.5 mx-1 mb-4 rounded-full transition-colors
+                          ${done ? "bg-emerald-500" : "bg-border"}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Summary stats */}
           <div className="mt-4 grid grid-cols-2 gap-2">
