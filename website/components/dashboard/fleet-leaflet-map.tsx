@@ -112,7 +112,7 @@ export default function FleetLeafletMap({ vehicles, selected, onSelect }: Props)
     const map = mapRef.current;
     if (!map) return;
 
-    const existingIds = new Set(markersRef.current.keys());
+    const existingIds = Array.from(markersRef.current.keys());
     const newIds = new Set(vehicles.map((v) => v.id));
 
     // Remove stale markers
