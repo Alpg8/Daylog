@@ -63,7 +63,7 @@ export async function GET(
     order.loadingAddress,
     order.phaseUnloadLocation,
     order.deliveryAddress,
-  ].filter(Boolean) as string[];
+  ].filter((s): s is string => typeof s === "string" && s.trim().length >= 5);
 
   if (stops.length < 2) {
     return NextResponse.json({ error: "Not enough locations" }, { status: 400 });
