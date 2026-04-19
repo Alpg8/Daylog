@@ -41,7 +41,7 @@ function RequestCard({ req, darkMode }: { req: DriverFuelRequest; darkMode: bool
         <Text style={{ color: darkMode ? "#94a3b8" : "#64748b", fontSize: 12 }}>{date}</Text>
       </View>
       <Text style={[{ fontSize: 13 }, darkMode ? { color: "#e2e8f0" } : { color: "#1e293b" }]}>
-        {`KM: ${req.km}  •  Sol: ${req.tankLeft}L  •  Sag: ${req.tankRight}L${req.requestedLiters ? `  •  Talep: ${req.requestedLiters}L` : ""}`}
+        {`KM: ${req.km}  •  Sol: ${req.tankLeft}cm  •  Sag: ${req.tankRight}cm${req.requestedLiters ? `  •  Talep: ${req.requestedLiters}L` : ""}`}
       </Text>
       {req.notes ? (
         <Text style={{ color: darkMode ? "#94a3b8" : "#64748b", fontSize: 12, marginTop: 4 }}>{req.notes}</Text>
@@ -103,7 +103,7 @@ export function FuelScreen(props: FuelScreenProps) {
           style={[styles.input, darkMode && styles.inputDark]}
           value={fuelTankLeft}
           onChangeText={onTankLeftChange}
-          placeholder="Sol depo (litre)"
+          placeholder="Sol depo (cm)"
           placeholderTextColor={darkMode ? "#94a3b8" : "#64748b"}
           keyboardType="numeric"
         />
@@ -111,7 +111,7 @@ export function FuelScreen(props: FuelScreenProps) {
           style={[styles.input, darkMode && styles.inputDark]}
           value={fuelTankRight}
           onChangeText={onTankRightChange}
-          placeholder="Sag depo (litre)"
+          placeholder="Sag depo (cm)"
           placeholderTextColor={darkMode ? "#94a3b8" : "#64748b"}
           keyboardType="numeric"
         />

@@ -189,8 +189,8 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
                       <td className="py-2 pr-4">{new Date(r.createdAt).toLocaleDateString("tr-TR")}</td>
                       <td className="py-2 pr-4 text-muted-foreground">{r.driver?.fullName ?? "—"}</td>
                       <td className="py-2 pr-4 text-right font-mono">{r.km.toLocaleString("tr-TR")}</td>
-                      <td className="py-2 pr-4 text-right font-mono">{r.tankLeft != null ? `%${r.tankLeft}` : "—"}</td>
-                      <td className="py-2 pr-4 text-right font-mono">{r.tankRight != null ? `%${r.tankRight}` : "—"}</td>
+                      <td className="py-2 pr-4 text-right font-mono">{r.tankLeft != null ? `${r.tankLeft} cm` : "—"}</td>
+                      <td className="py-2 pr-4 text-right font-mono">{r.tankRight != null ? `${r.tankRight} cm` : "—"}</td>
                       <td className="py-2 text-right font-mono">{r.requestedLiters != null ? `${r.requestedLiters.toLocaleString("tr-TR")} L` : "—"}</td>
                     </tr>
                   ))}

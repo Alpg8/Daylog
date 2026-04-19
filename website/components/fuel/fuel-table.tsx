@@ -147,8 +147,8 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/70 mt-1">
                         <span>KM: <span className="text-white">{req.km}</span></span>
-                        <span>Sol: <span className="text-white">{req.tankLeft} L</span></span>
-                        <span>Sağ: <span className="text-white">{req.tankRight} L</span></span>
+                        <span>Sol: <span className="text-white">{req.tankLeft} cm</span></span>
+                        <span>Sağ: <span className="text-white">{req.tankRight} cm</span></span>
                         {req.requestedLiters != null && (
                           <span>Talep: <span className="text-amber-300 font-medium">{req.requestedLiters} L</span></span>
                         )}
