@@ -480,7 +480,7 @@ export default function OrderOperationsDetailPage() {
           </div>
 
           {/* Phase stepper */}
-          {order.status !== "CANCELLED" && (
+          {order.status === "IN_PROGRESS" && (
             <div className="mt-4 rounded-xl border border-border/60 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Operasyon Aşaması</p>
               <div className="flex items-center gap-0">
