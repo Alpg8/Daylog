@@ -569,7 +569,8 @@ export default function OrderOperationsDetailPage() {
               {routeInfoLoading && !routeInfo ? (
                 <p className="text-sm text-muted-foreground">Hesaplanıyor...</p>
               ) : routeInfo ? (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div className="rounded-lg border bg-background p-2 text-center">
                     <p className="text-base font-bold">{routeInfo.distanceText}</p>
                     <p className="text-[10px] text-muted-foreground">Toplam Mesafe</p>
@@ -600,6 +601,7 @@ export default function OrderOperationsDetailPage() {
                     </div>
                   </div>
                 )}
+                </>
               ) : null}
             </div>
           )}
