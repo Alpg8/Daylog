@@ -30,6 +30,7 @@ interface DriverOption {
   id: string;
   fullName: string;
   phoneNumber: string | null;
+  user?: { id: string } | null;
 }
 
 const LIVE_UPDATE_EVENT = "daylog:live-update";
@@ -118,7 +119,7 @@ export function DriverMessageTable() {
     if (!showNewMessage || allDrivers.length > 0) return;
     fetch("/api/drivers?take=200", { cache: "no-store" })
       .then((r) => r.json())
-      .then((json: { drivers?: DriverOption[] }) => setAllDrivers(json.drivers ?? []))
+      .then((json: { drivers?: DriverOption[] }) => setAllDrivers((json.drivers ?? []).filter((d) => d.user?.id)))
       .catch(() => toast.error("Soforler yuklenemedi"));
   }, [showNewMessage, allDrivers.length]);
 

@@ -213,18 +213,10 @@ export function StatsCards() {
               <p className="text-xl font-semibold">{liveOps.recentEventCount}</p>
             </div>
           </CardContent>
-          <CardContent className="grid gap-3 pt-0 sm:grid-cols-3">
+          <CardContent className="pt-0">
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
               <p className="text-muted-foreground">Eksik Fotograf</p>
               <p className="text-lg font-semibold">{liveOps.missingPhotoOrders}</p>
-            </div>
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-              <p className="text-muted-foreground">Eksik Onam</p>
-              <p className="text-lg font-semibold">{liveOps.missingConfirmationOrders}</p>
-            </div>
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-              <p className="text-muted-foreground">Eksik Kapanis</p>
-              <p className="text-lg font-semibold">{liveOps.missingCloseoutOrders}</p>
             </div>
           </CardContent>
         </Card>
