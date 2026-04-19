@@ -13,7 +13,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   AlertTriangle,
-  Camera,
   Check,
   CheckCircle2,
   Clock,
@@ -33,7 +32,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { TRAILER_ATTACHMENT_LABEL_OPTIONS } from "@/lib/document-presets";
@@ -159,25 +157,12 @@ function AttachmentList({
   );
 }
 
-function getPhaseRows(jobType: "LOADING" | "UNLOADING" | "FULL" | null) {
-  const start = { key: "phaseStartLocation" as const, label: "Is Baslat Konumu", eventType: "START_JOB" };
-  const load  = { key: "phaseLoadLocation"  as const, label: "Yukleme Konumu",   eventType: "LOAD" };
-  const unload= { key: "phaseUnloadLocation"as const, label: "Bosaltma Konumu",  eventType: "UNLOAD" };
-  const end   = { key: "phaseDeliveryLocation" as const, label: "Bitis Konumu",  eventType: "END_JOB" };
-  if (jobType === "LOADING")  return [start, load, end];
-  if (jobType === "UNLOADING") return [start, unload, end];
-  if (jobType === "FULL")     return [start, load, unload, end];
-  return [start, end];
-}
-
 export default function OrderOperationsDetailPage() {
   const params = useParams<{ id: string }>();
   const [data, setData] = useState<TimelineResponse | null>(null);
   const [orderAttachments, setOrderAttachments] = useState<Attachment[]>([]);
   const [trailerAttachments, setTrailerAttachments] = useState<Attachment[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(true);
-  const [phaseLocations, setPhaseLocations] = useState<Record<string, string>>({});
-  const [phaseSaving, setPhaseSaving] = useState<Record<string, boolean>>({});
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [notesSaving, startNotesSaving] = useTransition();
@@ -242,31 +227,9 @@ export default function OrderOperationsDetailPage() {
 
   useEffect(() => {
     if (data?.order) {
-      setPhaseLocations({
-        phaseStartLocation: data.order.phaseStartLocation ?? "",
-        phaseLoadLocation: data.order.phaseLoadLocation ?? "",
-        phaseUnloadLocation: data.order.phaseUnloadLocation ?? "",
-        phaseDeliveryLocation: data.order.phaseDeliveryLocation ?? "",
-      });
       if (!notesEditing) setNotesValue(data.order.notes ?? "");
     }
   }, [data?.order.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function savePhaseLocation(phase: "START_JOB" | "LOAD" | "UNLOAD" | "DELIVERY", locationKey: string) {
-    const location = phaseLocations[locationKey];
-    if (!location?.trim()) return;
-    setPhaseSaving((prev) => ({ ...prev, [locationKey]: true }));
-    try {
-      const res = await fetch(`/api/orders/${params.id}/phase-location`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phase, location }),
-      });
-      if (res.ok) void fetchData();
-    } finally {
-      setPhaseSaving((prev) => ({ ...prev, [locationKey]: false }));
-    }
-  }
 
   function openAssignDialog() {
     if (!data) return;
@@ -416,47 +379,22 @@ export default function OrderOperationsDetailPage() {
                 <MapPin className="h-4 w-4 text-muted-foreground" /> {order.routeText}
               </div>
             )}
-            {/* LOADING: Yükleme Noktası + Teslim Noktası */}
-            {order.jobType === "LOADING" && (<>
-              {order.loadingAddress && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
-                <span><span className="text-muted-foreground">Yükleme Noktası: </span>{order.loadingAddress}</span>
-              </div>}
-              {order.deliveryAddress && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
-                <span><span className="text-muted-foreground">Teslim Noktası: </span>{order.deliveryAddress}</span>
-              </div>}
-            </>)}
-            {/* UNLOADING: Alım Noktası + Boşaltma Noktası */}
-            {order.jobType === "UNLOADING" && (<>
-              {order.phaseStartLocation && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
-                <span><span className="text-muted-foreground">Alım Noktası: </span>{order.phaseStartLocation}</span>
-              </div>}
-              {order.phaseUnloadLocation && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-rose-500" />
-                <span><span className="text-muted-foreground">Boşaltma Noktası: </span>{order.phaseUnloadLocation}</span>
-              </div>}
-            </>)}
-            {/* FULL: 4 adres */}
-            {order.jobType === "FULL" && (<>
-              {order.phaseStartLocation && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
-                <span><span className="text-muted-foreground">Başlangıç Noktası: </span>{order.phaseStartLocation}</span>
-              </div>}
-              {order.loadingAddress && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
-                <span><span className="text-muted-foreground">Yükleme Noktası: </span>{order.loadingAddress}</span>
-              </div>}
-              {order.phaseUnloadLocation && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-rose-500" />
-                <span><span className="text-muted-foreground">Boşaltma Noktası: </span>{order.phaseUnloadLocation}</span>
-              </div>}
-              {order.deliveryAddress && <div className="flex items-start gap-2 text-sm col-span-2">
-                <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
-                <span><span className="text-muted-foreground">Teslim Noktası: </span>{order.deliveryAddress}</span>
-              </div>}
-            </>)}
+            {order.phaseStartLocation && <div className="flex items-start gap-2 text-sm col-span-2">
+              <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-blue-500" />
+              <span><span className="text-muted-foreground">Başlangıç / Alım: </span>{order.phaseStartLocation}</span>
+            </div>}
+            {order.loadingAddress && <div className="flex items-start gap-2 text-sm col-span-2">
+              <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-orange-500" />
+              <span><span className="text-muted-foreground">Yükleme Noktası: </span>{order.loadingAddress}</span>
+            </div>}
+            {order.phaseUnloadLocation && <div className="flex items-start gap-2 text-sm col-span-2">
+              <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-rose-500" />
+              <span><span className="text-muted-foreground">Boşaltma Noktası: </span>{order.phaseUnloadLocation}</span>
+            </div>}
+            {order.deliveryAddress && <div className="flex items-start gap-2 text-sm col-span-2">
+              <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
+              <span><span className="text-muted-foreground">Teslim Noktası: </span>{order.deliveryAddress}</span>
+            </div>}
             {order.spanzetStanga && (
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Stanga:</span> {order.spanzetStanga}
@@ -567,89 +505,9 @@ export default function OrderOperationsDetailPage() {
         );
       })()}
 
-      {/* Faz Yönetimi */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <MapPin className="h-4 w-4" /> Faz Konumlari
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">Surucuya her faz icin konum/adres bilgisi gonderin.</p>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {getPhaseRows(order.jobType).map((row) => (
-              <div key={row.key} className="flex items-center gap-2">
-                <div className="w-36 shrink-0">
-                  <p className="text-xs font-medium">{row.label}</p>
-                  {order[row.key] && <p className="text-[10px] text-emerald-600 mt-0.5">Kaydedildi</p>}
-                </div>
-                <Input
-                  className="h-8 text-sm flex-1"
-                  placeholder="Adres veya konum girin..."
-                  value={phaseLocations[row.key] ?? ""}
-                  onChange={(e) => setPhaseLocations((prev) => ({ ...prev, [row.key]: e.target.value }))}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 shrink-0"
-                  disabled={phaseSaving[row.key] || !phaseLocations[row.key]?.trim()}
-                  onClick={() => savePhaseLocation(row.eventType as "START_JOB" | "LOAD" | "UNLOAD" | "DELIVERY", row.key)}
-                >
-                  {phaseSaving[row.key] ? "..." : "Kaydet"}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Sürücü Fotoğrafları Gallery */}
-      {totalPhotos > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Camera className="h-4 w-4" /> Sürücü Fotoğrafları ({totalPhotos})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {order.driverEvents
-              .filter((e) => e.photos.length > 0)
-              .map((event) => (
-                <div key={event.id} className="mb-4 last:mb-0">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">{EVENT_LABELS[event.type] ?? event.type}</Badge>
-                    <span className="text-xs text-muted-foreground">{event.driver.fullName}</span>
-                    <span className="text-xs text-muted-foreground">·</span>
-                    <span className="text-xs text-muted-foreground">{new Date(event.eventAt).toLocaleString("tr-TR")}</span>
-                    {event.notes && (
-                      <>
-                        <span className="text-xs text-muted-foreground">·</span>
-                        <span className="text-xs text-muted-foreground italic truncate max-w-xs">{event.notes}</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                    {event.photos.map((photo) => {
-                      const px = toProxyUrl(photo.url);
-                      return (
-                      <a key={photo.id} href={px} target="_blank" rel="noreferrer"
-                        className="group relative block overflow-hidden rounded-lg border bg-muted aspect-square">
-                        <img src={px} alt={photo.label || "Foto"} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                        {photo.label && (
-                          <span className="absolute bottom-0 inset-x-0 bg-black/60 px-1 py-0.5 text-[10px] text-white truncate text-center">
-                            {photo.label}
-                          </span>
-                        )}
-                      </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-          </CardContent>
-        </Card>
-      )}
+
+
 
       {/* Event Timeline */}
       <Card>
