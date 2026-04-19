@@ -20,6 +20,7 @@ import {
   Loader2,
   MapPin,
   Navigation,
+  Route,
   Pencil,
   RefreshCw,
   Truck,
@@ -418,6 +419,27 @@ export default function OrderOperationsDetailPage() {
               <Navigation className="h-4 w-4" />
               Konum Değiştir
             </Button>
+            {(() => {
+              const stops = [
+                order.phaseStartLocation,
+                order.loadingAddress,
+                order.phaseUnloadLocation,
+                order.deliveryAddress,
+              ].filter(Boolean) as string[];
+              if (stops.length < 2) return null;
+              const [origin, ...rest] = stops;
+              const destination = rest[rest.length - 1];
+              const waypoints = rest.slice(0, -1);
+              const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}${waypoints.length ? `&waypoints=${waypoints.map(encodeURIComponent).join("|")}` : ""}&travelmode=driving`;
+              return (
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    <Route className="h-4 w-4" />
+                    Rotayı Gör
+                  </a>
+                </Button>
+              );
+            })()}
             <Button variant="outline" size="sm" className="gap-2" onClick={openAssignDialog}>
               <UserPlus className="h-4 w-4" />
               {order.driver ? "Atama Değiştir" : "Sürücü Ata"}
