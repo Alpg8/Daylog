@@ -203,6 +203,7 @@ export default function OrderOperationsDetailPage() {
     legs: Array<{ distance: string; duration: string }>;
   } | null>(null);
   const [routeInfoLoading, setRouteInfoLoading] = useState(false);
+  const [routeInfoError, setRouteInfoError] = useState<string | null>(null);
 
   const loadAttachments = useCallback(async (trailerId?: string | null) => {
     setAttachmentsLoading(true);
@@ -227,9 +228,17 @@ export default function OrderOperationsDetailPage() {
 
   const fetchRouteInfo = useCallback(async () => {
     setRouteInfoLoading(true);
+    setRouteInfoError(null);
     try {
       const res = await fetch(`/api/orders/${params.id}/route-info`);
-      if (res.ok) setRouteInfo(await res.json());
+      if (res.ok) {
+        setRouteInfo(await res.json());
+      } else {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        setRouteInfoError(body.error ?? "Rota hesaplanamadı");
+      }
+    } catch {
+      setRouteInfoError("Bağlantı hatası");
     } finally {
       setRouteInfoLoading(false);
     }
@@ -557,8 +566,7 @@ export default function OrderOperationsDetailPage() {
           )}
 
           {/* Route estimate */}
-          {(routeInfo || routeInfoLoading) && (
-            <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
+          <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
               <div className="flex items-center justify-between gap-2 mb-2">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
                   <Timer className="h-3.5 w-3.5" /> Rota Tahmini
@@ -567,8 +575,10 @@ export default function OrderOperationsDetailPage() {
                   {routeInfoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                 </Button>
               </div>
-              {routeInfoLoading && !routeInfo ? (
+              {routeInfoLoading ? (
                 <p className="text-sm text-muted-foreground">Hesaplanıyor...</p>
+              ) : routeInfoError ? (
+                <p className="text-sm text-muted-foreground">{routeInfoError}</p>
               ) : routeInfo ? (
                 <>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -609,7 +619,6 @@ export default function OrderOperationsDetailPage() {
                 </>
               ) : null}
             </div>
-          )}
 
           {/* Summary stats */}
           <div className="mt-4 grid grid-cols-2 gap-2">
