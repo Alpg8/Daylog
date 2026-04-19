@@ -198,6 +198,7 @@ export default function OrderOperationsDetailPage() {
   const [routeInfo, setRouteInfo] = useState<{
     distanceText: string;
     durationText: string;
+    remainingDurationText: string;
     estimatedCompletion: string | null;
     legs: Array<{ distance: string; duration: string }>;
   } | null>(null);
@@ -570,17 +571,21 @@ export default function OrderOperationsDetailPage() {
                 <p className="text-sm text-muted-foreground">Hesaplanıyor...</p>
               ) : routeInfo ? (
                 <>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-lg border bg-background p-2 text-center">
                     <p className="text-base font-bold">{routeInfo.distanceText}</p>
                     <p className="text-[10px] text-muted-foreground">Toplam Mesafe</p>
                   </div>
                   <div className="rounded-lg border bg-background p-2 text-center">
                     <p className="text-base font-bold">{routeInfo.durationText}</p>
-                    <p className="text-[10px] text-muted-foreground">Sürüş Süresi</p>
+                    <p className="text-[10px] text-muted-foreground">Toplam Süre</p>
+                  </div>
+                  <div className="rounded-lg border bg-background p-2 text-center">
+                    <p className="text-base font-bold">{routeInfo.remainingDurationText}</p>
+                    <p className="text-[10px] text-muted-foreground">Kalan Süre</p>
                   </div>
                   {routeInfo.estimatedCompletion && (
-                    <div className="rounded-lg border bg-background p-2 text-center col-span-2 sm:col-span-1">
+                    <div className="rounded-lg border bg-background p-2 text-center">
                       <p className="text-base font-bold">
                         {new Date(routeInfo.estimatedCompletion).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </p>

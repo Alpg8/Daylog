@@ -96,22 +96,55 @@ export async function GET(
   const durationText =
     hours > 0 ? `${hours} sa ${minutes} dk` : `${minutes} dk`;
 
-  // Estimated completion: find START_JOB event time if in progress
-  const startEvent = order.driverEvents.find((e) => e.type === "START_JOB");
+  // Determine remaining legs based on current phase
+  // stops[0]→[1] = leg 0 (yükleme), [1]→[2] = leg 1 (boşaltma), [2]→[3] = leg 2 (teslim)
+  // Phase progression: START_JOB → LOAD_DONE → UNLOAD_DONE → END_JOB
+  const eventTypes = order.driverEvents.map((e) => e.type);
+  let completedLegs = 0;
+  if (eventTypes.includes("UNLOAD_DONE")) {
+    completedLegs = Math.min(legs.length - 1, stops.length - 2);
+  } else if (eventTypes.includes("LOAD_DONE")) {
+    completedLegs = Math.min(1, legs.length - 1);
+  } else if (eventTypes.includes("START_JOB")) {
+    completedLegs = 0;
+  }
+
+  const remainingLegs = legs.slice(completedLegs);
+  const remainingDurationS = remainingLegs.reduce((s, l) => s + l.duration.value, 0);
+
+  // Find the most recent phase-transition event time as the "from" time
+  const phaseEvents = ["UNLOAD_DONE", "LOAD_DONE", "START_JOB"] as const;
+  let latestPhaseEvent: (typeof order.driverEvents)[0] | undefined;
+  for (const type of phaseEvents) {
+    latestPhaseEvent = order.driverEvents.filter((e) => e.type === type).at(-1);
+    if (latestPhaseEvent) break;
+  }
+
   let estimatedCompletion: string | null = null;
-  if (startEvent) {
-    const startTime = new Date(startEvent.eventAt).getTime();
-    estimatedCompletion = new Date(startTime + totalDurationS * 1000).toISOString();
-  } else if (order.status === "PLANNED") {
-    // From now
+  if (order.status === "COMPLETED") {
+    estimatedCompletion = null;
+  } else if (latestPhaseEvent) {
+    // From the last completed phase event timestamp
+    const fromTime = new Date(latestPhaseEvent.eventAt).getTime();
+    estimatedCompletion = new Date(fromTime + remainingDurationS * 1000).toISOString();
+  } else {
+    // Not started yet — estimate from now
     estimatedCompletion = new Date(Date.now() + totalDurationS * 1000).toISOString();
   }
+
+  // Remaining duration text
+  const remHours = Math.floor(remainingDurationS / 3600);
+  const remMinutes = Math.floor((remainingDurationS % 3600) / 60);
+  const remainingDurationText =
+    remHours > 0 ? `${remHours} sa ${remMinutes} dk` : `${remMinutes} dk`;
 
   return NextResponse.json({
     distanceText,
     durationText,
     totalDistanceM,
     totalDurationS,
+    remainingDurationS,
+    remainingDurationText,
     estimatedCompletion,
     legs: legs.map((l) => ({
       distance: l.distance.text,
