@@ -91,7 +91,15 @@ export async function GET(
   const data = (await res.json()) as DirectionsResponse;
 
   if (data.status !== "OK" || !data.routes?.[0]) {
-    return NextResponse.json({ error: data.error_message ?? data.status }, { status: 422 });
+    let errorMsg = "Rota hesaplanamadı";
+    if (data.status === "NOT_FOUND") {
+      errorMsg = "Bir veya daha fazla adres bulunamadı — lütfen konum bilgilerini kontrol edin";
+    } else if (data.status === "ZERO_RESULTS") {
+      errorMsg = "Bu adresler arasında sürülebilir rota bulunamadı";
+    } else if (data.error_message) {
+      errorMsg = data.error_message;
+    }
+    return NextResponse.json({ error: errorMsg }, { status: 422 });
   }
 
   const legs = data.routes[0].legs;
