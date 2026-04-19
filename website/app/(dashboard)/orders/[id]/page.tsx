@@ -27,6 +27,7 @@ import {
   UserPlus,
   Users,
   X,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
@@ -194,6 +195,13 @@ export default function OrderOperationsDetailPage() {
   const [locationOpen, setLocationOpen] = useState(false);
   const [locationValues, setLocationValues] = useState({ phaseStartLocation: "", loadingAddress: "", phaseUnloadLocation: "", deliveryAddress: "" });
   const [locationSaving, setLocationSaving] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{
+    distanceText: string;
+    durationText: string;
+    estimatedCompletion: string | null;
+    legs: Array<{ distance: string; duration: string }>;
+  } | null>(null);
+  const [routeInfoLoading, setRouteInfoLoading] = useState(false);
 
   const loadAttachments = useCallback(async (trailerId?: string | null) => {
     setAttachmentsLoading(true);
@@ -216,6 +224,16 @@ export default function OrderOperationsDetailPage() {
     }
   }, [params.id]);
 
+  const fetchRouteInfo = useCallback(async () => {
+    setRouteInfoLoading(true);
+    try {
+      const res = await fetch(`/api/orders/${params.id}/route-info`);
+      if (res.ok) setRouteInfo(await res.json());
+    } finally {
+      setRouteInfoLoading(false);
+    }
+  }, [params.id]);
+
   const fetchData = useCallback(async () => {
     const res = await fetch(`/api/driver/orders/${params.id}/timeline`);
     if (res.ok) {
@@ -230,6 +248,10 @@ export default function OrderOperationsDetailPage() {
     const timer = setInterval(fetchData, 12000);
     return () => clearInterval(timer);
   }, [fetchData]);
+
+  useEffect(() => {
+    void fetchRouteInfo();
+  }, [fetchRouteInfo]);
 
   useEffect(() => {
     async function loadLists() {
@@ -530,6 +552,42 @@ export default function OrderOperationsDetailPage() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Route estimate */}
+          {(routeInfo || routeInfoLoading) && (
+            <div className="mt-4 rounded-xl border border-border/60 bg-muted/30 p-4">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Timer className="h-3.5 w-3.5" /> Rota Tahmini
+                </p>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={fetchRouteInfo} disabled={routeInfoLoading}>
+                  {routeInfoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                </Button>
+              </div>
+              {routeInfoLoading && !routeInfo ? (
+                <p className="text-sm text-muted-foreground">Hesaplanıyor...</p>
+              ) : routeInfo ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border bg-background p-2 text-center">
+                    <p className="text-base font-bold">{routeInfo.distanceText}</p>
+                    <p className="text-[10px] text-muted-foreground">Toplam Mesafe</p>
+                  </div>
+                  <div className="rounded-lg border bg-background p-2 text-center">
+                    <p className="text-base font-bold">{routeInfo.durationText}</p>
+                    <p className="text-[10px] text-muted-foreground">Sürüş Süresi</p>
+                  </div>
+                  {routeInfo.estimatedCompletion && (
+                    <div className="rounded-lg border bg-background p-2 text-center col-span-2 sm:col-span-1">
+                      <p className="text-base font-bold">
+                        {new Date(routeInfo.estimatedCompletion).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">Tahmini Varış</p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
 
