@@ -143,6 +143,14 @@ interface TasksScreenProps {
   stepKm: string;
   stepPhotos: Partial<Record<StepType, string | null>>;
   currentTaskAttachments: AttachmentItem[];
+  routeInfo?: {
+    distanceText: string;
+    durationText: string;
+    estimatedCompletion: string | null;
+    legs: Array<{ distance: string; duration: string }>;
+  } | null;
+  routeInfoLoading?: boolean;
+  onRefreshRoute?: () => void;
   onRefresh: () => void;
   onSelectTask: (id: string) => void;
   onStepTypeChange: (step: StepType) => void;
@@ -165,6 +173,7 @@ export function TasksScreen(props: TasksScreenProps) {
     stepPhotos, currentTaskAttachments, onRefresh, onSelectTask, onStepTypeChange,
     onStepNotesChange, onStepKmChange, onPickStepPhoto, onPickExtraPhoto,
     onUploadJobDocument, onSubmitStep, assignedVehicle,
+    routeInfo, routeInfoLoading, onRefreshRoute,
   } = props;
 
   const [phaseInputs, setPhaseInputs] = useState<Record<string, string>>({});
@@ -390,6 +399,55 @@ export function TasksScreen(props: TasksScreenProps) {
         ) : null}
         {!currentTask && <Text style={[styles.cardLine, c && styles.cardLineDark]}>Aktif is bulunamadi.</Text>}
       </View>
+
+      {/* Route info card */}
+      {currentTask && (routeInfo || routeInfoLoading) ? (
+        <View style={[styles.card, c && styles.cardDark]}>
+          <View style={local.rowBetween}>
+            <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>🗺  Rota Bilgisi</Text>
+            {onRefreshRoute ? (
+              <Pressable onPress={onRefreshRoute} style={local.refreshBtn}>
+                <Text style={[local.refreshBtnText, c && { color: "#94a3b8" }]}>{routeInfoLoading ? "..." : "↻"}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {routeInfoLoading && !routeInfo ? (
+            <Text style={[styles.cardLine, c && styles.cardLineDark]}>Hesaplaniyor...</Text>
+          ) : routeInfo ? (
+            <>
+              <View style={local.routeStatsRow}>
+                <View style={[local.routeStat, c && local.routeStatDark]}>
+                  <Text style={[local.routeStatValue, c && local.routeStatValueDark]}>{routeInfo.distanceText}</Text>
+                  <Text style={[local.routeStatLabel, c && { color: "#94a3b8" }]}>Toplam Mesafe</Text>
+                </View>
+                <View style={[local.routeStat, c && local.routeStatDark]}>
+                  <Text style={[local.routeStatValue, c && local.routeStatValueDark]}>{routeInfo.durationText}</Text>
+                  <Text style={[local.routeStatLabel, c && { color: "#94a3b8" }]}>Suruş Suresi</Text>
+                </View>
+              </View>
+              {routeInfo.estimatedCompletion ? (
+                <View style={[local.estimatedArrival, c && local.estimatedArrivalDark]}>
+                  <Text style={[local.estimatedArrivalLabel, c && { color: "#94a3b8" }]}>Tahmini Varis</Text>
+                  <Text style={[local.estimatedArrivalValue, c && local.estimatedArrivalValueDark]}>
+                    {new Date(routeInfo.estimatedCompletion).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                </View>
+              ) : null}
+              {routeInfo.legs.length > 1 ? (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={[local.legsTitle, c && { color: "#94a3b8" }]}>Duraklar Arasi</Text>
+                  {routeInfo.legs.map((leg, i) => (
+                    <View key={i} style={[local.legRow, c && local.legRowDark]}>
+                      <Text style={[local.legText, c && { color: "#cbd5e1" }]}>{i + 1}. Durak</Text>
+                      <Text style={[local.legText, c && { color: "#cbd5e1" }]}>{leg.distance}  ·  {leg.duration}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </>
+          ) : null}
+        </View>
+      ) : null}
 
 
 
@@ -791,4 +849,23 @@ const local = StyleSheet.create({
   bottomTabLabelActive: { color: "#0ea5e9" },
   bottomTabLabelDone: { color: "#22c55e" },
   bottomTabLabelWait: { color: "#94a3b8" },
+
+  // Route info card
+  refreshBtn: { padding: 6 },
+  refreshBtnText: { fontSize: 18, fontWeight: "600", color: "#64748b" },
+  routeStatsRow: { flexDirection: "row", gap: 10, marginTop: 8 },
+  routeStat: { flex: 1, backgroundColor: "#f8fafc", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#e2e8f0", alignItems: "center" },
+  routeStatDark: { backgroundColor: "#0d1826", borderColor: "#1e293b" },
+  routeStatValue: { fontSize: 18, fontWeight: "700", color: "#0f172a" },
+  routeStatValueDark: { color: "#f1f5f9" },
+  routeStatLabel: { fontSize: 10, color: "#64748b", marginTop: 2 },
+  estimatedArrival: { marginTop: 10, backgroundColor: "#0ea5e910", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#0ea5e930", alignItems: "center" },
+  estimatedArrivalDark: { backgroundColor: "#0c2233", borderColor: "#0ea5e940" },
+  estimatedArrivalLabel: { fontSize: 10, color: "#64748b", fontWeight: "600", textTransform: "uppercase" as const },
+  estimatedArrivalValue: { fontSize: 20, fontWeight: "700", color: "#0ea5e9", marginTop: 2 },
+  estimatedArrivalValueDark: { color: "#38bdf8" },
+  legsTitle: { fontSize: 11, fontWeight: "600", color: "#64748b", marginBottom: 4, textTransform: "uppercase" as const },
+  legRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  legRowDark: { borderBottomColor: "#1e293b" },
+  legText: { fontSize: 12, color: "#334155" },
 });

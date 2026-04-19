@@ -65,6 +65,13 @@ export function useDriverApp() {
   });
   const [currentTaskAttachments, setCurrentTaskAttachments] = useState<AttachmentItem[]>([]);
   const [driverAttachments, setDriverAttachments] = useState<AttachmentItem[]>([]);
+  const [routeInfo, setRouteInfo] = useState<{
+    distanceText: string;
+    durationText: string;
+    estimatedCompletion: string | null;
+    legs: Array<{ distance: string; duration: string }>;
+  } | null>(null);
+  const [routeInfoLoading, setRouteInfoLoading] = useState(false);
 
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [stepType, setStepType] = useState<StepType>("START_JOB");
@@ -107,9 +114,11 @@ export function useDriverApp() {
   useEffect(() => {
     if (!token || !selectedTaskId) {
       setCurrentTaskAttachments([]);
+      setRouteInfo(null);
       return;
     }
     void loadCurrentTaskAttachments(selectedTaskId);
+    void loadRouteInfo(selectedTaskId);
   }, [token, selectedTaskId]);
 
   useEffect(() => {
@@ -323,6 +332,25 @@ export function useDriverApp() {
     }
   }
 
+  async function loadRouteInfo(taskId: string): Promise<void> {
+    if (!token || !taskId) return;
+    setRouteInfoLoading(true);
+    try {
+      const data = await apiFetch<{
+        distanceText: string;
+        durationText: string;
+        estimatedCompletion: string | null;
+        legs: Array<{ distance: string; duration: string }>;
+      }>(`/api/orders/${taskId}/route-info`, token);
+      setRouteInfo(data);
+    } catch {
+      // silently ignore – no locations configured
+      setRouteInfo(null);
+    } finally {
+      setRouteInfoLoading(false);
+    }
+  }
+
   async function loadCurrentTaskAttachments(taskId: string): Promise<string | null> {
     if (!token || !taskId) return null;
     try {
@@ -505,6 +533,8 @@ export function useDriverApp() {
       setStepNotes("");
       setStepKm("");
       await loadTasks();
+      // Refresh route estimate after a phase change (start time may now be set)
+      if (selectedTaskId) void loadRouteInfo(selectedTaskId);
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : "Asama kaydedilemedi";
@@ -658,6 +688,9 @@ export function useDriverApp() {
     fuelNotes,
     setFuelNotes,
     fuelRequests,
+    routeInfo,
+    routeInfoLoading,
+    loadRouteInfo,
     loadFuelRequests,
     login,
     logout,
