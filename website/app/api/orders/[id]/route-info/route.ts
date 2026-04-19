@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/options";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 
 interface DirectionsLeg {
@@ -22,7 +21,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
+  const session = await getCurrentUser();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
