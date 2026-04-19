@@ -35,10 +35,10 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
 
   if (!vehicle) notFound();
 
-  const recentFuelRecords = await prisma.fuelRecord.findMany({
-    where: { vehicleId: params.id },
-    orderBy: { date: "desc" },
-    take: 8,
+  const recentFuelRequests = await prisma.fuelRequest.findMany({
+    where: { vehicleId: params.id, status: "APPROVED" },
+    orderBy: { createdAt: "desc" },
+    take: 10,
     include: { driver: { select: { fullName: true } } },
   });
 
@@ -165,11 +165,11 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2"><Fuel className="h-4 w-4" />Son Yakıt Kayıtları</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2"><Fuel className="h-4 w-4" />Onaylı Yakıt Talepleri</CardTitle>
         </CardHeader>
         <CardContent>
-          {recentFuelRecords.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Bu araca ait yakıt kaydı bulunamadı.</p>
+          {recentFuelRequests.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Bu araca ait onaylı yakıt talebi bulunamadı.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -177,23 +177,21 @@ export default async function VehicleDetailPage({ params }: { params: { id: stri
                   <tr className="border-b border-border/60 text-xs text-muted-foreground">
                     <th className="pb-2 text-left font-medium">Tarih</th>
                     <th className="pb-2 text-left font-medium">Sürücü</th>
-                    <th className="pb-2 text-right font-medium">Başlangıç KM</th>
-                    <th className="pb-2 text-right font-medium">Bitiş KM</th>
-                    <th className="pb-2 text-right font-medium">Mesafe</th>
-                    <th className="pb-2 text-right font-medium">Litre</th>
-                    <th className="pb-2 text-right font-medium">Toplam</th>
+                    <th className="pb-2 text-right font-medium">KM</th>
+                    <th className="pb-2 text-right font-medium">Sol Tank</th>
+                    <th className="pb-2 text-right font-medium">Sağ Tank</th>
+                    <th className="pb-2 text-right font-medium">Talep (L)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentFuelRecords.map((r) => (
+                  {recentFuelRequests.map((r) => (
                     <tr key={r.id} className="border-b border-border/40 last:border-0">
-                      <td className="py-2 pr-4">{new Date(r.date).toLocaleDateString("tr-TR")}</td>
+                      <td className="py-2 pr-4">{new Date(r.createdAt).toLocaleDateString("tr-TR")}</td>
                       <td className="py-2 pr-4 text-muted-foreground">{r.driver?.fullName ?? "—"}</td>
-                      <td className="py-2 pr-4 text-right font-mono">{r.startKm != null ? r.startKm.toLocaleString("tr-TR") : "—"}</td>
-                      <td className="py-2 pr-4 text-right font-mono">{r.endKm != null ? r.endKm.toLocaleString("tr-TR") : "—"}</td>
-                      <td className="py-2 pr-4 text-right font-mono">{r.distanceKm != null ? `${r.distanceKm.toLocaleString("tr-TR")} km` : "—"}</td>
-                      <td className="py-2 pr-4 text-right font-mono">{r.liters != null ? `${r.liters.toLocaleString("tr-TR")} L` : "—"}</td>
-                      <td className="py-2 text-right font-mono">{r.totalCost != null ? `${r.totalCost.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ${r.currency ?? ""}` : "—"}</td>
+                      <td className="py-2 pr-4 text-right font-mono">{r.km.toLocaleString("tr-TR")}</td>
+                      <td className="py-2 pr-4 text-right font-mono">{r.tankLeft != null ? `%${r.tankLeft}` : "—"}</td>
+                      <td className="py-2 pr-4 text-right font-mono">{r.tankRight != null ? `%${r.tankRight}` : "—"}</td>
+                      <td className="py-2 text-right font-mono">{r.requestedLiters != null ? `${r.requestedLiters.toLocaleString("tr-TR")} L` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
