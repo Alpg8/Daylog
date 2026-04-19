@@ -581,16 +581,6 @@ export default function OrderOperationsDetailPage() {
                 <p className="text-sm text-muted-foreground">{routeInfoError}</p>
               ) : routeInfo ? (
                 <>
-                  {/* Static map image */}
-                  <div className="mb-3 overflow-hidden rounded-lg border bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/orders/${params.id}/route-map`}
-                      alt="Rota haritası"
-                      className="w-full object-cover"
-                      style={{ maxHeight: 220 }}
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-lg border bg-background p-2 text-center">
                     <p className="text-base font-bold">{routeInfo.distanceText}</p>
