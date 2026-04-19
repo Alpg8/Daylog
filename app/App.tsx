@@ -80,9 +80,6 @@ export default function App() {
     setFuelNotes,
     fuelRequests,
     loadFuelRequests,
-    routeInfo,
-    routeInfoLoading,
-    loadRouteInfo,
     login,
     logout,
     loadTasks,
@@ -249,9 +246,6 @@ export default function App() {
               else Alert.alert("Basarili", "Dokuman yuklendi");
             }}
             onSubmitStep={submitStepUpdate}
-            routeInfo={routeInfo}
-            routeInfoLoading={routeInfoLoading}
-            onRefreshRoute={() => { if (selectedTaskId) void loadRouteInfo(selectedTaskId); }}
           />
         )}
 

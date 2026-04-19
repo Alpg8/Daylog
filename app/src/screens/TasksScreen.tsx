@@ -143,14 +143,6 @@ interface TasksScreenProps {
   stepKm: string;
   stepPhotos: Partial<Record<StepType, string | null>>;
   currentTaskAttachments: AttachmentItem[];
-  routeInfo?: {
-    distanceText: string;
-    durationText: string;
-    estimatedCompletion: string | null;
-    legs: Array<{ distance: string; duration: string }>;
-  } | null;
-  routeInfoLoading?: boolean;
-  onRefreshRoute?: () => void;
   onRefresh: () => void;
   onSelectTask: (id: string) => void;
   onStepTypeChange: (step: StepType) => void;
@@ -173,7 +165,6 @@ export function TasksScreen(props: TasksScreenProps) {
     stepPhotos, currentTaskAttachments, onRefresh, onSelectTask, onStepTypeChange,
     onStepNotesChange, onStepKmChange, onPickStepPhoto, onPickExtraPhoto,
     onUploadJobDocument, onSubmitStep, assignedVehicle,
-    routeInfo, routeInfoLoading, onRefreshRoute,
   } = props;
 
   const [phaseInputs, setPhaseInputs] = useState<Record<string, string>>({});
@@ -400,52 +391,8 @@ export function TasksScreen(props: TasksScreenProps) {
         {!currentTask && <Text style={[styles.cardLine, c && styles.cardLineDark]}>Aktif is bulunamadi.</Text>}
       </View>
 
-      {/* Route info card */}
-      {currentTask && routeInfo ? (
-        <View style={[styles.card, c && styles.cardDark]}>
-          <View style={local.rowBetween}>
-            <Text style={[styles.cardTitle, c && styles.cardTitleDark]}>🗺  Rota Bilgisi</Text>
-            {onRefreshRoute ? (
-              <Pressable onPress={onRefreshRoute} style={local.refreshBtn}>
-                <Text style={[local.refreshBtnText, c && { color: "#94a3b8" }]}>{routeInfoLoading ? "..." : "↻"}</Text>
-              </Pressable>
-            ) : null}
-          </View>
-          {routeInfo ? (
-            <>
-              <View style={local.routeStatsRow}>
-                <View style={[local.routeStat, c && local.routeStatDark]}>
-                  <Text style={[local.routeStatValue, c && local.routeStatValueDark]}>{routeInfo.distanceText}</Text>
-                  <Text style={[local.routeStatLabel, c && { color: "#94a3b8" }]}>Toplam Mesafe</Text>
-                </View>
-                <View style={[local.routeStat, c && local.routeStatDark]}>
-                  <Text style={[local.routeStatValue, c && local.routeStatValueDark]}>{routeInfo.durationText}</Text>
-                  <Text style={[local.routeStatLabel, c && { color: "#94a3b8" }]}>Suruş Suresi</Text>
-                </View>
-              </View>
-              {routeInfo.estimatedCompletion ? (
-                <View style={[local.estimatedArrival, c && local.estimatedArrivalDark]}>
-                  <Text style={[local.estimatedArrivalLabel, c && { color: "#94a3b8" }]}>Tahmini Varis</Text>
-                  <Text style={[local.estimatedArrivalValue, c && local.estimatedArrivalValueDark]}>
-                    {new Date(routeInfo.estimatedCompletion).toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                  </Text>
-                </View>
-              ) : null}
-              {routeInfo.legs.length > 1 ? (
-                <View style={{ marginTop: 8 }}>
-                  <Text style={[local.legsTitle, c && { color: "#94a3b8" }]}>Duraklar Arasi</Text>
-                  {routeInfo.legs.map((leg, i) => (
-                    <View key={i} style={[local.legRow, c && local.legRowDark]}>
-                      <Text style={[local.legText, c && { color: "#cbd5e1" }]}>{i + 1}. Durak</Text>
-                      <Text style={[local.legText, c && { color: "#cbd5e1" }]}>{leg.distance}  ·  {leg.duration}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-            </>
-          )}
-        </View>
-      ) : null}
+      {/* Route info card removed */}
+
 
 
 
