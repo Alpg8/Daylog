@@ -350,13 +350,13 @@ export function OrderForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl overflow-visible" disableAutoFocus>
+      <DialogContent className="max-w-3xl" disableAutoFocus>
         <DialogHeader>
           <DialogTitle>{initialData ? "Sipariş Düzenle" : "Yeni Sipariş"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="max-h-[75vh] pr-4">
+            <div className="max-h-[72vh] overflow-y-auto pr-4">
               <div className="space-y-4 pb-4">
 
                 {/* Kategori + Durum — her zaman */}
@@ -543,7 +543,7 @@ export function OrderForm({
                 )}
 
               </div>
-            </ScrollArea>
+            </div>
 
             <DialogFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>

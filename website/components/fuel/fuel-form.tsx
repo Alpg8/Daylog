@@ -109,11 +109,11 @@ export function FuelForm({ open, onOpenChange, onSuccess, initialData }: FuelFor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg overflow-visible" disableAutoFocus>
+      <DialogContent className="max-w-lg" disableAutoFocus>
         <DialogHeader><DialogTitle>{initialData ? "Yakıt Kaydı Düzenle" : "Yeni Yakıt Kaydı"}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="max-h-[60vh] overflow-y-auto pr-4">
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="vehicleId" render={({ field }) => (
@@ -188,7 +188,7 @@ export function FuelForm({ open, onOpenChange, onSuccess, initialData }: FuelFor
                   <FormItem><FormLabel>Notlar</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
-            </ScrollArea>
+            </div>
             <DialogFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
