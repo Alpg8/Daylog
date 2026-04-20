@@ -47,7 +47,7 @@ git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
 
 npm ci --include=dev --prefix data
-npm ci --include=dev --legacy-peer-deps --prefix website
+npm install --include=dev --legacy-peer-deps --prefix website
 
 # Source env files after install so NODE_ENV from env files does not omit build-time dev dependencies.
 set -a
