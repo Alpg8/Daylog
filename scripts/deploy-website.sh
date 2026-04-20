@@ -2,9 +2,22 @@
 
 set -euo pipefail
 
+# ─── Remote server config ─────────────────────────────────────────────────────
+SERVER_USER="alp"
+SERVER_HOST="82.165.144.139"
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
+# ─────────────────────────────────────────────────────────────────────────────
+
 APP_ROOT="${APP_ROOT:-/var/www/daylog}"
 BRANCH="${BRANCH:-main}"
 PM2_APP_NAME="${PM2_APP_NAME:-daylog-website}"
+
+# If this script is NOT running on the server, SSH in and re-run it there.
+if [[ "${DEPLOY_REMOTE:-1}" == "1" ]] && ! command -v pm2 >/dev/null 2>&1; then
+  echo "→ Connecting to $SERVER_USER@$SERVER_HOST and running deploy..."
+  ssh -i "$SSH_KEY" "$SERVER_USER@$SERVER_HOST" "cd $APP_ROOT && bash scripts/deploy-website.sh"
+  exit $?
+fi
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git is required on the server"
