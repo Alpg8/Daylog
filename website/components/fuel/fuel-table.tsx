@@ -99,7 +99,7 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-white/5 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-black/5 rounded-lg p-1 w-fit">
         {STATUS_TABS.map(tab => {
           const count = tab.value === "ALL"
             ? requests.length
@@ -110,21 +110,21 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
               onClick={() => setActiveTab(tab.value)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === tab.value
-                  ? "bg-white/15 text-white"
-                  : "text-white/50 hover:text-white/80 hover:bg-white/10"
+                  ? "bg-white shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/5"
               }`}
             >
               {tab.label}
-              {count > 0 && <span className="ml-1.5 text-white/40">({count})</span>}
+              {count > 0 && <span className="ml-1.5 text-muted-foreground/60">({count})</span>}
             </button>
           );
         })}
       </div>
 
       {loading ? (
-        <p className="text-white/40 text-sm py-4">Yükleniyor...</p>
+        <p className="text-muted-foreground text-sm py-4">Yükleniyor...</p>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-white/30 gap-2">
+        <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/50 gap-2">
           <Droplets className="h-8 w-8" />
           <p className="text-sm">Bu kategoride talep yok</p>
         </div>
@@ -142,21 +142,21 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                         <span className="font-medium text-sm">{req.driver?.fullName ?? "—"}</span>
-                        <span className="text-white/40">·</span>
-                        <span className="text-white/60 text-sm">{req.vehicle?.plateNumber ?? "—"}</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground text-sm">{req.vehicle?.plateNumber ?? "—"}</span>
                       </div>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/70 mt-1">
-                        <span>KM: <span className="text-white">{req.km}</span></span>
-                        <span>Sol: <span className="text-white">{req.tankLeft} cm</span></span>
-                        <span>Sağ: <span className="text-white">{req.tankRight} cm</span></span>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+                        <span>KM: <span className="text-foreground font-medium">{req.km}</span></span>
+                        <span>Sol: <span className="text-foreground font-medium">{req.tankLeft} cm</span></span>
+                        <span>Sağ: <span className="text-foreground font-medium">{req.tankRight} cm</span></span>
                         {req.requestedLiters != null && (
                           <span>Talep: <span className="text-amber-300 font-medium">{req.requestedLiters} L</span></span>
                         )}
                       </div>
                       {req.notes && (
-                        <p className="text-xs text-white/40 italic mt-1">{req.notes}</p>
+                        <p className="text-xs text-muted-foreground/70 italic mt-1">{req.notes}</p>
                       )}
-                      <div className="flex items-center gap-2 text-xs text-white/30 mt-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground/60 mt-1">
                         <Clock className="h-3 w-3" />
                         {fmtDateTime(req.createdAt)}
                         {req.reviewedAt && (
@@ -169,7 +169,7 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
                     {isPending && (
                       <div className="flex items-center gap-2 shrink-0">
                         <input
-                          className="w-32 rounded bg-white/10 border border-white/20 px-2 py-1 text-xs text-white placeholder:text-white/30 outline-none focus:border-white/40"
+                          className="w-32 rounded bg-background border border-border px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                           placeholder="Not (opsiyonel)"
                           value={note[req.id] ?? ""}
                           onChange={(e) => setNote((prev) => ({ ...prev, [req.id]: e.target.value }))}
