@@ -433,7 +433,7 @@ export function DataTable<TData, TValue>({
       <div className="glass glass-highlight overflow-auto rounded-2xl max-h-[calc(100vh-280px)] ring-1 ring-white/20 dark:ring-white/10">
         <table
           className={cn("w-full caption-bottom border-separate border-spacing-0", fontSize)}
-          style={{ tableLayout: "fixed", width: table.getTotalSize() || "100%" }}
+          style={{ tableLayout: "fixed", width: "100%", minWidth: table.getTotalSize() || undefined }}
         >
           <thead className="sticky top-0 z-20 bg-background border-b border-border [&_tr]:border-b [&_tr]:border-border">
             {/* ── Sort row ── */}
