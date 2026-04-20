@@ -108,7 +108,7 @@ export function DriverForm({ open, onOpenChange, onSuccess, initialData }: Drive
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg" disableAutoFocus>
+      <DialogContent className="max-w-lg overflow-visible" disableAutoFocus>
         <DialogHeader><DialogTitle>{initialData ? "Sürücü Düzenle" : "Yeni Sürücü"}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>

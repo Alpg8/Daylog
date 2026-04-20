@@ -350,7 +350,7 @@ export function OrderForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl" disableAutoFocus>
+      <DialogContent className="max-w-3xl overflow-visible" disableAutoFocus>
         <DialogHeader>
           <DialogTitle>{initialData ? "Sipariş Düzenle" : "Yeni Sipariş"}</DialogTitle>
         </DialogHeader>

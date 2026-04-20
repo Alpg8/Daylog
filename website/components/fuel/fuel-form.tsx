@@ -109,7 +109,7 @@ export function FuelForm({ open, onOpenChange, onSuccess, initialData }: FuelFor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg" disableAutoFocus>
+      <DialogContent className="max-w-lg overflow-visible" disableAutoFocus>
         <DialogHeader><DialogTitle>{initialData ? "Yakıt Kaydı Düzenle" : "Yeni Yakıt Kaydı"}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
