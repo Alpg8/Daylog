@@ -15,6 +15,7 @@ import {
   type Table as TanstackTable,
   type Cell,
   type RowData,
+  type ColumnSizingState,
 } from "@tanstack/react-table";
 import {
   ArrowUpDown,
@@ -26,6 +27,7 @@ import {
   Columns3,
   Pencil,
   Check,
+  ALargeSmall,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +40,37 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-// ── TanStack Table type augmentation ────────────────────────────────────────
+// ── Font size picker ─────────────────────────────────────────────────────────
+const FONT_SIZES = [
+  { label: "XS", value: "text-xs" },
+  { label: "S",  value: "text-sm" },
+  { label: "M",  value: "text-base" },
+] as const;
+type FontSizeValue = typeof FONT_SIZES[number]["value"];
+
+function FontSizePicker({ value, onChange }: { value: FontSizeValue; onChange: (v: FontSizeValue) => void }) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-1.5 py-1">
+      <ALargeSmall className="h-3.5 w-3.5 text-muted-foreground mr-0.5" />
+      {FONT_SIZES.map((fs) => (
+        <button
+          key={fs.value}
+          onClick={() => onChange(fs.value)}
+          className={cn(
+            "rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors",
+            value === fs.value
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          {fs.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface TableMeta<TData extends RowData> {
@@ -260,6 +292,8 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  const [fontSize, setFontSize] = useState<FontSizeValue>("text-sm");
 
   const filterMap = new Map<string, FilterConfig>(filters?.map((f) => [f.column, f]) ?? []);
   const activeFilterCount = columnFilters.length;
@@ -288,15 +322,17 @@ export function DataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
+    columnResizeMode: "onChange",
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: { sorting, columnFilters, globalFilter, columnVisibility },
+    state: { sorting, columnFilters, globalFilter, columnVisibility, columnSizing },
     initialState: { pagination: { pageSize: 20 } },
     meta: { onCellEdit },
   });
@@ -367,13 +403,17 @@ export function DataTable<TData, TValue>({
               Çift tıkla: düzenle
             </span>
           )}
+          <FontSizePicker value={fontSize} onChange={setFontSize} />
           <ColumnVisibilityToggle table={table} />
         </div>
       </div>
 
       {/* Table */}
       <div className="glass glass-highlight overflow-auto rounded-2xl max-h-[calc(100vh-280px)] ring-1 ring-white/20 dark:ring-white/10">
-        <table className="w-full caption-bottom text-sm border-separate border-spacing-0">
+        <table
+          className={cn("w-full caption-bottom border-separate border-spacing-0", fontSize)}
+          style={{ tableLayout: "fixed", width: table.getTotalSize() || "100%" }}
+        >
           <thead className="sticky top-0 z-20 bg-background border-b border-border [&_tr]:border-b [&_tr]:border-border">
             {/* ── Sort row ── */}
             {table.getHeaderGroups().map((headerGroup) => (
@@ -383,26 +423,44 @@ export function DataTable<TData, TValue>({
                   const canSort = header.column.getCanSort();
 
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      style={{ width: header.getSize(), position: "relative" }}
+                    >
                       {header.isPlaceholder ? null : (
                         <div
                           className={cn(
-                            "flex items-center gap-1",
+                            "flex items-center gap-1 pr-3",
                             canSort && "cursor-pointer select-none"
                           )}
                           onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                         >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          <span className="truncate">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </span>
                           {canSort && (
                             sortDir === "asc" ? (
-                              <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                              <ArrowUp className="h-3.5 w-3.5 shrink-0 text-primary" />
                             ) : sortDir === "desc" ? (
-                              <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                              <ArrowDown className="h-3.5 w-3.5 shrink-0 text-primary" />
                             ) : (
-                              <ArrowUpDown className="h-3.5 w-3.5 opacity-30" />
+                              <ArrowUpDown className="h-3.5 w-3.5 shrink-0 opacity-30" />
                             )
                           )}
                         </div>
+                      )}
+                      {/* Resize handle */}
+                      {header.column.getCanResize() && (
+                        <div
+                          onMouseDown={header.getResizeHandler()}
+                          onTouchStart={header.getResizeHandler()}
+                          className={cn(
+                            "absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none",
+                            "opacity-0 hover:opacity-100 group-hover:opacity-100",
+                            "after:absolute after:right-0 after:top-1/4 after:h-1/2 after:w-0.5 after:rounded-full after:bg-primary/50",
+                            header.column.getIsResizing() && "opacity-100 after:bg-primary"
+                          )}
+                        />
                       )}
                     </TableHead>
                   );
@@ -420,7 +478,7 @@ export function DataTable<TData, TValue>({
                     "accessorFn" in header.column.columnDef;
 
                   return (
-                    <th key={`filter-${header.id}`} className="px-3 py-1.5 border-r border-border/50 last:border-r-0">
+                    <th key={`filter-${header.id}`} className="px-3 py-1.5 border-r border-border/50 last:border-r-0" style={{ width: header.getSize() }}>
                       {isAccessorCol ? (
                         <ColumnFilterInput
                           config={filterMap.get(colId)}
@@ -446,10 +504,12 @@ export function DataTable<TData, TValue>({
                   className={rowIndex % 2 === 1 ? "bg-muted/[0.35]" : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      <EditableCell cell={cell}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </EditableCell>
+                    <TableCell key={cell.id} style={{ width: cell.column.getSize(), maxWidth: cell.column.getSize() }} className="overflow-hidden">
+                      <div className="truncate">
+                        <EditableCell cell={cell}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </EditableCell>
+                      </div>
                     </TableCell>
                   ))}
                 </TableRow>
