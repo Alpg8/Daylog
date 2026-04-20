@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Loader2, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Loader2, Pencil, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { DataTable, type FilterConfig } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
@@ -17,12 +17,6 @@ import { EntityPopover } from "@/components/shared/entity-popover";
 import { AttachmentManager } from "@/components/shared/attachment-manager";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { OrderWithRelations, Vehicle, Trailer, Driver } from "@/types";
 
@@ -261,49 +255,6 @@ export function OrderTable({ category }: OrderTableProps) {
     ),
   };
 
-  const actionsCell: ColumnDef<OrderWithRelations> = {
-    id: "actions", header: "",
-    cell: ({ row }) => (
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => openAssignDialog(row.original)}
-        >
-          <UserPlus className="h-4 w-4" />
-          {row.original.driver ? "Surucu Degistir" : "Surucu Ata"}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => { setEditingOrder(row.original); setFormOpen(true); }}>
-              <Pencil className="mr-2 h-4 w-4" /> Düzenle
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/orders/${row.original.id}`}>Operasyon Detay</Link>
-            </DropdownMenuItem>
-            <div className="px-2 py-1.5">
-              <AttachmentManager
-                title="Siparis Dosyalari"
-                description="Siparise ait CMR, fatura ve diger operasyon belgelerini yonetin."
-                entityId={row.original.id}
-                endpointBase="/api/orders"
-                triggerClassName="h-auto w-full justify-start gap-2 rounded-sm border-0 bg-transparent px-0 py-0 text-sm font-normal shadow-none hover:bg-transparent"
-              />
-            </div>
-            <DropdownMenuItem className="text-destructive" onClick={() => setDeletingId(row.original.id)}>
-              <Trash2 className="mr-2 h-4 w-4" /> Sil
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    ),
-  };
-
   const fmtNum = (v: unknown) => (v != null && v !== "" ? String(v) : "—");
 
   // ── EXPORT kolonları ──────────────────────────────────────────────
@@ -330,7 +281,6 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "freightPrice", header: "Nakliye Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).freightPrice) },
     { accessorKey: "customsCost", header: "Gümrük Masrafı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).customsCost) },
     { accessorKey: "supplyPrice", header: "Tedarik Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).supplyPrice) },
-    actionsCell,
   ];
 
   // ── DOMESTIC kolonları ────────────────────────────────────────────
@@ -377,7 +327,6 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "equipmentInfo", header: "Ekipman", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).equipmentInfo) },
     { accessorKey: "cita", header: "ÇITA", meta: { editable: true }, cell: ({ row }) => fmtNum(row.original.cita) },
     { accessorKey: "spanzetStanga", header: "STANGA", meta: { editable: true }, cell: ({ row }) => fmtNum(row.original.spanzetStanga) },
-    actionsCell,
   ];
 
   // ── IMPORT kolonları ──────────────────────────────────────────────
@@ -406,7 +355,6 @@ export function OrderTable({ category }: OrderTableProps) {
     { accessorKey: "purchasePrice", header: "Alış Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).purchasePrice) },
     { accessorKey: "salePrice", header: "Satış Fiyatı", meta: { editable: true, type: "number" }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).salePrice) },
     { accessorKey: "t2MrnNo", header: "T2 MRN No", meta: { editable: true }, cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).t2MrnNo) },
-    actionsCell,
   ];
 
   // ── Tüm siparişler (kategori seçilmemiş) ─────────────────────────
@@ -426,7 +374,6 @@ export function OrderTable({ category }: OrderTableProps) {
     vehicleCell, trailerCell, driverCell,
     jobTypeCell,
     { accessorKey: "loadingDate", header: "Yükleme", cell: ({ row }) => fmtDate(row.original.loadingDate) },
-    actionsCell,
   ];
 
   const columns =
@@ -560,6 +507,50 @@ export function OrderTable({ category }: OrderTableProps) {
         searchPlaceholder="Sipariş ara (müşteri, yük no, sefer no...)"
         filters={tableFilters}
         onCellEdit={handleCellEdit}
+        rowActions={(row) => (
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => openAssignDialog(row)}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              {row.driver ? "Sürücü Değiştir" : "Sürücü Ata"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => { setEditingOrder(row); setFormOpen(true); }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Düzenle
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link href={`/orders/${row.id}`}>Operasyon Detay</Link>
+            </Button>
+            <AttachmentManager
+              title="Sipariş Dosyaları"
+              description="Siparişe ait CMR, fatura ve diğer operasyon belgelerini yönetin."
+              entityId={row.id}
+              endpointBase="/api/orders"
+              triggerClassName="h-8 gap-1.5 border border-input bg-background px-3 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground rounded-md"
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setDeletingId(row.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Sil
+            </Button>
+          </div>
+        )}
       />
 
       <OrderForm

@@ -96,6 +96,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string;
   filters?: FilterConfig[];
   onCellEdit?: (rowIndex: number, columnId: string, value: string) => void;
+  rowActions?: (row: TData) => React.ReactNode;
 }
 
 // ── Editable cell wrapper ────────────────────────────────────────────────────
@@ -287,6 +288,7 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = "Ara...",
   filters,
   onCellEdit,
+  rowActions,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -294,6 +296,7 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [fontSize, setFontSize] = useState<FontSizeValue>("text-sm");
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
   const filterMap = new Map<string, FilterConfig>(filters?.map((f) => [f.column, f]) ?? []);
   const activeFilterCount = columnFilters.length;
@@ -363,6 +366,24 @@ export function DataTable<TData, TValue>({
           className="max-w-xs bg-background/70"
         />
 
+        {/* Row actions toolbar */}
+        {selectedRowId && (() => {
+          const selectedRow = table.getRowModel().rows.find((r) => r.id === selectedRowId)?.original;
+          return selectedRow && rowActions ? (
+            <>
+              {rowActions(selectedRow)}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-muted-foreground"
+                onClick={() => setSelectedRowId(null)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          ) : null;
+        })()}
+
         {/* Active filter chips */}
         {columnFilters.map((f) => {
           const cfg = filterMap.get(f.id as string);
@@ -425,6 +446,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
+                      className={fontSize}
                       style={{ width: header.getSize(), position: "relative" }}
                     >
                       {header.isPlaceholder ? null : (
@@ -501,7 +523,13 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={rowIndex % 2 === 1 ? "bg-muted/[0.35]" : undefined}
+                  className={cn(
+                    rowIndex % 2 === 1 ? "bg-muted/[0.35]" : undefined,
+                    selectedRowId === row.id
+                      ? "bg-primary/10 ring-1 ring-inset ring-primary/30 hover:bg-primary/15"
+                      : "cursor-pointer"
+                  )}
+                  onClick={() => setSelectedRowId((prev) => (prev === row.id ? null : row.id))}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} style={{ width: cell.column.getSize(), maxWidth: cell.column.getSize() }} className="overflow-hidden">

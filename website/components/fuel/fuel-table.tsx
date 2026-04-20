@@ -1,11 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle, Clock, Droplets, XCircle } from "lucide-react";
+import { type ColumnDef } from "@tanstack/react-table";
+import { CheckCircle, Clock, Droplets, Pencil, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { DataTable } from "@/components/shared/data-table";
+import { PageHeader } from "@/components/shared/page-header";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { FuelForm } from "@/components/fuel/fuel-form";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import type { FuelRecordWithRelations } from "@/types";
 
 const LIVE_UPDATE_EVENT = "daylog:live-update";
 
@@ -206,9 +212,123 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
 }
 
 export function FuelTable() {
+  const [records, setRecords] = useState<FuelRecordWithRelations[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<FuelRecordWithRelations | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const fetchRecords = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/fuel");
+      if (res.ok) {
+        const j = await res.json() as { records: FuelRecordWithRelations[] };
+        setRecords(j.records ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchRecords(); }, [fetchRecords]);
+
+  useEffect(() => {
+    const handler = () => { void fetchRecords(); };
+    window.addEventListener(LIVE_UPDATE_EVENT, handler);
+    return () => window.removeEventListener(LIVE_UPDATE_EVENT, handler);
+  }, [fetchRecords]);
+
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/fuel/${deletingId}`, { method: "DELETE" });
+      if (res.ok) { toast.success("Kayıt silindi"); void fetchRecords(); }
+      else toast.error("Silme başarısız");
+    } finally { setDeleteLoading(false); setDeletingId(null); }
+  };
+
+  const fmtDate = (d: Date | string | null | undefined) =>
+    d ? new Date(d).toLocaleDateString("tr-TR") : "—";
+  const fmtNum = (v: unknown, suffix = "") =>
+    v != null && v !== "" ? `${v}${suffix}` : "—";
+
+  const columns: ColumnDef<FuelRecordWithRelations>[] = [
+    { accessorKey: "date", header: "Tarih", cell: ({ row }) => fmtDate(row.original.date) },
+    { id: "vehicle", header: "Araç", cell: ({ row }) => row.original.vehicle?.plateNumber ?? "—" },
+    { id: "driver", header: "Sürücü", cell: ({ row }) => row.original.driver?.fullName ?? "—" },
+    { accessorKey: "liters", header: "Litre", cell: ({ row }) => fmtNum(row.original.liters, " L") },
+    { accessorKey: "pricePerLiter", header: "Lt Fiyatı", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).pricePerLiter) },
+    { accessorKey: "totalCost", header: "Toplam", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).totalCost) },
+    { accessorKey: "currency", header: "Para Birimi", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).currency) },
+    { accessorKey: "fuelType", header: "Yakıt Tipi", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).fuelType) },
+    { accessorKey: "fuelStation", header: "İstasyon", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).fuelStation) },
+    { accessorKey: "country", header: "Ülke", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).country) },
+    { accessorKey: "paymentMethod", header: "Ödeme", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).paymentMethod) },
+    { accessorKey: "startKm", header: "Başlangıç KM", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).startKm) },
+    { accessorKey: "endKm", header: "Bitiş KM", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).endKm) },
+    { accessorKey: "distanceKm", header: "Mesafe", cell: ({ row }) => fmtNum((row.original as Record<string, unknown>).distanceKm, " km") },
+    { accessorKey: "notes", header: "Not", cell: ({ row }) => fmtNum(row.original.notes) },
+  ];
+
   return (
     <div className="space-y-6">
-      <FuelRequestList onReviewed={() => {}} />
+      <PageHeader
+        title="Yakıt Kayıtları"
+        description={`${records.length} kayıt`}
+        onAdd={() => { setEditing(null); setFormOpen(true); }}
+      />
+
+      <DataTable
+        columns={columns}
+        data={records}
+        loading={loading}
+        searchPlaceholder="Araç, sürücü, istasyon ara..."
+        rowActions={(row) => (
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => { setEditing(row); setFormOpen(true); }}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Düzenle
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setDeletingId(row.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Sil
+            </Button>
+          </div>
+        )}
+      />
+
+      <FuelForm
+        open={formOpen}
+        onOpenChange={(o) => { setFormOpen(o); if (!o) setEditing(null); }}
+        onSuccess={() => { void fetchRecords(); }}
+        initialData={editing}
+      />
+
+      <ConfirmDialog
+        open={!!deletingId}
+        onOpenChange={(o) => !o && setDeletingId(null)}
+        onConfirm={handleDelete}
+        loading={deleteLoading}
+        title="Kaydı sil"
+        description="Bu yakıt kaydı kalıcı olarak silinecektir."
+      />
+
+      <FuelRequestList onReviewed={() => { void fetchRecords(); }} />
     </div>
   );
 }
