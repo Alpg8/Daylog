@@ -100,42 +100,40 @@ export default function NotificationsPage() {
             <CheckCheck className="h-4 w-4 mr-2" />Tümünü Okundu İşaretle
           </Button>
         ) : undefined}
-      />
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Type filter */}
-        <div className="flex gap-1 bg-black/5 rounded-lg p-1 w-fit">
-          {TYPE_FILTERS.map(t => (
+        filters={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1 bg-black/5 rounded-lg p-1 w-fit">
+              {TYPE_FILTERS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTypeFilter(t)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                    typeFilter === t
+                      ? "bg-white shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-black/5"
+                  }`}
+                >
+                  {t === "HEPSI" ? "Hepsi" : typeLabel[t]}
+                  <span className="ml-1 text-muted-foreground/60">
+                    ({t === "HEPSI" ? notifications.length : notifications.filter(n => n.type === t).length})
+                  </span>
+                </button>
+              ))}
+            </div>
             <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                typeFilter === t
-                  ? "bg-white shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-black/5"
+              onClick={() => setUnreadOnly(v => !v)}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                unreadOnly
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              {t === "HEPSI" ? "Hepsi" : typeLabel[t]}
-              <span className="ml-1 text-muted-foreground/60">
-                ({t === "HEPSI" ? notifications.length : notifications.filter(n => n.type === t).length})
-              </span>
+              {unreadOnly && <X className="h-3 w-3" />}
+              Yalnızca okunmamış
             </button>
-          ))}
-        </div>
-        {/* Unread toggle */}
-        <button
-          onClick={() => setUnreadOnly(v => !v)}
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-            unreadOnly
-              ? "border-primary/40 bg-primary/10 text-primary"
-              : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
-          }`}
-        >
-          {unreadOnly && <X className="h-3 w-3" />}
-          Yalnızca okunmamış
-        </button>
-      </div>
+          </div>
+        }
+      />
 
       {loading ? (
         <p className="text-muted-foreground">Yükleniyor...</p>

@@ -97,71 +97,78 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Droplets className="h-4 w-4 text-blue-400" />
-          Yakıt Talepleri
-          {pendingCount > 0 && (
-            <Badge variant="warning" className="text-xs">{pendingCount} bekliyor</Badge>
-          )}
-        </h3>
-      </div>
-
-      {/* Extra filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <input
-            className="pl-7 pr-2 py-1.5 rounded-md border border-border bg-background text-xs placeholder:text-muted-foreground outline-none focus:border-primary w-36"
-            placeholder="Plaka ara"
-            value={plateFilter}
-            onChange={e => setPlateFilter(e.target.value)}
-          />
+      {/* Heading + filters */}
+      <div className="surface-panel rounded-2xl px-4 py-3 md:px-5 md:py-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold flex items-center gap-2 text-xl md:text-2xl font-bold tracking-tight">
+            <Droplets className="h-5 w-5 text-blue-400" />
+            Yakıt Talepleri
+            {pendingCount > 0 && (
+              <Badge variant="warning" className="text-xs">{pendingCount} bekliyor</Badge>
+            )}
+          </h3>
         </div>
-        <input
-          type="date"
-          className="rounded-md border border-border bg-background text-xs px-2 py-1.5 outline-none focus:border-primary text-foreground"
-          value={dateFrom}
-          onChange={e => setDateFrom(e.target.value)}
-          title="Başlangıç tarihi"
-        />
-        <span className="text-muted-foreground text-xs">–</span>
-        <input
-          type="date"
-          className="rounded-md border border-border bg-background text-xs px-2 py-1.5 outline-none focus:border-primary text-foreground"
-          value={dateTo}
-          onChange={e => setDateTo(e.target.value)}
-          title="Bitiş tarihi"
-        />
-        {(plateFilter || dateFrom || dateTo) && (
-          <button
-            onClick={() => { setPlateFilter(""); setDateFrom(""); setDateTo(""); }}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-          >Filtreyi temizle</button>
-        )}
-      </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 bg-black/5 rounded-lg p-1 w-fit">
-        {STATUS_TABS.map(tab => {
-          const count = tab.value === "ALL"
-            ? requests.length
-            : requests.filter(r => r.status === tab.value).length;
-          return (
+        {/* Filters row */}
+        <div className="border-t border-border/50 pt-3 flex flex-wrap items-center gap-2">
+          {/* Status tabs */}
+          <div className="flex gap-1 bg-black/5 rounded-lg p-1 w-fit">
+            {STATUS_TABS.map(tab => {
+              const count = tab.value === "ALL"
+                ? requests.length
+                : requests.filter(r => r.status === tab.value).length;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    activeTab === tab.value
+                      ? "bg-white shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-black/5"
+                  }`}
+                >
+                  {tab.label}
+                  {count > 0 && <span className="ml-1.5 text-muted-foreground/60">({count})</span>}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Plate search */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              className="pl-7 pr-2 py-1.5 rounded-md border border-border bg-background text-xs placeholder:text-muted-foreground outline-none focus:border-primary w-36"
+              placeholder="Plaka ara"
+              value={plateFilter}
+              onChange={e => setPlateFilter(e.target.value)}
+            />
+          </div>
+
+          {/* Date range */}
+          <input
+            type="date"
+            className="rounded-md border border-border bg-background text-xs px-2 py-1.5 outline-none focus:border-primary text-foreground"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            title="Başlangıç tarihi"
+          />
+          <span className="text-muted-foreground text-xs">–</span>
+          <input
+            type="date"
+            className="rounded-md border border-border bg-background text-xs px-2 py-1.5 outline-none focus:border-primary text-foreground"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            title="Bitiş tarihi"
+          />
+
+          {(plateFilter || dateFrom || dateTo) && (
             <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                activeTab === tab.value
-                  ? "bg-white shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-black/5"
-              }`}
-            >
-              {tab.label}
-              {count > 0 && <span className="ml-1.5 text-muted-foreground/60">({count})</span>}
-            </button>
-          );
-        })}
+              onClick={() => { setPlateFilter(""); setDateFrom(""); setDateTo(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >Filtreyi temizle</button>
+          )}
+        </div>
       </div>
 
       {loading ? (
