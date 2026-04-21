@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { CheckCircle, Clock, Droplets, XCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CheckCircle, Clock, Droplets, Search, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,9 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
   const [activeTab, setActiveTab] = useState<StatusFilter>("ALL");
   const [note, setNote] = useState<Record<string, string>>({});
   const [reviewing, setReviewing] = useState<string | null>(null);
+  const [plateFilter, setPlateFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -83,7 +86,13 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
     setReviewing(null);
   }
 
-  const filtered = activeTab === "ALL" ? requests : requests.filter(r => r.status === activeTab);
+  const filtered = useMemo(() => {
+    let list = activeTab === "ALL" ? requests : requests.filter(r => r.status === activeTab);
+    if (plateFilter) list = list.filter(r => r.vehicle?.plateNumber.toLowerCase().includes(plateFilter.toLowerCase()));
+    if (dateFrom) list = list.filter(r => new Date(r.createdAt) >= new Date(dateFrom));
+    if (dateTo) list = list.filter(r => new Date(r.createdAt) <= new Date(dateTo + "T23:59:59"));
+    return list;
+  }, [requests, activeTab, plateFilter, dateFrom, dateTo]);
   const pendingCount = requests.filter(r => r.status === "PENDING").length;
 
   return (
@@ -96,6 +105,40 @@ function FuelRequestList({ onReviewed }: { onReviewed: () => void }) {
             <Badge variant="warning" className="text-xs">{pendingCount} bekliyor</Badge>
           )}
         </h3>
+      </div>
+
+      {/* Extra filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            className="pl-7 pr-2 py-1.5 rounded-md border border-border bg-background text-xs placeholder:text-muted-foreground outline-none focus:border-primary w-36"
+            placeholder="Plaka ara"
+            value={plateFilter}
+            onChange={e => setPlateFilter(e.target.value)}
+          />
+        </div>
+        <input
+          type="date"
+          className="rounded-md border border-border bg-background text-xs px-2 py-1.5 outline-none focus:border-primary text-foreground"
+          value={dateFrom}
+          onChange={e => setDateFrom(e.target.value)}
+          title="Başlangıç tarihi"
+        />
+        <span className="text-muted-foreground text-xs">–</span>
+        <input
+          type="date"
+          className="rounded-md border border-border bg-background text-xs px-2 py-1.5 outline-none focus:border-primary text-foreground"
+          value={dateTo}
+          onChange={e => setDateTo(e.target.value)}
+          title="Bitiş tarihi"
+        />
+        {(plateFilter || dateFrom || dateTo) && (
+          <button
+            onClick={() => { setPlateFilter(""); setDateFrom(""); setDateTo(""); }}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >Filtreyi temizle</button>
+        )}
       </div>
 
       {/* Filter tabs */}

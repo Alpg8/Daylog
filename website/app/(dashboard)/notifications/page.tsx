@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Bell, Check, CheckCheck } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, Check, CheckCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,9 +25,40 @@ const typeLabel: Record<string, string> = {
   TASK: "Görev",
 };
 
+const TYPE_FILTERS = ["HEPSI", "INFO", "SUCCESS", "WARNING", "ERROR", "TASK"] as const;
+type TypeFilter = typeof TYPE_FILTERS[number];
+
+function groupByDate(notifications: Notification[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const groups: { label: string; items: Notification[] }[] = [];
+  const map = new Map<string, Notification[]>();
+
+  for (const n of notifications) {
+    const d = new Date(n.createdAt);
+    d.setHours(0, 0, 0, 0);
+    let label: string;
+    if (d.getTime() === today.getTime()) label = "Bugün";
+    else if (d.getTime() === yesterday.getTime()) label = "Dün";
+    else label = d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+    if (!map.has(label)) map.set(label, []);
+    map.get(label)!.push(n);
+  }
+
+  for (const [label, items] of map.entries()) {
+    groups.push({ label, items });
+  }
+  return groups;
+}
+
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("HEPSI");
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -50,6 +81,14 @@ export default function NotificationsPage() {
     fetchData();
   };
 
+  const filtered = useMemo(() => {
+    let list = notifications;
+    if (typeFilter !== "HEPSI") list = list.filter(n => n.type === typeFilter);
+    if (unreadOnly) list = list.filter(n => !n.isRead);
+    return list;
+  }, [notifications, typeFilter, unreadOnly]);
+
+  const groups = useMemo(() => groupByDate(filtered), [filtered]);
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
@@ -62,34 +101,79 @@ export default function NotificationsPage() {
           </Button>
         ) : undefined}
       />
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Type filter */}
+        <div className="flex gap-1 bg-black/5 rounded-lg p-1 w-fit">
+          {TYPE_FILTERS.map(t => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                typeFilter === t
+                  ? "bg-white shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/5"
+              }`}
+            >
+              {t === "HEPSI" ? "Hepsi" : typeLabel[t]}
+              <span className="ml-1 text-muted-foreground/60">
+                ({t === "HEPSI" ? notifications.length : notifications.filter(n => n.type === t).length})
+              </span>
+            </button>
+          ))}
+        </div>
+        {/* Unread toggle */}
+        <button
+          onClick={() => setUnreadOnly(v => !v)}
+          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            unreadOnly
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          {unreadOnly && <X className="h-3 w-3" />}
+          Yalnızca okunmamış
+        </button>
+      </div>
+
       {loading ? (
         <p className="text-muted-foreground">Yükleniyor...</p>
-      ) : notifications.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
           <Bell className="h-12 w-12" />
           <p>Bildirim yok</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {notifications.map(n => (
-            <Card key={n.id} className={n.isRead ? "opacity-60" : ""}>
-              <CardContent className="flex items-start gap-4 p-4">
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={typeVariant[n.type] ?? "default"}>{typeLabel[n.type] ?? n.type}</Badge>
-                    {!n.isRead && <Badge variant="secondary" className="text-xs">Yeni</Badge>}
-                  </div>
-                  <p className="font-medium text-sm">{n.title}</p>
-                  {n.message && <p className="text-sm text-muted-foreground">{n.message}</p>}
-                  <p className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString("tr-TR")}</p>
-                </div>
-                {!n.isRead && (
-                  <Button variant="ghost" size="sm" onClick={() => markRead(n.id)}>
-                    <Check className="h-4 w-4" />
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+        <div className="space-y-6">
+          {groups.map(group => (
+            <div key={group.label} className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60 px-1">
+                {group.label}
+              </h3>
+              <div className="space-y-1.5">
+                {group.items.map(n => (
+                  <Card key={n.id} className={n.isRead ? "opacity-60" : ""}>
+                    <CardContent className="flex items-start gap-4 p-4">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={typeVariant[n.type] ?? "default"}>{typeLabel[n.type] ?? n.type}</Badge>
+                          {!n.isRead && <Badge variant="secondary" className="text-xs">Yeni</Badge>}
+                        </div>
+                        <p className="font-medium text-sm">{n.title}</p>
+                        {n.message && <p className="text-sm text-muted-foreground">{n.message}</p>}
+                        <p className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString("tr-TR")}</p>
+                      </div>
+                      {!n.isRead && (
+                        <Button variant="ghost" size="sm" onClick={() => markRead(n.id)}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
