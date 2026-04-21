@@ -48,8 +48,8 @@ function groupByDate(notifications: Notification[]) {
     map.get(label)!.push(n);
   }
 
-  for (const [label, items] of map.entries()) {
-    groups.push({ label, items });
+  for (const label of Array.from(map.keys())) {
+    groups.push({ label, items: map.get(label)! });
   }
   return groups;
 }
